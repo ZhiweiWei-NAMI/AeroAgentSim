@@ -62,6 +62,7 @@ services:
     init: true
   coordinator:
     <<: *companion
+    env_file: []
     entrypoint: [python, -m, aeroagentsim.companion.coordinator]
     command: [--scenario, '${SCENARIO:-/opt/aeroagentsim/scenarios/rescue/rooftop-flood-companion.yaml}',
               --run-id, '${RUN_ID}', --data, /data, --socket-root, /run/aas,

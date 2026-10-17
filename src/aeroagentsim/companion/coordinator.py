@@ -5,6 +5,7 @@ import argparse
 import base64
 import copy
 import json
+import math
 import os
 import signal
 import time
@@ -97,6 +98,9 @@ class Coordinator:
         self.scene, self.run_id, self.data = scene, run_id, data
         data.mkdir(parents=True, exist_ok=True)
         self.until_ns = until_ns
+        self.max_real_time_factor = float(scene.get('max_real_time_factor', 1.0))
+        if not math.isfinite(self.max_real_time_factor) or self.max_real_time_factor <= 0:
+            raise ValueError('max_real_time_factor must be positive')
         self.stop_requested = False
         self.bridge = VehicleBridge(run_id, socket_root, data, tuple(scene['vehicles']) + ('centre',))
         self.transport = RadioTransport(data / 'radio', run_id)
@@ -223,10 +227,23 @@ class Coordinator:
                         for key in ('event_id', 'task_id', 'task_revision')}
                 self.bridge.reply(request, result)
             elif op in ('capture_request', 'capture_poll', 'capture_read'):
+                if uid not in self.scene['vehicles']:
+                    raise PermissionError('this endpoint has no onboard sensor')
+                # Invalid agent input must not taint the sole native connection.
                 payload = {'vehicle': uid, 'action': 'read' if op == 'capture_read' else 'poll'}
-                for name in ('after_sim_ns', 'frame_id', 'kind', 'offset', 'max_bytes'):
-                    if name in request:
-                        payload[name] = request[name]
+                if op == 'capture_read':
+                    frame_id, kind = request.get('frame_id'), request.get('kind')
+                    offset, size = request.get('offset', 0), request.get('max_bytes', 262144)
+                    if not isinstance(frame_id, str) or not frame_id or kind not in ('rgb', 'depth'):
+                        raise ValueError('capture_read requires frame_id and rgb/depth kind')
+                    if type(offset) is not int or offset < 0 or type(size) is not int or not 1 <= size <= 262144:
+                        raise ValueError('capture_read requires offset >= 0 and 1..262144 bytes')
+                    payload.update(frame_id=frame_id, kind=kind, offset=offset, max_bytes=size)
+                else:
+                    after = request.get('after_sim_ns', -1)
+                    if type(after) is not int or after < -1:
+                        raise ValueError('after_sim_ns must be an integer >= -1')
+                    payload['after_sim_ns'] = after
                 self.bridge.reply(request, self.flight.client.request('capture', payload))
             else:
                 self.bridge.reply(request, {'status': 'unavailable',
@@ -286,11 +303,13 @@ class Coordinator:
 
     def run(self) -> None:
         started = time.monotonic()
+        episode_started = None
         try:
             self.bridge.start()
             self.simulation.start()
             self.collect(0)
             self.bootstrap()
+            episode_started = time.monotonic()
             while not self.stop_requested:
                 now_ns = self.simulation.kernel.view().instant.ns
                 if now_ns >= self.until_ns:
@@ -304,14 +323,19 @@ class Coordinator:
                 target = min(now_ns + 200_000_000, self.until_ns)
                 self.simulation.run_until(target)
                 self.collect(target)
-                # Yield CPU for independent companions; no model call blocks the
-                # sole native connection. This is not a real-time performance claim.
-                time.sleep(0.001)
+                # Cap simulation speed so independent agent work has its stated
+                # deadline budget. A slow backend incurs no additional delay.
+                remaining = target / 1e9 / self.max_real_time_factor - (time.monotonic() - episode_started)
+                if remaining > 0:
+                    time.sleep(remaining)
         finally:
             elapsed = time.monotonic() - started
             sim_ns = self.simulation.kernel.view().instant.ns
+            episode_elapsed = time.monotonic() - episode_started if episode_started is not None else 0.0
             (self.data / 'timing.json').write_text(json.dumps({'sim_elapsed_s': sim_ns / 1e9,
-                'wall_elapsed_s': elapsed, 'real_time_factor': sim_ns / 1e9 / max(elapsed, 1e-9)}))
+                'wall_elapsed_s': elapsed, 'episode_wall_elapsed_s': episode_elapsed,
+                'max_real_time_factor': self.max_real_time_factor,
+                'real_time_factor': sim_ns / 1e9 / max(episode_elapsed, 1e-9)}))
             try:
                 self.simulation.close()
             finally:

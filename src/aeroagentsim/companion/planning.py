@@ -117,23 +117,61 @@ class PublicMapPlanner:
         energy_source = state.get('energy_model_source')
         if speed is None or not math.isfinite(speed) or speed <= 0:
             return {'status': 'unavailable', 'reason': 'local speed estimate unavailable'}
-        origins = [('current', state['position_enu_m'])] + [(a['id'], a['target']) for a in actions]
+        def task_route(origin, action, prepare_departure=False):
+            prefix = [list(origin)]
+            if prepare_departure and state.get('landed_state') in {'ON_GROUND', 'on_ground'}:
+                # The execution workflow first issues relative-altitude takeoff.
+                launch = [origin[0], origin[1], origin[2]+self.map['search_altitude_m']]
+                climb = self.route(origin, launch)
+                if climb['status'] != 'succeeded':
+                    return climb
+                prefix = climb['path_enu_m']
+                origin = launch
+            if action.get('role') == 'inspect':
+                result = self.search(origin, action.get('search_polygon', self.map['search_polygon']),
+                                     action.get('search_altitude_m', self.map['search_altitude_m']),
+                                     action.get('search_row_spacing_m', self.map['search_row_spacing_m']))
+                if result['status'] == 'succeeded':
+                    result['path_enu_m'] = prefix[:-1]+result['path_enu_m']
+                    path = result['path_enu_m']
+                    result['distance_m'] = sum(math.dist(a, b) for a, b in zip(path, path[1:]))
+                return result
+            result = self.route(origin, action['target'])
+            if result['status'] == 'succeeded':
+                result['path_enu_m'] = prefix[:-1]+result['path_enu_m']
+                path = result['path_enu_m']
+                result['distance_m'] = sum(math.dist(a,b) for a,b in zip(path,path[1:]))
+            return result
+
+        origins = [('current', state['position_enu_m'])]
         legs, unavailable = [], []
+        for action in actions:
+            route = task_route(state['position_enu_m'], action, True)
+            if route['status'] == 'succeeded':
+                origins.append((action['id'], route['path_enu_m'][-1]))
+            else:
+                unavailable.append({'from_action': action['id'], 'reason': route['reason']})
         for from_action, origin in origins:
             for action in actions:
                 if from_action == action['id']:
                     continue
-                leg = self.route(origin, action['target'])
+                leg = task_route(origin, action, from_action == 'current')
                 if leg['status'] != 'succeeded':
                     unavailable.append({'from_action': from_action, 'to_action': action['id'], 'reason': leg['reason']})
                     continue
-                energy_known = per_m is not None and math.isfinite(per_m) and per_m >= 0 and bool(energy_source)
+                service_s = float(action.get('duration_s', 0))
+                hover_w = state.get('hover_power_w')
+                service_energy = service_s*hover_w if hover_w is not None and math.isfinite(hover_w) and hover_w >= 0 else 0 if service_s == 0 else None
+                energy_known = service_energy is not None and per_m is not None and math.isfinite(per_m) and per_m >= 0 and bool(energy_source)
                 legs.append({**leg, 'from_action': from_action, 'to_action': action['id'],
                              'travel_s': leg['distance_m']/speed,
-                             'energy_j': leg['distance_m']*per_m if energy_known else None,
+                             'energy_j': leg['distance_m']*per_m+service_energy if energy_known else None,
+                             'service_energy_j': service_energy,
+                             'end_position_enu_m': leg['path_enu_m'][-1],
+                             'cost_scope': 'full planned action route including search; duration_s is additional non-flight service time',
                              'energy_source': energy_source if energy_known else 'unknown',
                              'observed_at_ns': state.get('observed_at_ns'),
                              'valid_until_ns': state['valid_until_ns'],
                              'commitment_version': state.get('commitment_version')})
         return {'status': 'succeeded', 'feasible_leg_costs': legs, 'unavailable_legs': unavailable,
-                'energy_scope': 'travel-only declared local model; task/hover energy reported separately'}
+                'energy_scope': 'declared flight-distance plus duration-times-hover-power model; missing service power remains unknown'}

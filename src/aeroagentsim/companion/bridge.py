@@ -112,7 +112,9 @@ class VehicleBridge:
                         cancel_requested_sim_ns=self.sim_ns)
                 return record
             if op == 'radio_inbox':
-                return {'status': 'available', 'messages': list(self.inboxes[uav_id]), 'sim_ns': self.sim_ns}
+                # One committed object per request keeps multiple large images
+                # from overflowing the local 8 MiB response frame.
+                return {'status': 'available', 'messages': list(self.inboxes[uav_id][:1]), 'sim_ns': self.sim_ns}
             if op == 'task_accept':
                 message = self.received_messages[uav_id].get(request['message_id'])
                 if not message or message.get('kind') not in {'notice', 'plan'}:

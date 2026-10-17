@@ -59,7 +59,8 @@ class Runtime:
         if config.payload:
             from .payload_adapter import PayloadAdapter
             self.payload_adapter = PayloadAdapter(config.payload, self.gazebo,
-                self.directory, partition, lambda: self.gazebo.sim_ns - self.origin_ns)
+                self.directory, partition, lambda: self.gazebo.sim_ns - self.origin_ns,
+                physics_step_ns=config.physics_step_ns)
             await self.payload_adapter.start()
         steps = config.warmup // config.physics_step_ns
         for offset in range(0, steps, 125):

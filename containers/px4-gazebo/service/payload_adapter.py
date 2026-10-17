@@ -38,7 +38,7 @@ def attach_payload(world, vehicles, directory, config):
 
 
 class PayloadAdapter:
-    def __init__(self, config, gazebo, directory, epoch, logical_clock):
+    def __init__(self, config, gazebo, directory, epoch, logical_clock, *, physics_step_ns):
         self.config, self.gazebo, self.directory = config, gazebo, directory
         self.logical_clock = logical_clock
         self.lock = threading.RLock()
@@ -49,7 +49,8 @@ class PayloadAdapter:
         self.events = []
         self.received = []
         self.receiver = ContactReceiver(directory, config['package_id'],
-            'drop-receiver-1::surface::receiver_collision', '/rescue/receiver/contacts', epoch)
+            'drop-receiver-1::surface::receiver_collision', '/rescue/receiver/contacts', epoch,
+            max_gap_ns=physics_step_ns)
         self.publisher = None
 
     async def start(self):

@@ -1,0 +1,840 @@
+"""Independent per-UAV/centre event loop using the existing provider and tools.
+
+No simulator reset/advance capability lives here. Future flight, image and radio
+results end the current decision; the private coordinator continues advancing.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import concurrent.futures
+import json
+import os
+import signal
+import time
+import uuid
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from .centre import RescueCentre
+from .flight import FlightClient
+from .tools import CompanionTools, tool_schemas
+from .transport import NS, encoded, save_json
+
+TERMINAL = {"succeeded", "failed", "canceled", "unavailable", "rejected"}
+
+
+class CompanionRuntime:
+    def __init__(self, config: dict[str, Any], *, run_id: str, uav_id: str, data_dir: str | Path, socket_path: str, agent_mode: str = "rule", role: str = "uav", provider_profile: str = "default") -> None:
+        if agent_mode not in {"rule", "model"}:
+            raise ValueError("agent mode must be rule or model")
+        self.config, self.run_id, self.uav_id, self.mode, self.role = config, run_id, uav_id, agent_mode, role
+        self.root = Path(data_dir)
+        for folder in ("inbox", "outbox", "tasks", "logs"):
+            (self.root / folder).mkdir(parents=True, exist_ok=True)
+        self.path = self.root / "runtime-state.json"
+        self.state: dict[str, Any] = {"run_id": run_id, "uav_id": uav_id, "task": None, "missions": {}, "seen_messages": [], "step_index": 0, "results": {}, "model_client_constructions": 0, "model_calls": 0, "commitment_version": 0, "sim_ns": 0}
+        if self.path.exists():
+            self.state = json.loads(self.path.read_text())
+            if self.state["run_id"] != run_id or self.state["uav_id"] != uav_id:
+                raise ValueError("runtime data directory belongs to another identity/run")
+            for mission in self.state["missions"].values():
+                if mission["status"] not in TERMINAL:
+                    mission["reconcile_required"] = True
+        self.flight = FlightClient(socket_path, run_id)
+        self.tools = CompanionTools(self.root, run_id, uav_id, self.flight, config, self.submit_mission)
+        self.centre = RescueCentre(self.root) if role == "centre" else None
+        self.provider: Any = None
+        if agent_mode == "model":
+            from aeroagentsim.agents.provider import OpenAIProvider
+            self.provider = OpenAIProvider.from_config({"profile": provider_profile})
+            self.provider.bind_session(f"{run_id}/{uav_id}")
+            self.state["model_client_constructions"] += 1
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"companion-{uav_id}")
+        self.future: concurrent.futures.Future[Any] | None = None
+        self.future_kind = ""
+        self.future_revision: tuple[str, int] | None = None
+        self.future_call: dict[str, Any] | None = None
+        self.active_tool: dict[str, Any] | None = self.state.get("active_tool")
+        if self.state.get("tool_inflight") and self.active_tool is None:
+            self.state["task_blocker"] = {"status": "reconcile_required", "reason": "Interrupted tool submission has no acknowledged operation; do not replay physical actions or radio sends"}
+        self.centre_future: concurrent.futures.Future[Any] | None = None
+        self.centre_event: str | None = None
+        self.capture_futures: dict[str, concurrent.futures.Future[Any]] = {}
+        self.closed = False
+        self._save()
+
+    def _save(self) -> None:
+        if hasattr(self, "active_tool"):
+            self.state["active_tool"] = self.active_tool
+        save_json(self.path, self.state)
+
+    def _decision_event(self) -> None:
+        self.state["decision_event_version"] = self.state.get("decision_event_version", 0) + 1
+
+    def _log(self, filename: str, data: dict[str, Any]) -> None:
+        with (self.root / "logs" / filename).open("ab") as stream:
+            stream.write(encoded({"run_id": self.run_id, "uav_id": self.uav_id, "sim_ns": self.state["sim_ns"], "wall_ns": time.time_ns(), **data}) + b"\n")
+
+    def context(self) -> dict[str, Any]:
+        task = self.state.get("task") or {}
+        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state")}
+
+    def submit_mission(self, name: str, steps: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
+        return {"status": "accepted", "mission_spec": {"name": name, "steps": steps, "metadata": metadata}}
+
+    def _register_mission(self, name: str, steps: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
+        if any(row["status"] not in TERMINAL for row in self.state["missions"].values()):
+            raise ValueError("one task worker may own only one active mission")
+        operation_id = "mission-" + uuid.uuid4().hex
+        mission = {"operation_id": operation_id, "tool_name": name, "steps": steps, "index": 0, "pending": None, "status": "accepted", "metadata": metadata, "frames": [], **self.context()}
+        self.state["missions"][operation_id] = mission
+        return {"operation_id": operation_id, "status": "accepted"}
+
+    def _persist_message(self, message: dict[str, Any]) -> None:
+        mid = message["message_id"]
+        path = self.root / "inbox" / mid
+        path.mkdir(exist_ok=True)
+        local = dict(message)
+        if "content_base64" in local:
+            raw = base64.b64decode(local.pop("content_base64"), validate=True)
+            from .transport import digest
+            if digest(raw) != local["file_hash"]:
+                raise ValueError("private endpoint returned mismatched radio copy")
+            (path / "content").write_bytes(raw)
+            local["content_path"] = str(path / "content")
+            if local["kind"] == "file":
+                from .history import ObservationStore
+                archive = ObservationStore(self.root, self.run_id, self.uav_id)
+                try:
+                    suffix = ".jpg" if raw.startswith(b"\xff\xd8") else ".png" if raw.startswith(b"\x89PNG") else ".bin"
+                    artifact = archive.save_artifact(raw, suffix, {**local.get("metadata", {}), "observer": local["source"], "received_at": local["received_ns"], "radio_message_id": mid})
+                    local["artifact_id"] = artifact["artifact_id"]
+                finally:
+                    archive.close()
+
+        save_json(path / "message.json", local)
+        if mid not in self.state["seen_messages"]:
+            self._consume_message(local)
+            self.state["seen_messages"].append(mid)
+            self._decision_event()
+        self._save()
+        self.flight.request("radio_inbox_ack", message_id=mid)
+
+    def _consume_message(self, message: dict[str, Any]) -> None:
+        current_task = self.state.get("task") or {}
+        if message.get("kind") == "report" and message["source"] == "centre" and message.get("data", {}).get("kind") == "mission_closed" and message["event_id"] == current_task.get("event_id") and not (current_task.get("commitment") or {}).get("protected"):
+            self.state["mission_closed"] = message
+            self.state["relay_release_authorized"] = message["message_id"]
+            self.state["relay_held"] = False
+            self.state.pop("task_blocker", None)
+        if message.get("kind") == "report" and message.get("data", {}).get("kind") == "relay_ready":
+            self.state["ready_relay"] = message["source"]
+            if self.active_tool and self.active_tool.get("message_id"):
+                self.flight.request("radio_route", message_id=self.active_tool["message_id"], route=self._evidence_route())
+        if self.centre is not None:
+            self.centre.consume(message, self.state["sim_ns"])
+        if self.role != "uav" or message["kind"] not in {"notice", "plan"}:
+            return
+        data = message.get("data", {})
+        if self.state.get("mission_closed", {}).get("event_id") == message["event_id"]:
+            self._log("decisions.jsonl", {"decision": "late_plan_after_terminal_event_ignored", "message_id": message["message_id"]})
+            return
+        old = self.state.get("task")
+        if old and (old.get("commitment") or {}).get("protected") and old["task_id"] != message["task_id"]:
+            self._log("decisions.jsonl", {"decision": "protected_task_retained", "message_id": message["message_id"]})
+            return
+        if old and message["task_id"] == old["task_id"] and message["task_revision"] < old["task_revision"]:
+            return
+        if old and (self.active_tool is not None or self.future is not None or any(m["status"] not in TERMINAL for m in self.state["missions"].values())):
+            self._log("decisions.jsonl", {"decision": "new_task_waits_for_cancel_or_completion", "message_id": message["message_id"]})
+            self.state["pending_task"] = message
+            return
+        self.flight.accept_task(message["message_id"], message["task_id"], message["task_revision"])
+        task = {**data, **data.get("task", {}), "message_id": message["message_id"], "event_id": message["event_id"], "task_id": message["task_id"], "task_revision": message["task_revision"], "deadline_ns": data.get("deadline_ns", data.get("task", {}).get("deadline_ns", data.get("incident", {}).get("deadline_ns", self.state["sim_ns"] + 120 * NS)))}
+        if task.get("intent") == "offer" and not task.get("workflow"):
+            task["workflow"] = [
+                {"tool": "estimate-assignment", "request": {"actions": task.get("incident", {}).get("initial_graph", {}).get("actions", [])}, "result_key": "estimate"},
+                {"tool": "offer-rescue-role", "request": {"destination": "centre"}, "result_key": "bid"},
+            ]
+        self.state.pop("task_blocker", None)
+        self.state.pop("inspection", None)
+        if not old or task["event_id"] != old.get("event_id"):
+            self.state.pop("mission_closed", None)
+            self.state.pop("relay_release_authorized", None)
+        self.state.update(task=task, step_index=0, results={}, commitment_version=self.state["commitment_version"] + 1)
+        self._log("decisions.jsonl", {"decision": "radio_task_accepted", "message_id": message["message_id"], "task_id": task["task_id"], "task_revision": task["task_revision"]})
+
+    def _gateway_request(self, **params: Any) -> dict[str, Any]:
+        result = self.flight.request(**params)
+        deadline = time.monotonic() + 10
+        while result.get("status") == "pending" and "uav_id" not in result:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("coordinator management response timed out")
+            request_id = result.get("request_id") or params.get("pending_request_id")
+            time.sleep(0.02)
+            params = {"op": "result", "pending_request_id": request_id}
+            result = self.flight.request(**params)
+        return result
+
+    def _download_capture(self, result: dict[str, Any]) -> dict[str, Any]:
+        from .sensors import download_capture
+        return download_capture(self.tools.perception_tools().store, self._gateway_request, result)
+
+    def _poll_pending(self, pending: dict[str, Any]) -> dict[str, Any]:
+        if pending.get("kind") == "flight":
+            return self.flight.poll(pending["operation_id"])
+        try:
+            result = self.flight.request("result", pending_request_id=pending["request_id"])
+        except RuntimeError as exc:
+            return {"status": "failed", "reason": str(exc)}
+        if "uav_id" not in result:
+            return result
+        if result.get("message_id"):
+            pending["message_id"] = result["message_id"]
+        if pending.get("message_id") and result.get("status") not in TERMINAL:
+            query = self.flight.request("radio_status", message_id=pending["message_id"])
+            pending["request_id"] = query["request_id"]
+            return {"status": "pending"}
+        if pending.get("kind") == "capture" and result.get("status") == "pending":
+            query = self.flight.request("capture_poll", **pending["params"])
+            pending["request_id"] = query["request_id"]
+        elif pending.get("kind") == "release" and result.get("status") in {"pending", "accepted", "attached"}:
+            query = self.flight.request("payload_status", package_id=pending["params"]["package_id"])
+            pending["request_id"] = query["request_id"]
+        return result
+
+    def _advance_missions(self) -> None:
+        for mission in self.state["missions"].values():
+            if mission["status"] in TERMINAL:
+                continue
+            if self.state.get("mission_closed", {}).get("event_id") == mission["event_id"] and mission["tool_name"] != "resume-or-return":
+                pending = mission.get("pending") or {}
+                if pending.get("kind") == "flight":
+                    canceled = self.flight.cancel(pending["operation_id"])
+                    if canceled.get("status") not in TERMINAL:
+                        continue
+                elif pending.get("kind") == "release":
+                    released = self._poll_pending(pending)
+                    if released.get("status") not in TERMINAL | {"detached"}:
+                        continue
+                    if released.get("released"):
+                        self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", released.get("source_time_ns"), "gazebo_detachable_joint", observed_sim_ns=released.get("observed_sim_ns"), release_interval_ns=released.get("release_interval_ns"))
+                mission.update(status="canceled", reason="remaining steps canceled by received centre closure; submitted physical operation reconciled")
+                continue
+            if self.state["sim_ns"] >= mission["deadline_ns"]:
+                if (mission.get("pending") or {}).get("kind") == "flight":
+                    self.flight.cancel(mission["pending"]["operation_id"])
+                mission.update(status="failed", reason="task_deadline")
+                continue
+            pending = mission["pending"]
+            if pending:
+                if pending["kind"] == "download":
+                    future = self.capture_futures.get(mission["operation_id"])
+                    if future is None:
+                        self.capture_futures[mission["operation_id"]] = self.executor.submit(self._download_capture, pending["capture_result"])
+                        continue
+                    if not future.done():
+                        continue
+                    try:
+                        frame = future.result()
+                    except Exception as exc:
+                        mission.update(status="failed", reason="capture_download: " + str(exc))
+                        del self.capture_futures[mission["operation_id"]]
+                        continue
+                    mission["frames"].append(frame)
+                    del self.capture_futures[mission["operation_id"]]
+                    result = {"status": "succeeded", "frame_id": frame["frame_id"]}
+                else:
+                    result = self._poll_pending(pending)
+                if result.get("status") in {"failed", "canceled", "unavailable", "error"}:
+                    if mission["tool_name"] == "hold-relay" and pending["kind"] == "probe":
+                        candidate = mission["steps"][mission["index"]]["candidate_index"]
+                        next_index = mission["index"] + 1
+                        while next_index < len(mission["steps"]) and mission["steps"][next_index]["candidate_index"] == candidate:
+                            next_index += 1
+                        mission.update(index=next_index, pending=None, probe_results=[])
+                        if next_index >= len(mission["steps"]):
+                            mission.update(status="failed", reason="no_candidate_has_measured_route")
+                        continue
+                    mission.update(status="failed", reason=result.get("reason", result["status"]), last_result=result)
+                    continue
+                if result.get("status") not in {"succeeded", "available", "detached", "delivery_verified"}:
+                    continue
+                if pending["kind"] == "capture":
+                    mission["pending"] = {"kind": "download", "capture_result": result}
+                    self.capture_futures[mission["operation_id"]] = self.executor.submit(self._download_capture, result)
+                    continue
+                if pending["kind"] == "release":
+                    if not result.get("released"):
+                        mission.update(status="failed", reason="release_not_observed")
+                        continue
+                    self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", result.get("source_time_ns"), "gazebo_detachable_joint", observed_sim_ns=result.get("observed_sim_ns"), release_interval_ns=result.get("release_interval_ns"))
+                if pending["kind"] == "probe":
+                    mission.setdefault("probe_results", []).append({"peer": pending["params"]["destination"], "result": result})
+                    if len(mission["probe_results"]) == len(mission["metadata"]["required_peers"]):
+                        self.state["relay_held"] = True
+                        mission.update(status="succeeded", reason="measured_route_ready_relay_retained", last_result=result)
+                        continue
+                mission.update(index=mission["index"] + 1, pending=None, last_result=result, reconcile_required=False)
+            if mission["index"] >= len(mission["steps"]):
+                mission["status"] = "succeeded"
+                continue
+            step = mission["steps"][mission["index"]]
+            action, params = step["action"], dict(step["params"])
+            if mission["tool_name"] == "hold-relay" and step["candidate_index"] != mission.get("current_candidate"):
+                mission.update(current_candidate=step["candidate_index"], probe_results=[])
+            if action in {"arm", "takeoff", "goto", "hold", "land", "disarm"}:
+                result = self.flight.submit(action, params, mission["task_id"], mission["task_revision"])
+                mission["pending"] = {"kind": "flight", "operation_id": result["operation_id"]}
+            else:
+                if action == "capture":
+                    params["after_sim_ns"] = self.state["sim_ns"]
+                operation = {"capture": "capture_request", "probe": "probe_route", "release": "payload_release"}[action]
+                result = self.flight.request(operation, **params, task_id=mission["task_id"], task_revision=mission["task_revision"], deadline_ns=mission["deadline_ns"], event_id=mission["event_id"])
+                mission["pending"] = {"kind": action, "request_id": result["request_id"], "params": params}
+                if action == "release":
+                    self.tools.payload.release_requested(params["package_id"], result["request_id"], self.state["sim_ns"], mission["task_id"], mission["task_revision"], drop_site=mission["metadata"].get("drop_site"))
+            mission["status"] = "running"
+            self._log("decision-yield-trace.jsonl", {"operation_id": mission["operation_id"], "pending": mission["pending"], "yielded": True})
+
+    def _resolve(self, value: Any) -> Any:
+        if isinstance(value, str) and value.startswith("$results."):
+            result: Any = self.state["results"]
+            for part in value[len("$results."):].split("."):
+                result = result[int(part)] if isinstance(result, list) else result[part]
+            return result
+        if isinstance(value, dict):
+            return {key: self._resolve(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._resolve(item) for item in value]
+        return value
+
+    def _policy_call(self, tool: str, request: dict[str, Any], key: str) -> dict[str, Any]:
+        return {"tool": tool, "request": request, "result_key": key, "continue_on_unavailable": True}
+
+    def _inspection_decision(self) -> dict[str, Any] | None:
+        results = self.state["results"]
+        search = results.get("search", {})
+        frames = search.get("frames", [])
+        if "inspection_report" in results:
+            return None
+        policy = self.state.setdefault("inspection", {"cursor": 0, "detection_cursor": 0})
+        first = policy.get("first")
+        if first is None:
+            while policy["cursor"] < len(frames):
+                frame = frames[policy["cursor"]]
+                frame_id = frame["frame_id"]
+                key = "detect_" + str(policy["cursor"])
+                if key not in results:
+                    return self._policy_call("detect-persons", {"frame_id": frame_id}, key)
+                detected = results[key]
+                if detected["status"] != "succeeded":
+                    policy["failure"] = detected.get("reason", "detection unavailable")
+                    break
+                detections = detected["detections"]
+                if policy["detection_cursor"] >= len(detections):
+                    policy.update(cursor=policy["cursor"] + 1, detection_cursor=0)
+                    continue
+                detection = detections[policy["detection_cursor"]]
+                location_key = "locate_" + str(policy["cursor"]) + "_" + str(policy["detection_cursor"])
+                if location_key not in results:
+                    return self._policy_call("locate-target", {"frame_id": frame_id, "detection_id": detection["detection_id"]}, location_key)
+                if results[location_key]["status"] != "available":
+                    policy["detection_cursor"] += 1
+                    continue
+                first = {"frame_id": frame_id, "detection_id": detection["detection_id"], "location": results[location_key], "rgb_artifact_id": frame["rgb_artifact_id"], "bbox_xyxy": detection["bbox_xyxy"], "observed_at": frame["observed_at"]}
+                policy["first"] = first
+                break
+            if first is None:
+                report = {"observation_verdict": "uncertain", "reason": policy.get("failure", "No located person in the actually captured frames; planned coverage is not proof of observed coverage"), "frame_ids": [row["frame_id"] for row in frames]}
+                return self._policy_call("send-evidence", {"data": report, "destination": "centre", "route": self._evidence_route()}, "inspection_report")
+        if "new_view" not in results:
+            return self._policy_call("reobserve-target", {"frame_id": first["frame_id"], "detection_id": first["detection_id"]}, "new_view")
+        new_view = results["new_view"]
+        if new_view["status"] != "succeeded" or not new_view.get("frames"):
+            return self._policy_call("send-evidence", {"data": {"observation_verdict": "uncertain", "reason": new_view.get("reason", "No independent new observation"), "first": first}, "route": self._evidence_route()}, "inspection_report")
+        second_frame = new_view["frames"][-1]
+        if "second_detect" not in results:
+            return self._policy_call("detect-persons", {"frame_id": second_frame["frame_id"]}, "second_detect")
+        candidates = results["second_detect"].get("detections", [])
+        second = policy.get("second")
+        if second is None:
+            for index, detection in enumerate(candidates):
+                key = "second_locate_" + str(index)
+                if key not in results:
+                    return self._policy_call("locate-target", {"frame_id": second_frame["frame_id"], "detection_id": detection["detection_id"]}, key)
+                location = results[key]
+                if location["status"] == "available":
+                    from math import dist
+                    if dist(location["position_enu_m"][:2], first["location"]["position_enu_m"][:2]) <= 5:
+                        second = {"frame_id": second_frame["frame_id"], "detection_id": detection["detection_id"], "location": location}
+                        policy["second"] = second
+                        break
+        if second is None:
+            return self._policy_call("send-evidence", {"data": {"observation_verdict": "uncertain", "reason": "Independent view did not locate a consistent target; disappearance is not established", "first": first, "second_frame_id": second_frame["frame_id"]}, "route": self._evidence_route()}, "inspection_report")
+        for name, reference in (("first_tracks", first), ("second_tracks", second)):
+            if name not in results:
+                return self._policy_call("track-persons", {"frame_id": reference["frame_id"]}, name)
+        if "verification" not in results:
+            return self._policy_call("verify-target", {"first_frame_id": first["frame_id"], "second_frame_id": second["frame_id"], "first_detection_id": first["detection_id"], "second_detection_id": second["detection_id"]}, "verification")
+        verdict = results["verification"]["status"]
+        if verdict == "confirmed":
+            if "evidence_package" not in results:
+                return self._policy_call("package-evidence", {"artifact_id": first["rgb_artifact_id"], "bbox_xyxy": first["bbox_xyxy"], "budget_bytes": 65536}, "evidence_package")
+            package = results["evidence_package"]
+            if package["status"] != "succeeded":
+                verdict = "uncertain"
+            elif "evidence_transfer" not in results:
+                return self._policy_call("send-evidence", {"artifact_id": package["artifact_id"], "destination": "centre", "route": self._evidence_route()}, "evidence_transfer")
+            elif results["evidence_transfer"]["status"] != "succeeded":
+                verdict = "uncertain"
+            if verdict == "confirmed" and "drop_site" not in results:
+                return self._policy_call("select-drop-site", {"frame_id": second["frame_id"], "detection_id": second["detection_id"]}, "drop_site")
+        report = {"observation_verdict": verdict, "first": first, "second": second, "verification": results["verification"], "evidence_transfer": results.get("evidence_transfer"), "drop_site": results.get("drop_site"), "observed_at_ns": second_frame["observed_at"]}
+        return self._policy_call("send-evidence", {"data": report, "destination": "centre", "route": self._evidence_route()}, "inspection_report")
+
+    def _evidence_route(self) -> list[str]:
+        relay = self.state.get("ready_relay")
+        return [self.uav_id, relay, "centre"] if relay and relay != self.uav_id else [self.uav_id, "centre"]
+
+    def _relay_decision(self) -> dict[str, Any] | None:
+        results = self.state["results"]
+        peers = ["centre", *[identity for identity, profile in self.config.get("vehicles", {}).items() if "inspect" in profile.get("capabilities", []) and identity != self.uav_id]]
+        for action in ("arm", "takeoff"):
+            key = "relay_" + action
+            if key not in results:
+                return self._policy_call("flight-command", {"action": action, "params": {"altitude_m": 30} if action == "takeoff" else {}}, key)
+        if "relay_hold" not in results:
+            return self._policy_call("hold-relay", {"candidates": self.state["task"]["public_map"]["relay_candidates"], "peers": peers, "message_ids": []}, "relay_hold")
+        result = results["relay_hold"]
+        if result["status"] != "succeeded":
+            return None
+        for peer in peers:
+            key = "relay_notice_" + peer
+            if key not in results:
+                return self._policy_call("send-evidence", {"destination": peer, "route": [self.uav_id, peer], "data": {"kind": "relay_ready", "probe_results": result["probe_results"], "observed_at_ns": self.state["sim_ns"], "held_until": "ack_cancel_or_handover"}}, key)
+        return None
+
+    def _delivery_decision(self) -> dict[str, Any] | None:
+        results, task = self.state["results"], self.state["task"]
+        package_id = task["package_id"]
+        if "delivery_report" in results:
+            return None
+        if "selected_drop" not in results:
+            return self._policy_call("select-drop-site", {"plan_message_id": task["message_id"]}, "selected_drop")
+        if results["selected_drop"]["status"] != "succeeded":
+            return self._policy_call("send-evidence", {"data": {"kind": "delivery_failed", "reason": results["selected_drop"].get("reason", "no safe drop site")}, "route": self._evidence_route()}, "delivery_report")
+        if "supply_mission" not in results:
+            return self._policy_call("deliver-supply", {"package_id": package_id, "drop_site_id": results["selected_drop"]["drop_site_id"]}, "supply_mission")
+        delivery = results["supply_mission"]
+        if delivery["status"] != "succeeded":
+            return self._policy_call("send-evidence", {"data": {"kind": "delivery_failed", "reason": delivery.get("reason", "physical delivery failed")}, "route": self._evidence_route()}, "delivery_report")
+        receipt_id = None
+        for mid in reversed(self.state["seen_messages"]):
+            message = json.loads((self.root / "inbox" / mid / "message.json").read_text())
+            if message["kind"] == "receipt" and message.get("data", {}).get("package_id") == package_id and message["task_id"] == task["task_id"] and message["task_revision"] == task["task_revision"]:
+                receipt_id = mid
+                break
+        if receipt_id is None:
+            self.state["delivery_wait"] = self.tools.payload.status(package_id, self.state["sim_ns"])
+            return None  # No synthetic receiver response; keep advancing.
+        if "settled_observation" not in results:
+            return self._policy_call("verify-delivery", {"package_id": package_id, "receipt_message_id": receipt_id}, "settled_observation")
+        settled = results["settled_observation"]
+        if settled["status"] != "succeeded" or not settled.get("frames"):
+            return self._policy_call("send-evidence", {"data": {"kind": "delivery_failed", "reason": "No post-contact observation", "observation": settled}, "route": self._evidence_route()}, "delivery_report")
+        if "delivery_verification" not in results:
+            return self._policy_call("verify-delivery", {"package_id": package_id, "receipt_message_id": receipt_id, "post_drop_frame_id": settled["frames"][-1]["frame_id"]}, "delivery_verification")
+        verified = results["delivery_verification"]
+        return self._policy_call("send-evidence", {"data": {"kind": "delivery_verified" if verified.get("delivery_verified") else "delivery_failed", "delivery": verified}, "route": self._evidence_route()}, "delivery_report")
+
+    def _closure_return(self) -> dict[str, Any] | None:
+        """Common harness disposition after a received cancellation, in both modes."""
+        if "return_after_closure" in self.state["results"]:
+            return None
+        spawn = self.config["vehicles"][self.uav_id]["spawn"]
+        return self._policy_call("resume-or-return", {"return_position_enu_m": [spawn[0], spawn[1], max(3.0, spawn[2])]}, "return_after_closure")
+
+    def _rule_decision(self) -> dict[str, Any] | None:
+        task = self.state.get("task")
+        if not task:
+            return None
+        steps = task.get("workflow", [])
+        index = self.state["step_index"]
+        if index >= len(steps):
+            if task.get("intent") == "inspect":
+                return self._inspection_decision()
+            if task.get("intent") == "deliver":
+                return self._delivery_decision()
+            if task.get("recovery_policy"):
+                return self._relay_decision()
+            return None
+        step = steps[index]
+        if step["tool"] == "flight-command":
+            action = step["request"]["action"]
+            local = self.state.get("self_state", {})
+            if action == "arm" and local.get("armed") is True or action == "takeoff" and local.get("landed_state") in {"IN_AIR", "in_air"}:
+                self.state["step_index"] += 1
+                return self._rule_decision()
+        return {"tool": step["tool"], "request": self._resolve(step.get("request", {})), "result_key": step.get("result_key", str(index))}
+
+    def _model_context(self, local_state: dict[str, Any]) -> dict[str, Any]:
+        # Actual local references stay visible without resending every numerical
+        # depth footprint and historical low-level mission step to the provider.
+        results = {}
+        for key, result in self.state["results"].items():
+            value = {k: v for k, v in result.items() if k not in {"steps", "pending"}}
+            if "frames" in value and value["frames"] and isinstance(value["frames"][0], dict):
+                value["frames"] = [{k: frame[k] for k in ("frame_id", "observed_at", "rgb_artifact_id", "depth_artifact_id") if k in frame} for frame in value["frames"]]
+            results[key] = value
+        inbox = []
+        for mid in self.state["seen_messages"][-20:]:
+            message = json.loads((self.root / "inbox" / mid / "message.json").read_text())
+            inbox.append({k: v for k, v in message.items() if k not in {"content_path", "native_packet_ids"}})
+        return {"self": local_state, "task": self.state["task"], "results": results, "inbox": inbox, "delivery_wait": self.state.get("delivery_wait")}
+
+    def _model_decision(self, context: dict[str, Any]) -> dict[str, Any]:
+        skills_root = Path(os.environ.get("AAS_SKILLS_DIR", str(Path(__file__).resolve().parents[3] / "skills" / "rescue")))
+        manuals = "\n\n".join(path.read_text() for path in sorted(skills_root.glob("*/SKILL.md")))
+        if not manuals:
+            raise FileNotFoundError("Installed rescue tool instructions are missing")
+        prompt = [
+            {"role": "system", "content": "You are one rescue companion. Use only your local observations and radio-delivered messages. Unknown data stays unknown. A pending operation ends this decision; do not wait for future simulation time. Never infer a delivery receipt from a command, photo or world truth. Select at most one installed tool. Input documentation follows:\n" + manuals},
+            {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
+        ]
+        response = self.provider.complete(prompt, tool_schemas(), timeout_s=60, max_tokens=2000)
+        self._log("model-calls.jsonl", {"messages": prompt, "response": response})
+        message = response["message"]
+        calls = message.get("tool_calls", [])
+        if not calls:
+            return {"tool": None, "reason": message.get("content")}
+        function = calls[0]["function"]
+        arguments = json.loads(function["arguments"])
+        return {"tool": function["name"].replace("_", "-"), "request": json.loads(arguments["request_json"]), "result_key": calls[0].get("id", str(self.state["model_calls"]))}
+
+    def _start_tool(self, call: dict[str, Any]) -> None:
+        self.future_call = call
+        self.future_kind = "tool"
+        context = self.context()
+        self.future_revision = (context["task_id"], context["task_revision"])
+        self.state["tool_inflight"] = call
+        self._save()
+        self.future = self.executor.submit(self.tools.call, call["tool"], call["request"], context)
+
+    def _complete_tool(self, result: dict[str, Any], call: dict[str, Any]) -> None:
+        self.state.pop("tool_inflight", None)
+        if "mission_spec" in result:
+            result = {**result, **self._register_mission(**result["mission_spec"])}
+            result.pop("mission_spec")
+        if result.get("operation_id") in self.state["missions"] and result["status"] in {"accepted", "running"}:
+            self.active_tool = {"call": call, "operation_id": result["operation_id"]}
+            return
+        if result.get("operation_id") and result["status"] in {"accepted", "running"}:
+            self.active_tool = {"call": call, "flight_operation_id": result["operation_id"]}
+            return
+        if result.get("status") == "pending" and result.get("request_id"):
+            self.active_tool = {"call": call, "request_id": result["request_id"]}
+            return
+        self.state["results"][call["result_key"]] = result
+        if call["tool"] == "estimate-assignment" and result.get("status") == "succeeded":
+            self.state["last_assignment_estimate"] = result
+        if call["tool"] == "send-evidence" and result.get("message_id") and result.get("status") == "succeeded":
+            save_json(self.root / "outbox" / (result["message_id"] + ".json"), {"result": result, "request": call["request"], **self.context()})
+        if result.get("status") in {"succeeded", "available", "confirmed", "rejected", "uncertain", "delivery_verified"}:
+            if not call.get("local_request_id"):
+                self.state["step_index"] += 1
+        elif self.mode == "rule" and not call.get("local_request_id") and not call.get("continue_on_unavailable") and not self.state.get("mission_closed"):
+            self.state["task_blocker"] = result
+        self._decision_event()
+        self._log("decisions.jsonl", {"call": call, "result": result})
+        if call.get("local_request_id"):
+            save_json(self.root / "tasks" / "tool-requests" / (call["local_request_id"] + ".result.json"), result)
+
+    def _centre_graph(self, event_id: str, graph: dict[str, Any]) -> dict[str, Any]:
+        incident = self.centre.state["incidents"][event_id]
+        visible = {"event_id": event_id, "bids": incident["bids"], "reports": incident["reports"], "public_action_graph": graph, "now_ns": self.state["sim_ns"]}
+        response = self.provider.complete([
+            {"role": "system", "content": "Propose a bounded rescue task graph using only the received local bids and reports. Preserve every selected public action ID, target, role and duration. You may choose a subset and revise dependencies/order only; changed targets need new radio bids. Never invent missing UAV state or successful delivery. Return one propose_plan tool call; the existing solver checks it."},
+            {"role": "user", "content": json.dumps(visible, ensure_ascii=False)},
+        ], [{"type": "function", "function": {"name": "propose_plan", "description": "Propose actions for the existing bounded solver", "parameters": {"type": "object", "properties": {"graph_json": {"type": "string"}}, "required": ["graph_json"], "additionalProperties": False}, "strict": True}}], timeout_s=60, max_tokens=2000)
+        self._log("model-calls.jsonl", {"visible_context": visible, "response": response})
+        calls = response["message"].get("tool_calls", [])
+        if len(calls) != 1 or calls[0]["function"]["name"] != "propose_plan":
+            raise ValueError("centre model did not return propose_plan")
+        graph_result = json.loads(json.loads(calls[0]["function"]["arguments"])["graph_json"])
+        allowed = {row["id"] for row in graph["actions"]}
+        if not 0 < len(graph_result.get("actions", [])) <= min(4, len(allowed)) or any(row["id"] not in allowed for row in graph_result["actions"]):
+            raise ValueError("centre model graph exceeds this bounded public action set")
+        original = {row["id"]: row for row in graph["actions"]}
+        if len({row["id"] for row in graph_result["actions"]}) != len(graph_result["actions"]):
+            raise ValueError("duplicate public action ID")
+        for row in graph_result["actions"]:
+            if any(row.get(key) != original[row["id"]].get(key) for key in ("target", "role", "duration_s")):
+                raise ValueError("changed action target, role or duration requires freshly estimated radio bids")
+        graph_result["payload_kg"] = graph.get("payload_kg", 0)
+        return graph_result
+
+    def _publish_plan(self, event_id: str, graph: dict[str, Any]) -> None:
+        now = self.state["sim_ns"]
+        result = self.centre.propose_plan(event_id, graph, now)
+        self._log("decisions.jsonl", {"centre_plan": result})
+        if result["status"] == "infeasible":
+            outcome = self.centre.finish(event_id, "unfulfilled_no_resource", now)
+            save_json(self.root / "outcome.json", outcome)
+            return
+        if result["status"] != "feasible":
+            return
+        incident = self.centre.state["incidents"][event_id]
+        public = self.config.get("public_map", {})
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for assignment in result["assignments"]:
+            groups.setdefault(assignment["vehicle"], []).append(assignment)
+        for uid, assignments in groups.items():
+            assignments.sort(key=lambda item: item["departure_s"])
+            workflow = [
+                {"tool": "flight-command", "request": {"action": "arm"}, "result_key": "arm"},
+                {"tool": "flight-command", "request": {"action": "takeoff", "params": {"altitude_m": public["search_altitude_m"]}}, "result_key": "takeoff"},
+            ]
+            for assignment in assignments:
+                if assignment["role"] == "inspect":
+                    workflow.append({"tool": "search-area", "request": {"polygon": public["search_polygon"], "altitude_m": public["search_altitude_m"], "footprint_width_m": public["search_row_spacing_m"] / 0.7}, "result_key": "search"})
+            data = {"intent": assignments[-1]["role"], "assignments": assignments, "workflow": workflow, "deadline_ns": incident["deadline_ns"], "demand_source": incident["demand_source"], "public_map": public}
+            if assignments[-1]["role"] == "deliver":
+                data.update(target_report=incident["target_report"], package_id=self.config["payload"]["package_id"])
+            task_id = event_id + "-" + uid
+            reply = self.flight.request("radio_send", destination=uid, kind="plan", data=data, event_id=event_id, task_id=task_id, task_revision=result["task_revision"], deadline_ns=incident["deadline_ns"])
+            self.state.setdefault("plan_submissions", []).append({"uav_id": uid, "request_id": reply["request_id"], "task_revision": result["task_revision"]})
+            incident.setdefault("expected_tasks", {})[uid] = {"task_id": task_id, "task_revision": result["task_revision"]}
+        incident["status"] = "executing"
+        save_json(self.centre.path, self.centre.state)
+
+    def _broadcast_offer_notice(self, event_id: str, graph: dict[str, Any]) -> None:
+        incident = self.centre.state["incidents"][event_id]
+        incident.update(status="submitting_notice", graph=graph, bids={}, notice_requests=[], expected_tasks={})
+        for uid in self.config["vehicles"]:
+            data = {"task": {"intent": "offer", "deadline_ns": incident["deadline_ns"]}, "incident": {"initial_graph": graph, "deadline_ns": incident["deadline_ns"], "demand_source": incident["demand_source"]}, "public_map": self.config["public_map"]}
+            reply = self.flight.request("radio_send", destination=uid, kind="notice", data=data, event_id=event_id, task_id=event_id + "-offer", task_revision=incident["task_revision"] + 1, deadline_ns=incident["deadline_ns"], route=["centre", self.state["ready_relay"], uid] if self.state.get("ready_relay") and uid != self.state["ready_relay"] else ["centre", uid])
+            incident["notice_requests"].append(reply["request_id"])
+        save_json(self.centre.path, self.centre.state)
+
+    def _broadcast_delivery_notice(self, event_id: str, report: dict[str, Any]) -> None:
+        incident = self.centre.state["incidents"][event_id]
+        graph = {"actions": [{"id": "deliver-supply", "role": "deliver", "target": report["drop_site"]["position_enu_m"], "duration_s": 30, "after": []}], "payload_kg": 1.0}
+        incident.update(target_report=report, phase="deliver")
+        self._broadcast_offer_notice(event_id, graph)
+
+    def _publish_closures(self) -> None:
+        for event_id, incident in self.centre.state["incidents"].items():
+            if not incident.get("outcome") or incident.get("closure_submissions"):
+                continue
+            submissions = []
+            for uid in self.config["vehicles"]:
+                relay = self.state.get("ready_relay")
+                route = ["centre", relay, uid] if relay and relay != uid else ["centre", uid]
+                reply = self.flight.request("radio_send", destination=uid, kind="report", data={"kind": "mission_closed", **incident["outcome"], "release_basis": "centre terminal outcome; cancel remaining rescue and relay obligations"}, event_id=event_id, task_id=event_id + "-closure", task_revision=incident["task_revision"], deadline_ns=max(self.state["sim_ns"] + 30 * NS, incident["deadline_ns"]), route=route)
+                submissions.append({"destination": uid, "request_id": reply["request_id"]})
+            incident["closure_submissions"] = submissions
+            save_json(self.centre.path, self.centre.state)
+
+    def _centre_reports(self, event_id: str, incident: dict[str, Any]) -> None:
+        consumed = incident.setdefault("handled_reports", [])
+        for envelope in incident["reports"]:
+            if envelope["message_id"] in consumed or envelope["kind"] != "report":
+                continue
+            report = envelope.get("data", {})
+            expected = incident.get("expected_tasks", {}).get(envelope["source"])
+            if not expected or (envelope["task_id"], envelope["task_revision"]) != (expected["task_id"], expected["task_revision"]):
+                continue
+            if "observation_verdict" in report:
+                consumed.append(envelope["message_id"])
+                if report["observation_verdict"] != "confirmed":
+                    save_json(self.root / "outcome.json", self.centre.finish(event_id, "unresolved_evidence", self.state["sim_ns"]))
+                    return
+                transfer = report.get("evidence_transfer") or {}
+                received_file = any(row["kind"] == "file" and row["message_id"] == transfer.get("message_id") and row["file_hash"] == transfer.get("file_hash") and row["source"] == envelope["source"] and row["task_id"] == envelope["task_id"] and row["task_revision"] == envelope["task_revision"] for row in incident["reports"])
+                if not received_file or report.get("verification", {}).get("status") != "confirmed":
+                    save_json(self.root / "outcome.json", self.centre.finish(event_id, "unresolved_evidence", self.state["sim_ns"]))
+                    return
+                if report.get("drop_site", {}).get("status") != "succeeded":
+                    save_json(self.root / "outcome.json", self.centre.finish(event_id, "unfulfilled_no_resource", self.state["sim_ns"]))
+                    return
+                self._broadcast_delivery_notice(event_id, report)
+                return
+            if report.get("kind") == "delivery_failed":
+                consumed.append(envelope["message_id"])
+                save_json(self.root / "outcome.json", self.centre.finish(event_id, "failed_execution", self.state["sim_ns"]))
+                return
+            if report.get("kind") == "delivery_verified":
+                expected = incident.get("expected_tasks", {}).get(envelope["source"])
+                if not expected or (envelope["task_id"], envelope["task_revision"]) != (expected["task_id"], expected["task_revision"]):
+                    continue
+                try:
+                    self.centre.verified_delivery(event_id, report["delivery"])
+                except ValueError:
+                    continue  # Centre's independent contact receipt may still be in flight.
+                consumed.append(envelope["message_id"])
+                save_json(self.root / "outcome.json", self.centre.finish(event_id, "completed_with_delivery", self.state["sim_ns"]))
+                return
+        save_json(self.centre.path, self.centre.state)
+
+    def _centre_tick(self, state: dict[str, Any]) -> None:
+        now = self.state["sim_ns"]
+        for notice in state.get("notice_submissions", []):
+            event_id = notice["event_id"]
+            if not self.centre.state["incidents"].get(event_id, {}).get("notice_anchor_confirmed"):
+                self.centre.notice_submitted(event_id, notice["submitted_ns"], notice["deadline_ns"], notice["demand_source"])
+        self._publish_closures()
+        active = self.centre.state["active"]
+        if active is None:
+            return
+        incident = self.centre.state["incidents"][active]
+        if now >= incident["deadline_ns"]:
+            save_json(self.root / "outcome.json", self.centre.finish(active, "expired", now))
+            return
+        if incident["status"] == "needs_new_notice":
+            graph = incident.get("graph")
+            if graph is None:
+                save_json(self.root / "outcome.json", self.centre.finish(active, "unresolved_evidence", now))
+            else:
+                self._broadcast_offer_notice(active, graph)
+            return
+        if incident["status"] == "executing":
+            self._centre_reports(active, incident)
+            return
+        if incident["status"] == "submitting_notice":
+            submitted = []
+            for request_id in incident["notice_requests"]:
+                reply = self.flight.request("result", pending_request_id=request_id)
+                if reply.get("submitted_ns") is not None:
+                    submitted.append(reply["submitted_ns"])
+            if submitted:
+                self.centre.notice_submitted(active, min(submitted), incident["deadline_ns"], incident["demand_source"])
+            return
+        if self.centre_future:
+            if not self.centre_future.done():
+                return
+            future, self.centre_future = self.centre_future, None
+            try:
+                self._publish_plan(self.centre_event, future.result())
+            except Exception as exc:
+                incident.update(status="model_failed", reason=str(exc))
+                self._log("decisions.jsonl", {"centre_model_failed": str(exc)})
+                save_json(self.centre.path, self.centre.state)
+            return
+        if incident["status"] != "collecting" or incident.get("collect_until_ns") is None or now < incident["collect_until_ns"]:
+            return
+        graph = incident.get("graph") or self.config.get("incident", {}).get("initial_graph")
+        if graph is None:
+            incident.update(status="unresolved_evidence", reason="No public action graph available")
+            save_json(self.centre.path, self.centre.state)
+            return
+        if self.mode == "rule":
+            self._publish_plan(active, graph)
+        else:
+            self.state["model_calls"] += 1
+            self.centre_event = active
+            self.centre_future = self.executor.submit(self._centre_graph, active, graph)
+
+    def tick(self) -> None:
+        state = self.flight.state()
+        self.state["sim_ns"] = state["sim_ns"]
+        previous = self.state.get("self_state", {})
+        if tuple(state.get(key) for key in ("status", "armed", "landed_state")) != tuple(previous.get(key) for key in ("status", "armed", "landed_state")):
+            self._decision_event()
+        self.state["self_state"] = state
+        for message in self.flight.request("radio_inbox").get("messages", []):
+            self._persist_message(message)
+        if self.centre is not None:
+            self._centre_tick(state)
+            self._save()
+            return
+        self._advance_missions()
+        if self.state.get("pending_task") and self.active_tool is None and self.future is None and not any(m["status"] not in TERMINAL for m in self.state["missions"].values()):
+            self._consume_message(self.state.pop("pending_task"))
+        if self.active_tool:
+            active = self.active_tool
+            if "flight_operation_id" in active and self.state.get("mission_closed") and active["call"]["tool"] != "resume-or-return":
+                self.flight.cancel(active["flight_operation_id"])
+            result = self.state["missions"][active["operation_id"]] if "operation_id" in active else self.flight.poll(active["flight_operation_id"]) if "flight_operation_id" in active else self._poll_pending(active)
+            if result.get("status") in TERMINAL | {"available", "confirmed", "uncertain"}:
+                self.active_tool = None
+                self._complete_tool(result, active["call"])
+            self._save()
+            return
+        if self.future:
+            if not self.future.done():
+                return
+            future, self.future = self.future, None
+            current = self.context()
+            if self.future_revision != (current["task_id"], current["task_revision"]):
+                self._log("decisions.jsonl", {"decision": "late_task_result_ignored"})
+                return
+            try:
+                result = future.result()
+            except Exception as exc:
+                self.state["task_blocker"] = {"status": "failed", "reason": str(exc)}
+                self._log("decisions.jsonl", {"error": str(exc), "mode": self.mode})
+                self._save()
+                return  # Model failure never silently switches to rule.
+            if self.future_kind == "model":
+                if self.state.get("pending_task") or self.state.get("mission_closed"):
+                    self._log("decisions.jsonl", {"decision": "late_model_action_ignored_after_new_task_or_closure"})
+                elif result.get("tool"):
+                    self._start_tool(result)
+                else:
+                    self._log("decisions.jsonl", {"decision": "model_waiting_for_new_event", "reason": result.get("reason")})
+            else:
+                self._complete_tool(result, self.future_call or {})
+        elif list((self.root / "tasks" / "tool-requests").glob("*.queued.json")):
+            queued = sorted((self.root / "tasks" / "tool-requests").glob("*.queued.json"))[0]
+            call = json.loads(queued.read_text())
+            queued.rename(queued.with_name(queued.name.replace(".queued.json", ".running.json")))
+            self._start_tool({**call, "result_key": "cli-" + call["request_id"], "local_request_id": call["request_id"]})
+        elif self.state.get("task") and (not self.state.get("task_blocker") or self.state.get("mission_closed")):
+            if self.mode == "rule" or self.state.get("mission_closed"):
+                call = self._closure_return() if self.state.get("mission_closed") else self._rule_decision()
+                if call:
+                    self._start_tool(call)
+            elif self.state.get("decision_event_version", 0) > self.state.get("model_decision_version", -1) and self.state["sim_ns"] < self.state["task"]["deadline_ns"]:
+                self.state["model_decision_version"] = self.state.get("decision_event_version", 0)
+                self.state["model_calls"] += 1
+                self.future_kind = "model"
+                current = self.context()
+                self.future_revision = (current["task_id"], current["task_revision"])
+                model_context = self._model_context(state)
+                self.future = self.executor.submit(self._model_decision, model_context)
+        self._save()
+
+    def close(self) -> None:
+        self.closed = True
+        self.executor.shutdown(wait=False, cancel_futures=True)
+        self._save()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default=os.environ.get("RESCUE_CONFIG", "/opt/aeroagentsim/scenarios/rescue/rooftop-flood-companion.yaml"))
+    parser.add_argument("--role", choices=["uav", "centre"], default="uav")
+    parser.add_argument("--run-id", default=os.environ.get("RUN_ID"), required=not bool(os.environ.get("RUN_ID")))
+    parser.add_argument("--uav-id", default=os.environ.get("UAV_ID", "centre"))
+    parser.add_argument("--data-dir", default=os.environ.get("DATA_DIR", "/data"))
+    parser.add_argument("--socket", default=os.environ.get("COMPANION_SOCKET", "/run/aas-uav/agent.sock"))
+    parser.add_argument("--agent-mode", choices=["rule", "model"], default=os.environ.get("AGENT_MODE", "rule"))
+    parser.add_argument("--provider-profile", default=os.environ.get("PROVIDER_PROFILE") or "default")
+    args = parser.parse_args()
+    runtime = CompanionRuntime(yaml.safe_load(Path(args.config).read_text()), run_id=args.run_id, uav_id=args.uav_id, data_dir=args.data_dir, socket_path=args.socket, agent_mode=args.agent_mode, role=args.role, provider_profile=args.provider_profile)
+    signal.signal(signal.SIGTERM, lambda *_: runtime.close())
+    signal.signal(signal.SIGINT, lambda *_: runtime.close())
+    while not runtime.closed:
+        try:
+            runtime.tick()
+        except (OSError, RuntimeError, ValueError, KeyError) as exc:
+            runtime._log("runtime-errors.jsonl", {"error": str(exc)})
+        time.sleep(0.1)
+
+
+if __name__ == "__main__":
+    main()

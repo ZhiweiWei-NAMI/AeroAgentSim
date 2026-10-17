@@ -80,6 +80,6 @@ def receiver_sdf(package_id="rescue-package-1", pose="0 0 0 0 0 0", size="10 10 
     return f'''<sdf version="1.9"><model name="drop-receiver-1"><static>true</static><pose>{pose}</pose>
 <link name="surface"><collision name="receiver_collision"><geometry><box><size>{size}</size></box></geometry></collision>
 <visual name="receiver_visual"><geometry><box><size>{size}</size></box></geometry><material><diffuse>1 0.8 0 1</diffuse></material></visual>
-<sensor name="receiver_contact" type="contact"><always_on>true</always_on><update_rate>50</update_rate><topic>/rescue/receiver/contacts</topic><contact><collision>receiver_collision</collision></contact></sensor></link>
+<sensor name="receiver_contact" type="contact"><always_on>true</always_on><update_rate>0</update_rate><topic>/rescue/receiver/contacts</topic><contact><collision>receiver_collision</collision><topic>/rescue/receiver/contacts</topic></contact></sensor></link>
 <plugin filename="gz-sim-touchplugin-system" name="gz::sim::systems::TouchPlugin"><target>{package_id}</target><namespace>rescue_receiver</namespace><time>1</time><enabled>true</enabled></plugin>
 </model></sdf>'''
