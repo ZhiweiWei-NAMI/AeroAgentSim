@@ -43,7 +43,7 @@ def main() -> int:
     parser.add_argument('--agents', default='u1,u2,u3,u4,centre')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--case', choices=['C01', 'C02', 'C03', 'C04', 'C07', 'C08'], default='C01')
-    parser.add_argument('--variant', choices=['no_person', 'occluded_then_visible', 'still_uncertain', 'low_energy_after_offer', 'missing_fragment_nack_then_retry', 'final_ack_lost', 'confirmation_final_ack_lost', 'second_incident_queued', 'deadline_expired', 'no_eligible_vehicle'])
+    parser.add_argument('--variant', choices=['no_person', 'occluded_then_visible', 'still_uncertain', 'low_energy_after_offer', 'payload_unavailable', 'role_id_permutation', 'missing_fragment_nack_then_retry', 'path_lost_then_second_attempt', 'no_valid_path', 'lost_assignment_before_acceptance', 'joint_did_not_release', 'final_ack_lost', 'confirmation_final_ack_lost', 'second_incident_queued', 'deadline_expired', 'no_eligible_vehicle'])
     parser.add_argument('--until-ns', type=int, default=900_000_000_000)
     parser.add_argument('--wall-timeout', type=float, default=1000)
     parser.add_argument('--python', default=sys.executable)
@@ -82,11 +82,25 @@ def main() -> int:
             scene['vehicles']['u2']['energy_budget'] = {'initial_fraction': 1.0, 'max_gap_ns': 1_000_000_000}
         scene.setdefault('mock_backend', {}).setdefault('people', []).append(
             {'position_enu_m': [74, 74, 15.8], 'height_m': 1.75, 'width_m': 1.236})
+    elif args.case == 'C04' and args.variant == 'payload_unavailable':
+        scene.pop('payload', None)
+        for vehicle in scene['vehicles'].values():
+            vehicle['initial_payload_kg'] = 0.0
+    elif args.case == 'C04' and args.variant == 'role_id_permutation':
+        ids = list(scene['vehicles'])
+        mapping = dict(zip(ids, ids[1:] + ids[:1]))
+        rotated = {mapping[uid]: profile for uid, profile in scene['vehicles'].items()}
+        scene['vehicles'] = {uid: rotated[uid] for uid in ids}
+        scene['payload']['carrier'] = mapping[scene['payload']['carrier']]
     elif args.case == 'C04' and args.variant == 'low_energy_after_offer':
         u2, u4 = scene['vehicles']['u2'], scene['vehicles']['u4']
         u2['energy_budget'] = {'initial_fraction': .23, 'max_gap_ns': 1_000_000_000}
         u4['capabilities'] = list(dict.fromkeys([*u4['capabilities'], 'inspect']))
         u2['spawn'][:2], u4['spawn'][:2] = u4['spawn'][:2], u2['spawn'][:2]
+    elif args.case == 'C03' and args.variant in {'path_lost_then_second_attempt', 'no_valid_path', 'lost_assignment_before_acceptance'}:
+        scene.setdefault('mock_backend', {})['radio_fault'] = {'case_id': 'C03', 'variant': args.variant, 'outage_duration_ns': 20_000_000_000}
+    elif args.case == 'C07' and args.variant == 'joint_did_not_release':
+        scene.setdefault('mock_backend', {})['joint_release_blocked'] = True
     elif (args.case == 'C03' and args.variant in {'missing_fragment_nack_then_retry', 'final_ack_lost'}) or (args.case == 'C07' and args.variant == 'confirmation_final_ack_lost'):
         scene['native_radio_fault'] = {'case_id': args.case, 'variant': args.variant}
     elif args.variant or args.case != 'C01':

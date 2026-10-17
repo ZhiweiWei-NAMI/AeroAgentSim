@@ -336,7 +336,9 @@ class CompanionRuntime:
         try:
             result = self.flight.request("result", pending_request_id=pending["request_id"])
         except RuntimeError as exc:
-            return {"status": "failed", "reason": str(exc)}
+            if pending.get("kind") != "release":
+                return {"status": "failed", "reason": str(exc)}
+            result = {"status": "unavailable", "reason": str(exc), "uav_id": self.uav_id}
         if "uav_id" not in result:
             return result
         if result.get("message_id"):
@@ -355,15 +357,24 @@ class CompanionRuntime:
         if pending.get("kind") == "capture" and result.get("status") == "pending":
             query = self.flight.request("capture_poll", **pending["params"])
             pending["request_id"] = query["request_id"]
-        elif pending.get("kind") == "release" and result.get("status") in {"pending", "accepted", "attached"}:
+        elif pending.get("kind") == "release" and result.get("status") in {"pending", "accepted", "attached", "unknown", "unavailable"}:
+            pending["last_actuator_state"] = result
+            observed_ns = result.get("observed_sim_ns")
+            if result.get("status") == "attached" and result.get("released") is False and observed_ns is not None and observed_ns >= pending["deadline_ns"] and pending.get("status_requested_ns", -1) >= pending["deadline_ns"]:
+                self.tools.payload.actuator_state(pending["params"]["package_id"], "attached", result.get("source_time_ns"), result["source"], observed_sim_ns=result.get("observed_sim_ns"))
+                return {"status": "failed", "reason": "release_not_observed", "released": False, "actuator_state": result, "deadline_ns": pending["deadline_ns"]}
             query = self.flight.request("payload_status", package_id=pending["params"]["package_id"])
             pending["request_id"] = query["request_id"]
+            pending["status_requested_ns"] = self.state["sim_ns"]
+            return {"status": "pending", "reason": "awaiting observed detachment; unavailable state is not proof of attachment", "actuator_state": result}
         return result
 
     def _advance_missions(self) -> None:
         for mission in self.state["missions"].values():
             if mission["status"] in TERMINAL:
                 continue
+            if (mission.get("pending") or {}).get("kind") == "release":
+                mission["pending"].setdefault("deadline_ns", mission["deadline_ns"])
             if (mission.get("pending") or {}).get("kind") == "submitting":
                 mission.update(reconcile_required=True, reason="submission acknowledgement was not persisted; actual operation is unknown and this step will not be replayed")
                 if not mission.get("submission_uncertainty_reported"):
@@ -382,6 +393,9 @@ class CompanionRuntime:
                     released = self._poll_pending(pending)
                     if released.get("status") not in TERMINAL | {"detached"}:
                         continue
+                    if released.get("reason") == "release_not_observed":
+                        mission.update(status="failed", reason="release_not_observed", last_result=released, pending=None)
+                        continue
                     if released.get("released"):
                         self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", released.get("source_time_ns"), released["source"], observed_sim_ns=released.get("observed_sim_ns"), release_interval_ns=released.get("release_interval_ns"))
                 mission.update(status="canceled", reason="remaining steps canceled by received centre request; submitted physical operation reconciled")
@@ -399,6 +413,9 @@ class CompanionRuntime:
                     actual = self._poll_pending(pending)
                     if actual.get("status") not in TERMINAL | {"detached"}:
                         mission["reason"] = "task deadline reached; submitted physical release remains unreconciled"
+                        continue
+                    if actual.get("reason") == "release_not_observed":
+                        mission.update(status="failed", reason="release_not_observed", last_result=actual, pending=None)
                         continue
                     if actual.get("released"):
                         self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", actual.get("source_time_ns"), actual["source"], observed_sim_ns=actual.get("observed_sim_ns"), release_interval_ns=actual.get("release_interval_ns"))
@@ -478,7 +495,7 @@ class CompanionRuntime:
                     params["after_sim_ns"] = self.state["sim_ns"]
                 operation = {"capture": "capture_request", "probe": "probe_route", "release": "payload_release"}[action]
                 result = self.flight.request(operation, **params, task_id=mission["task_id"], task_revision=mission["task_revision"], deadline_ns=mission["deadline_ns"], event_id=mission["event_id"])
-                mission["pending"] = {"kind": action, "request_id": result["request_id"], "params": params}
+                mission["pending"] = {"kind": action, "request_id": result["request_id"], "params": params, "deadline_ns": mission["deadline_ns"]}
                 if action == "release":
                     self.tools.payload.release_requested(params["package_id"], result["request_id"], self.state["sim_ns"], mission["task_id"], mission["task_revision"], drop_site=mission["metadata"].get("drop_site"))
             mission["status"] = "running"

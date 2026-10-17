@@ -194,6 +194,16 @@ class MockWorld:
         if self.payload is None or request['vehicle'] != self.payload['carrier'] or request['package_id'] != self.payload['package_id']:
             return {'status':'unavailable','reason':'no mock payload for this vehicle'}
         if request['action'] == 'release' and not self.payload['released']:
+            if self.config.get('joint_release_blocked', False):
+                # Accept the actuator request while the simulated joint stays
+                # attached. No free parcel/contact evolution can start here.
+                self.payload['observed_sim_ns'] = self.now
+                self.log('payload_release_blocked', request=request, state=dict(self.payload),
+                         command_status='accepted', reason='explicit_mock_joint_release_blocked')
+                return {'status': 'accepted', 'package_id': request['package_id'],
+                        'accepted_sim_ns': self.now, 'released': False, 'joint_status': 'attached',
+                        'source': 'mock_detachable_joint', 'source_time_ns': self.payload['source_time_ns'],
+                        'observed_sim_ns': self.now, 'execution_backend': 'mock'}
             v=self.vehicles[request['vehicle']]
             self.payload.update(status='detached',released=True,source_time_ns=self.now,observed_sim_ns=self.now,
                 release_interval_ns=[self.now,self.now],released_ns=self.now,
@@ -203,6 +213,7 @@ class MockWorld:
             return {'status':'accepted','package_id':request['package_id'],'accepted_sim_ns':self.now,'released':True,
                     'source':'mock_detachable_joint','source_time_ns':self.now,'execution_backend':'mock'}
         # Position is simulator private; it is never an actuator-status field.
+        self.payload['observed_sim_ns'] = self.now
         return {k:v for k,v in self.payload.items() if k not in ('position','velocity','contact_since','receipt_sent')}
 
     def advance_payload(self, dt, events, receipts):

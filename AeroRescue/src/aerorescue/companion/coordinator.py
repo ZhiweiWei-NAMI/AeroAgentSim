@@ -131,9 +131,72 @@ class Coordinator:
         self.receiver_routes: dict[str, dict[str, Any]] = {}
         self.radio_fault_message: str | None = None
         self.radio_fault_fired = False
+        self.mock_radio_outage: dict[str, Any] | None = None
+
+    def inject_mock_radio_lifetime(self, params: dict[str, Any], now_ns: int) -> dict[str, Any] | None:
+        """The three explicit C03 mock faults change packets, never receipts."""
+        fault = self.scene.get('mock_backend', {}).get('radio_fault')
+        if self.backend != 'mock' or not fault:
+            return None
+        variant = fault['variant']
+        if fault['case_id'] != 'C03' or variant not in {
+                'path_lost_then_second_attempt', 'no_valid_path', 'lost_assignment_before_acceptance'}:
+            raise ValueError('unsupported explicit mock radio fault')
+        packet_id = params['packet_id'].rsplit('-h', 1)[0]
+        packet = self.transport.state['packets'][packet_id]
+        message = self.transport.state['messages'][packet['message_id']]
+        if variant == 'lost_assignment_before_acceptance':
+            eligible = message['kind'] == 'plan' and message['source'] == 'centre'
+        else:
+            eligible = message['kind'] == 'file'
+            if variant == 'path_lost_then_second_attempt':
+                eligible = eligible and len(message['chunk_hashes']) > 1
+        if not eligible:
+            return None
+        if self.radio_fault_message is None:
+            self.radio_fault_message = packet['message_id']
+        if packet['message_id'] != self.radio_fault_message:
+            return None
+        route, header = packet['route'], packet['header']
+        if packet['hop'] != len(route) - 2 or packet['native_id'] != params['packet_id']:
+            return None
+        if variant == 'path_lost_then_second_attempt':
+            if self.mock_radio_outage is None:
+                if packet['kind'] != 'chunk' or header['attempt'] != 1 or header['chunk_index'] != 1:
+                    return None
+                duration = int(fault.get('outage_duration_ns', 20_000_000_000))
+                if duration <= 0:
+                    raise ValueError('mock outage duration must be positive')
+                self.mock_radio_outage = {'started_ns': now_ns, 'ends_ns': now_ns + duration,
+                                          'route': list(route)}
+            outage = self.mock_radio_outage
+            selected = (now_ns < outage['ends_ns'] and
+                        route in (outage['route'], list(reversed(outage['route']))))
+        elif variant == 'no_valid_path':
+            selected = True  # Every proposed path of this file fails its actual probe.
+        else:
+            selected = packet['kind'] == 'chunk'  # Ready path is not a received plan.
+        if not selected:
+            return None
+        original = params['lifetime_ns']
+        params['lifetime_ns'] = 1
+        self.radio_fault_fired = True
+        return {'run_id': self.run_id, 'stage': 'kernel_queued', 'case_id': 'C03',
+            'variant': variant, 'sim_ns': now_ns, 'native_packet_id': params['packet_id'],
+            'packet_id': packet_id, 'message_id': packet['message_id'],
+            **{key: message[key] for key in ('event_id', 'task_id', 'task_revision')},
+            'message_kind': message['kind'], 'packet_kind': packet['kind'],
+            'message_source': message['source'], 'message_destination': message['destination'],
+            'attempt': header['attempt'], 'chunk_index': header.get('chunk_index'),
+            'chunk_send_count': message['chunk_sends'].get(str(header.get('chunk_index')), 0),
+            'route': list(route), 'hop': packet['hop'], 'src': params['src'], 'dst': params['dst'],
+            'original_lifetime_ns': original, 'lifetime_ns': 1,
+            'outage': copy.deepcopy(self.mock_radio_outage)}
 
     def inject_radio_lifetime(self, params: dict[str, Any], now_ns: int) -> dict[str, Any] | None:
         """Select the four authored radio diagnostics; ns-3 decides the outcome."""
+        if self.backend == 'mock' and self.scene.get('mock_backend', {}).get('radio_fault'):
+            return self.inject_mock_radio_lifetime(params, now_ns)
         fault = self.scene.get('native_radio_fault')
         if not fault:
             return None
