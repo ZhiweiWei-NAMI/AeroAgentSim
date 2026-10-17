@@ -160,7 +160,16 @@ def finish(client: JsonLinesClient | None, server: FakeServer) -> None:
 
 
 def test_default_timeouts_are_positive_and_finite() -> None:
-    assert set(TIMEOUTS) == {"hello", "reset", "advance", "command", "close"}
+    assert set(TIMEOUTS) == {
+        "hello",
+        "reset",
+        "advance",
+        "command",
+        "cancel",
+        "capture",
+        "payload",
+        "close",
+    }
     for seconds in TIMEOUTS.values():
         assert type(seconds) is float and 0 < seconds < math.inf
 
