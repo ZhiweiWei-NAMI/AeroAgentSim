@@ -775,9 +775,9 @@ class CompanionRuntime:
                 if not expected or (envelope["task_id"], envelope["task_revision"]) != (expected["task_id"], expected["task_revision"]):
                     continue
                 try:
-                    self.centre.verified_delivery(event_id, report["delivery"])
+                    self.centre.verified_delivery(event_id, report["delivery"], carrier_id=envelope["source"], now_ns=self.state["sim_ns"])
                 except ValueError:
-                    continue  # Centre's independent contact receipt may still be in flight.
+                    continue  # Independent contact receipt or receiver's final-ACK notice may still be in flight.
                 consumed.append(envelope["message_id"])
                 save_json(self.root / "outcome.json", self.centre.finish(event_id, "completed_with_delivery", self.state["sim_ns"]))
                 return

@@ -114,6 +114,7 @@ class Coordinator:
         self.commands: dict[str, str] = {}
         self.bootstrap_messages: list[str] = []
         self.release_tasks: dict[str, dict[str, Any]] = {}
+        self.receiver_transfers: dict[str, dict[str, Any]] = {}
         self.radio_fault_message: str | None = None
         self.radio_fault_fired = False
 
@@ -331,6 +332,7 @@ class Coordinator:
             self.log('receiver-contact-receipts.jsonl', receipt)
             task = self.release_tasks.get(receipt['package_id'])
             if task is not None:
+                transfers = []
                 for destination in ('centre', self.scene['payload']['carrier']):
                     # Re-draining one physical receipt must retain its existing
                     # transfer, including terminal failure, not create success
@@ -339,6 +341,10 @@ class Coordinator:
                         json.dumps([self.run_id, receipt['receipt_id'], destination])).hex
                     self.transport.queue_message('drop-receiver-1', destination, 'receipt', receipt,
                         deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id, **task)
+                    transfers.append({'destination': destination, 'message_id': message_id})
+                self.receiver_transfers.setdefault(receipt['receipt_id'], {
+                    **task, 'receipt_id': receipt['receipt_id'], 'package_id': receipt['package_id'],
+                    'transfers': transfers})
         for event in self.flight.native_events:
             self.log('native-flight-events.jsonl', event)
         self.flight.native_events.clear()
@@ -346,6 +352,7 @@ class Coordinator:
             self.log('native-radio-events.jsonl', event)
             self.transport.consume_native_event(event['kind'], event['payload'])
         self.radio.native_events.clear()
+        self.confirm_receiver_transfers(now_ns)
         for uid in self.bridge.uav_ids:
             for delivered in self.transport.pop_delivered(uid):
                 message = dict(delivered)
@@ -365,6 +372,33 @@ class Coordinator:
                     kernel_history=[thaw(item) for item in action.history])
             if status in TERMINAL:
                 del self.commands[operation_id]
+
+    def confirm_receiver_transfers(self, now_ns: int) -> None:
+        """The physical receiver reports only its own completed radio transfers."""
+        for receipt in self.receiver_transfers.values():
+            if receipt.get('confirmation_message_id') or now_ns >= self.until_ns:
+                continue
+            transfers = []
+            for transfer in receipt['transfers']:
+                status = self.transport.status(transfer['message_id'])
+                if status['status'] != 'succeeded' or status.get('ack_received_ns') is None:
+                    break
+                transfers.append({**transfer, 'ack_received_ns': status['ack_received_ns']})
+            if len(transfers) != len(receipt['transfers']):
+                continue
+            data = {'kind': 'delivery_confirmation', 'receipt_id': receipt['receipt_id'],
+                'package_id': receipt['package_id'], 'receipt_transfers': transfers}
+            task = {key: receipt[key] for key in ('event_id', 'task_id', 'task_revision')}
+            message_id = 'confirmation-' + uuid.uuid5(uuid.NAMESPACE_URL,
+                json.dumps([self.run_id, receipt['receipt_id'], 'delivery-confirmation'])).hex
+            self.transport.queue_message('drop-receiver-1', 'centre', 'report', data,
+                deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id, **task)
+            receipt['confirmation_message_id'] = message_id
+            # This is a queued notification, not a claim that centre received it.
+            # Its own final ACK does not generate another confirmation.
+            self.log('receiver-radio-confirmations.jsonl', {'run_id': self.run_id,
+                'source': 'drop-receiver-1', 'destination': 'centre', 'stage': 'queued',
+                'submitted_ns': now_ns, 'message_id': message_id, **task, **data})
 
     def run(self) -> None:
         started = time.monotonic()

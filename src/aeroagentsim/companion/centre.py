@@ -50,6 +50,10 @@ class RescueCentre:
             previous = incident["bids"].get(identity)
             if previous is None or (data["commitment_version"], data["observed_at_ns"]) > (previous["commitment_version"], previous["observed_at_ns"]):
                 incident["bids"][identity] = {**data, "uav_id": identity, "received_ns": envelope["received_ns"], "message_id": mid}
+        elif kind == "report" and data.get("kind") == "delivery_confirmation":
+            if envelope["source"] != "drop-receiver-1":
+                raise ValueError("receipt transfer confirmation must come from the physical receiver")
+            incident.setdefault("delivery_confirmations", []).append(envelope)
         elif kind in {"report", "file"}:
             incident["reports"].append(envelope)
             if kind == "report" and data.get("kind") == "new_incident_clue" and not incident.get("clue_message_id"):
@@ -106,13 +110,42 @@ class RescueCentre:
         save_json(self.path, self.state)
         return result
 
-    def verified_delivery(self, event_id: str, delivery: dict[str, Any]) -> None:
+    def verified_delivery(self, event_id: str, delivery: dict[str, Any], *, carrier_id: str, now_ns: int) -> None:
         incident = self.state["incidents"][event_id]
         plan = incident.get("last_plan", {})
         receipts = [row for row in incident["receipts"] if row["data"].get("package_id") == delivery.get("package_id") and row["task_id"] == delivery.get("task_id") and row["task_revision"] == plan.get("task_revision")]
         if not receipts or not delivery.get("delivery_verified") or delivery.get("task_revision") != plan.get("task_revision"):
             raise ValueError("current plan's physical and radio delivery evidence required")
-        incident["verified_delivery"] = delivery
+        # The carrier's local receipt commit does not establish that the receiver
+        # knows either transfer completed. Only its subsequent radio notice can
+        # carry that fact here. Do not recursively wait for this notice's ACK.
+        confirmation = None
+        for envelope in incident.get("delivery_confirmations", []):
+            if envelope["received_ns"] > now_ns:
+                continue  # Inbox can be newer than this tick's preceding state RPC.
+            data = envelope["data"]
+            if (envelope["task_id"], envelope["task_revision"], data.get("package_id")) != (delivery.get("task_id"), delivery.get("task_revision"), delivery.get("package_id")):
+                continue
+            transfers = data.get("receipt_transfers", [])
+            if len(transfers) != 2:
+                continue
+            by_destination = {row.get("destination"): row for row in transfers}
+            if set(by_destination) != {"centre", carrier_id}:
+                continue
+            centre_transfer, carrier_transfer = by_destination["centre"], by_destination[carrier_id]
+            if carrier_transfer.get("message_id") != delivery.get("receipt_id"):
+                continue
+            contact = next((row for row in receipts if row["message_id"] == centre_transfer.get("message_id") and row["data"].get("receipt_id") == data.get("receipt_id")), None)
+            if contact is None:
+                continue
+            acknowledgements = [(centre_transfer.get("ack_received_ns"), contact["received_ns"]), (carrier_transfer.get("ack_received_ns"), delivery.get("receipt_received_ns"))]
+            if any(not isinstance(ack, int) or not isinstance(received, int) or not received <= ack <= envelope["received_ns"] for ack, received in acknowledgements):
+                continue
+            confirmation = envelope
+            break
+        if confirmation is None:
+            raise ValueError("receiver's radio confirmation of both final ACKs is still required")
+        incident["verified_delivery"] = {**delivery, "receipt_confirmation_message_id": confirmation["message_id"], "receipt_confirmation_received_ns": confirmation["received_ns"]}
         save_json(self.path, self.state)
 
     def finish(self, event_id: str, outcome: str, now_ns: int) -> dict[str, Any]:
@@ -120,8 +153,8 @@ class RescueCentre:
         if outcome not in allowed:
             raise ValueError("unsupported rescue outcome")
         incident = self.state["incidents"][event_id]
-        if outcome == "completed_with_delivery" and (not incident.get("verified_delivery") or not incident["demand_source"]):
-            raise ValueError("completion needs radio receipt and an explicit demand source")
+        if outcome == "completed_with_delivery" and (not incident.get("verified_delivery", {}).get("receipt_confirmation_message_id") or not incident["demand_source"]):
+            raise ValueError("completion needs receiver-confirmed receipt transfers and an explicit demand source")
         result = {"event_id": event_id, "outcome": outcome, "finished_ns": now_ns}
         incident.update(status=outcome, outcome=result)
         if event_id in self.state["queue"]:
