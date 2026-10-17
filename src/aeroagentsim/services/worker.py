@@ -41,12 +41,12 @@ class HostPacer:
         self.wait = threading.Event()
         self.current_factor = factor()
         self.target_ns: int | None = None
+        self.reserved_factor: float | None = None
         self.reset()
 
     def reset(self) -> None:
         self.anchor_wall = time.perf_counter()
         self.anchor_ns = float(self.committed_ns())
-        self.reserved_factor: float | None = None
 
     def active(self) -> bool:
         if self.paused.is_set() and not self.stopped.is_set():
@@ -57,6 +57,9 @@ class HostPacer:
             if not self.stopped.is_set():
                 self.current_factor = self.factor()
                 self.reset()
+                # Only a pause voids the pending wave's reservation; ingress
+                # waits also reset the anchor but leave the wave's gate valid.
+                self.reserved_factor = None
                 self.status("running")
         return not self.stopped.is_set()
 
