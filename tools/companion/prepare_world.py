@@ -83,7 +83,8 @@ def build_world(scene: dict[str, Any], asset_root: Path, seed: int, people_count
     box(world, "flood_surface", [25, 25, .35], [110, 110, .4], "0.12 0.34 0.43 1", collision=False)
     for obstacle in public["obstacles"]:
         box(world, obstacle["id"], obstacle["lower"], obstacle["upper"], "0.65 0.65 0.62 1")
-    roof = public["obstacles"][0]
+    roof_id = public.get("rescue_roof_id", "roof-1")
+    roof = next(obstacle for obstacle in public["obstacles"] if obstacle["id"] == roof_id)
     lower, upper = roof["lower"], roof["upper"]
     rng = random.Random(seed)
     people = []
@@ -127,6 +128,7 @@ def build_world(scene: dict[str, Any], asset_root: Path, seed: int, people_count
                 "altitude_datum": "amsl", "world_elevation_m": 0,
                 "height_datum_note": "declared local simulation AMSL zero; no real geoid survey",
                 "public_geometry_source": "scenario public_map obstacles",
+                "rescue_roof_id": roof_id,
                 "human_model": "scene/makehuman_person/model.sdf", "human_license": "CC0-1.0",
                 "hidden_geometry": "evaluator/scene-truth.json and simulator world only",
                 "water_model": "visual surface only; no hydrodynamics",

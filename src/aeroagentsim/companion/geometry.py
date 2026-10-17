@@ -266,6 +266,7 @@ def compare_observations(
         if d.get("track_id")
     }
     return {
+        "status": "succeeded",
         "frames": [first["frame_id"], second["frame_id"]],
         "observed_at": [first["observed_at"], second["observed_at"]],
         "continued_tracks": sorted(old & new),
@@ -321,6 +322,8 @@ def site_visible_in_frame(
     x, y = (int(round(value)) for value in pixel)
     if not 1 <= x < depth.shape[1] - 1 or not 1 <= y < depth.shape[0] - 1:
         return {**result, "status": "available", "reason": "site outside the recorded image"}
+    if calibration.get("depth_convention") not in {"optical_z", "ray_range"}:
+        return {**result, "status": "unavailable", "reason": "unknown native depth convention"}
     expected = float(optical[2] if calibration["depth_convention"] == "optical_z" else np.linalg.norm(optical))
     nearby = depth[y-1:y+2, x-1:x+2]
     valid = nearby[np.isfinite(nearby) & (nearby >= calibration.get("depth_min_m", .2)) & (nearby <= calibration.get("depth_max_m", 60.))]

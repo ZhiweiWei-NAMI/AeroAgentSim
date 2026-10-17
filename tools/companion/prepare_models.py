@@ -293,6 +293,41 @@ def compare_export(cache: Path, images: Path, output: Path) -> dict[str, object]
     return result
 
 
+def match_detections(detections, targets_xyxy, ignored_regions=(), iou_threshold=0.5):
+    """Pure score-ordered one-to-one matching shared by independent evaluators.
+
+    Inputs are already class/confidence filtered. Ignore regions suppress only
+    otherwise unmatched predictions with at least 50% of their area inside an
+    explicit ignore region. No inference, downloads or model imports occur.
+    """
+
+    def intersection(a, b):
+        return max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1]))
+
+    def area(a):
+        return max(0, a[2] - a[0]) * max(0, a[3] - a[1])
+
+    def iou(a, b):
+        shared = intersection(a, b)
+        return shared / max(1e-9, area(a) + area(b) - shared)
+
+    unmatched = set(range(len(targets_xyxy)))
+    matched, false_positive, ignored = [], [], []
+    for detection in sorted(detections, key=lambda x: -x["score"]):
+        bbox = detection["bbox_xyxy"]
+        candidates = [(iou(bbox, targets_xyxy[i]), i) for i in unmatched]
+        overlap, target = max(candidates, default=(0, -1))
+        if target >= 0 and overlap >= iou_threshold:
+            unmatched.remove(target)
+            matched.append({"target_index": target, "detection_id": detection["detection_id"], "iou": overlap})
+        elif any(intersection(bbox, region) / max(1e-9, area(bbox)) >= 0.5 for region in ignored_regions):
+            ignored.append(detection["detection_id"])
+        else:
+            false_positive.append(detection["detection_id"])
+    return {"matched": matched, "false_positive": false_positive, "ignored": ignored,
+            "unmatched_indices": sorted(unmatched)}
+
+
 def score_dataset(cache: Path, annotations: Path, output: Path) -> dict[str, object]:
     """Score frozen real images independently of the runtime detector."""
     from collections import defaultdict
@@ -314,16 +349,6 @@ def score_dataset(cache: Path, annotations: Path, output: Path) -> dict[str, obj
         x, y, width, height = box
         return [x, y, x + width, y + height]
 
-    def intersection(a, b):
-        return max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1]))
-
-    def area(a):
-        return max(0, a[2] - a[0]) * max(0, a[3] - a[1])
-
-    def iou(a, b):
-        shared = intersection(a, b)
-        return shared / max(1e-9, area(a) + area(b) - shared)
-
     rows = []
     started = time.perf_counter()
     for index, im in enumerate(data["images"]):
@@ -334,19 +359,12 @@ def score_dataset(cache: Path, annotations: Path, output: Path) -> dict[str, obj
         inference = detector.detect(path, f"sds-v2-val:{im['id']}", output / "detections")
         targets = [a for a in labels[im["id"]] if a["category_id"] == 1]
         ignored_regions = [box_xyxy(a["bbox"]) for a in labels[im["id"]] if a["category_id"] == 0]
-        unmatched = set(range(len(targets)))
-        matched, false_positive, ignored = [], [], []
-        for detection in sorted(inference["detections"], key=lambda x: -x["score"]):
-            bbox = detection["bbox_xyxy"]
-            candidates = [(iou(bbox, box_xyxy(targets[i]["bbox"])), i) for i in unmatched]
-            overlap, target = max(candidates, default=(0, -1))
-            if overlap >= 0.5:
-                unmatched.remove(target)
-                matched.append({"annotation_id": targets[target]["id"], "detection_id": detection["detection_id"], "iou": overlap})
-            elif any(intersection(bbox, region) / max(1e-9, area(bbox)) >= 0.5 for region in ignored_regions):
-                ignored.append(detection["detection_id"])
-            else:
-                false_positive.append(detection["detection_id"])
+        match = match_detections(inference["detections"], [box_xyxy(a["bbox"]) for a in targets], ignored_regions)
+        unmatched = match["unmatched_indices"]
+        matched = [{"annotation_id": targets[item["target_index"]]["id"],
+                    "detection_id": item["detection_id"], "iou": item["iou"]}
+                   for item in match["matched"]]
+        false_positive, ignored = match["false_positive"], match["ignored"]
         row = {"image_id": im["id"], "source": im.get("source"), "image": file_record(path),
                "ground_truth_swimmers": len(targets), "tp": len(matched), "fp": len(false_positive),
                "fn": len(unmatched), "ignored_predictions": ignored, "matched": matched,

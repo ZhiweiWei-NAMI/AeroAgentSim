@@ -266,6 +266,10 @@ class ObservationStore:
         self, frame_id: str, result: dict[str, Any], analyzed_at_ns: int
     ) -> None:
         metadata = self.observation(frame_id)
+        # Detection IDs include output slots. A reanalysis can reuse a slot for
+        # a different box, so old positions/tracks must not follow it silently.
+        metadata.pop("locations", None)
+        metadata.pop("tracking", None)
         detections = result.get("detections", [])
         categories = sorted({item["class"] for item in detections})
         description = metadata.setdefault(

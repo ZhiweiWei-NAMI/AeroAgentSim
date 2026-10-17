@@ -128,9 +128,14 @@ class PersonTracker:
     """
 
     def __init__(self, uav_id: str, distance_threshold_m: float = 3.0):
+        from uuid import uuid4
+
         from norfair import Tracker
 
         self.uav_id = uav_id
+        # Tracker dynamics are in-memory. A restart must not reuse old local
+        # numbers as if they were persistent human identities.
+        self.session_id = uuid4().hex
         self.tracker = Tracker(
             distance_function="euclidean",
             distance_threshold=distance_threshold_m,
@@ -171,7 +176,7 @@ class PersonTracker:
         tracked = self.tracker.update(detections=inputs)
         results = [
             {
-                "track_id": f"{self.uav_id}:track:{item.id}",
+                "track_id": f"{self.uav_id}:track:{self.session_id}:{item.id}",
                 "position_enu_xy_m": item.estimate[0].tolist(),
                 "detection_id": item.last_detection.data["detection_id"],
                 "observed_at": observed_at_ns,

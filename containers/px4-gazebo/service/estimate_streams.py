@@ -147,6 +147,20 @@ class EstimateStreams:
                 self.sync_events[vehicle].set()
             return
         if name == "GPS_GLOBAL_ORIGIN":
+            previous = self.origins.get(vehicle)
+            if previous and any(
+                previous["fields"][key] != fields[key]
+                for key in ("latitude", "longitude", "altitude")
+            ):
+                # LOCAL_POSITION_NED carries no origin generation. Late samples
+                # cannot safely be assigned to a newly reported origin.
+                self.positions[vehicle].clear()
+                self.attitudes[vehicle].clear()
+                self.clock_maps.pop(vehicle, None)
+                self.failure[vehicle] = (
+                    "PX4 global origin changed within this epoch; explicit reset required"
+                )
+                return
             self.origins[vehicle] = record
             return
         if name not in ("LOCAL_POSITION_NED", "ATTITUDE_QUATERNION"):
