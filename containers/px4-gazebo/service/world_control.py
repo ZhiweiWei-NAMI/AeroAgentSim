@@ -13,6 +13,8 @@ import time
 def main():
     sys.path.append("/usr/lib/python3/dist-packages")
     from gz.msgs10.boolean_pb2 import Boolean
+    from gz.msgs10.empty_pb2 import Empty
+    from gz.msgs10.serialized_map_pb2 import SerializedStepMap
     from gz.msgs10.world_control_pb2 import WorldControl
     from gz.transport13 import Node, NodeOptions
 
@@ -29,6 +31,17 @@ def main():
     print("ready", flush=True)
     for line in sys.stdin:
         iterations = json.loads(line)
+        if isinstance(iterations, dict) and iterations.get("op") == "payload_attachment":
+            from .payload_state import attachment_snapshot
+
+            result, response = node.request(f"/world/{world}/state", Empty(),
+                                            Empty, SerializedStepMap, 10000)
+            reply = (attachment_snapshot(response, iterations["carrier_model"], iterations["package_id"],
+                                         parent_link=iterations.get("parent_link", "base_link"),
+                                         child_link=iterations.get("child_link", "parcel"))
+                     if result else {"status": "unavailable", "reason": "native state service failed"})
+            print(json.dumps(reply), flush=True)
+            continue
         if type(iterations) is not int or not 0 < iterations <= 125:
             raise ValueError("WorldControl iterations must be integer 1..125")
         request = WorldControl(pause=True, multi_step=iterations)

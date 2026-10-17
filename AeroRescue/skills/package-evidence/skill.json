@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "package-evidence",
+  "description": "Encode a traceable image crop within a byte budget.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "package-evidence",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "artifact_id, optional bbox_xyxy, budget_bytes.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

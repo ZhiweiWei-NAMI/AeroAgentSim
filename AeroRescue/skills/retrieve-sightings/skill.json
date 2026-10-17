@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "retrieve-sightings",
+  "description": "Search this UAV's persistent history or reanalyze an actual old frame.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "retrieve-sightings",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "query, observed_after_ns, observed_before_ns, region_enu, source, limit; optional reanalyze_frame_id.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

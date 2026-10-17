@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "send-evidence",
+  "description": "Transfer real file bytes or structured report through damaged radio.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "send-evidence",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "artifact_id for bytes, or data for a structured report; destination; optional route. A confirmed report uses data.observation_verdict=\"confirmed\", data.first/data.second={frame_id,detection_id}, and data.evidence_transfer.message_id from this task’s completed send. The wrapper recalculates verification and exclusion geometry from both real frames and requires the transferred original/crop to contain a verified detection. A delivery_verified report must reference the package_id already verified by the local payload ledger.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

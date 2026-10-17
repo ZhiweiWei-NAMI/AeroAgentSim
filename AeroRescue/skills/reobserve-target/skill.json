@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "reobserve-target",
+  "description": "Move to a reachable geometrically different viewpoint and capture a new frame.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "reobserve-target",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "frame_id, detection_id. Generates a legal independent viewpoint from actual camera calibration.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

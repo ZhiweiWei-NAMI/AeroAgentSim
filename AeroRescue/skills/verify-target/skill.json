@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "verify-target",
+  "description": "Compare independently acquired, geometrically different observations.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "verify-target",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "first_frame_id, first_detection_id, second_frame_id, second_detection_id.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

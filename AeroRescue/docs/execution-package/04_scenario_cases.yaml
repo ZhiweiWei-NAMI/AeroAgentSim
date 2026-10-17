@@ -1,0 +1,697 @@
+format: aeroagentsim.rescue-acceptance-spec/v1
+note: 执行规格，需由本次新增run_case.py消费；不是当前AeroAgentSim原生scenario文件。数值均为提议工程门槛，全部NOT_RUN。声明的variant默认均须以rule检查；live硬门槛仅C01
+  seed42完整正例和C04一个改变计划分支，其他model运行可选。C05迟到结果可明确标记可控故障注入。
+contracts:
+  threshold_status: PROPOSED_ENGINEERING_ACCEPTANCE_THRESHOLDS_NOT_MEASURED_RESULTS
+  scope: 白天小区域屋顶洪涝支援；不声称通用真实SAR指标或实机能力
+  run_identity:
+    template: '{case_id}-{seed}-{agent_mode}-a{attempt}'
+    required_fields:
+    - run_id
+    - case_id
+    - seed
+    - agent_mode
+    - attempt
+    - source_commit
+    - image_digests
+    - world_epoch
+    refuse_existing_run_id_or_output: true
+    attempt_scope: run attempt在同case/seed/mode的所有variants间唯一递增，不与网络传输attempt混用；manifest同时记录variant_id
+    cold_start: 新run namespace和新空数据卷；保留旧run及失败证据，只清理本次新建且已导出的临时资源
+    replay: 只读已保留run；新模型调用、新物理推进、新相机采样均为0
+  identity_and_ownership:
+    uav_count: 4
+    private_socket_in_companion: /run/aas-uav/agent.sock
+    binding: coordinator为每机独立监听并按端点绑定身份；每机只挂载自己的socket目录；请求体不能覆盖身份
+    world_control: 完整world RPC仅coordinator可连；任务worker只提动作，不写kinematic位置或全局事实
+    disabled_in_companion_profile:
+    - 旧rescue_uav_* engine
+    - 旧rescue_center engine
+    - 旧LowaltTasks/Rescue自主运动
+    - 作者positive/negative观察
+    - 定时payload扣减
+    fact_writers:
+      physics_projection: 现有kernel/PX4 adapter
+      agent_estimate: 独立estimate字段与source元数据，不覆盖物理真值字段
+      task_lifecycle: coordinator既有owner
+      uav_operations: 每机唯一companion任务worker，经task_id/task_revision检查
+    instance_map_source: S25
+    instance_index: i=0..3对应U1..U4
+    mav_sys_id_formula: i+1
+    mavlink_local_udp_formula: 18570+i
+    sdk_destination_udp_formula: 14540+i
+    grpc_port_formula: 50051+i
+  decision_loop:
+    rule_scope:
+    - 四个companion
+    - centre-agent
+    rule_constructs_model_client: false
+    rule_model_api_calls: 0
+    future_result_rule: 需要未来帧、飞行终态、cancel制动或ACK时提交/查询作业后返回pending或operation_id并结束本轮决策
+    coordinator_rule: 继续advance world/radio；不被模型轮、native顺序RPC或worker等待占住
+    minimum_live_runs:
+    - C01 seed42完整正例
+    - C04一个实际改变计划分支
+    c05_late_result_test: 可明确标记可控故障注入，无新增live硬门槛
+    worker_rule: 结果在合法边界入队；不直接写kernel事实或私自advance
+  telemetry_and_geometry:
+    agent_pose_source: PX4 estimated telemetry only; no Gazebo truth fallback
+    implementation_phasing: P2先暴露动作所需基本PX4估计状态；P3补齐源时刻、每机原点、相机对齐，作为最终来源证明
+    default_source_messages:
+    - LOCAL_POSITION_NED.time_boot_ms
+    - ATTITUDE_QUATERNION.time_boot_ms
+    source_transport: 固定MAVSDK owner的MavlinkDirect或明确配置的只读MAVLink转发；实际消息/端口写入manifest，不重绑已被SDK占用的UDP端口
+    required_transforms:
+    - 每机px4_local_ned到共同world_enu
+    - 机体FRD到相机optical外参
+    - 全局水平和高度基准
+    - 每机boot/source clock到本run sim time
+    reset_rule: reset/restart重建并版本化原点与时钟epoch；旧样本/回调不可进入新run
+    synchronization_max_delta_ms: 40
+    interpolation_rule: 必须有两侧有效源样本、有界跨度并记录实际时间；在所需样本实际可用后才发布结果
+    depth_conventions:
+    - optical_z
+    - ray_range
+    depth_projection:
+      pixel_ray: r = inverse(K) * [u,v,1] after undistortion
+      optical_z: p_camera = depth * r
+      ray_range: p_camera = depth * r / norm(r)
+    depth_selection: 在配准深度中使用保守目标ROI的有效深度簇；保存取样像素、支持率、离散程度；背景/多簇无法判定时unavailable，不读取实例真值
+    target_reference: 在标定/资产manifest明确选用可见人体参考点或地面投影，输出与独立scorer比较同一物理参考
+    camera:
+      width_px: 1280
+      height_px: 960
+      horizontal_fov_deg: 80
+      rate_hz: 5
+      depth_min_m: 0.2
+      depth_max_m: 60
+      orientation: 下视或明确可控倾斜；实际CameraInfo/K和外参为准
+    headless:
+      render_engine: ogre2
+      gazebo_flags:
+      - -s
+      - --headless-rendering
+      requires_display: false
+      nvidia_capabilities:
+      - graphics
+      - utility
+      add_compute_if_cuda_used: true
+      cpu_mesa_fallback: 仅实际四机RGB-D验收通过后可用
+  localization_acceptance:
+    minimum_fixed_eligible_samples: 30
+    minimum_valid_output_rate: 0.9
+    horizontal_error_median_max_m: 2.0
+    horizontal_error_p95_max_m: 5.0
+    eligibility_locked_before_execution: true
+    required_counts:
+    - fixed_eligible_total
+    - matched_detections
+    - localization_attempted
+    - valid
+    - unavailable_by_reason
+    valid_output_rate_denominator: 预先锁定的全部适用目标样本；未检出或未输出不得从分母删除
+    minimum_distinct_uav_spawn_frames: 2
+    reset_repeat_required: true
+    optical_z_and_ray_range_checked_separately: true
+    geometry_calibration_separate_from_detector_location: true
+  detection_and_history:
+    scenario_minimum_heldout_observation_times: 30
+    iou_match_min: 0.5
+    scenario_precision_min: 0.9
+    scenario_recall_min: 0.85
+    external_dataset: SeaDronesSee Object Detection v2
+    external_minimum_frames: 200
+    external_minimum_negative_or_confuser_frames: 50
+    external_od_v2_classes:
+    - swimmer
+    - boat
+    - jetski
+    - buoy
+    - life saving appliance
+    external_score_policy: 如实报告独立真实RGB成绩；不预先承诺通用分数；明确COCO person到swimmer及忽略类别的映射
+    split_policy: 按独立视频/场景划分并固定原始ID；调整模型/相机所使用的样本属于开发材料，不再冒称未使用留出数据
+    retrieval_positive_queries: 20
+    retrieval_top5_min_hits: 18
+    retrieval_absence_queries: 5
+    history_reanalysis: 按时间/观察足迹查回至少一张原无检测记录的真实旧帧，实际重分析并关联原frame/hash；允许结果仍uncertain
+    history_timestamps:
+    - observed_at
+    - received_at
+    - analyzed_at
+  business_radio:
+    all_business_types:
+    - notice
+    - bid
+    - plan
+    - report
+    - file
+    - handover
+    - NACK
+    - status_query
+    - status_response
+    - final_ACK
+    initial_c01_bootstrap: 四机初始在声明的指挥无线覆盖内；经业务radio送达初始任务与U3预授权中继/失联恢复策略，确认后进入遮挡区
+    relay_policy: 依据公开区域候选和实际probe寻找位置；不预置最佳中继坐标或使用可靠任务旁路
+    bid_collection_window_sim_s: 10
+    bid_window_anchor: 本阶段首个notice实际提交业务radio的sim时刻；保存collect_until_sim_ns
+    missing_or_expired_bid: unknown；只用已收且有效摘要规划，不能全局vehicles代填，也不无限等齐全部回复
+    bid_fields:
+    - uav_id_from_endpoint
+    - observed_at
+    - valid_until
+    - capabilities
+    - soc_and_source
+    - payload_and_source
+    - commitment_version
+    - feasible_leg_costs
+    - role_conditions
+    leg_cost_rule: 包含当前点/前序目标到各候选动作的航段时间与能耗，替换求解器直线cost；缺失航段保持unknown
+    chunk_payload_max_bytes: 1024
+    count_application_headers: true
+    before_each_attempt: 实际probe确认path ready；未ready时保持outbox pending且不消耗数据attempt
+    max_message_attempts_total: 2
+    max_chunk_retransmissions_per_attempt: 2
+    attempt_rule: 路径恢复可新attempt但不得重置全消息上限；稳定message_id/chunk_id，独立attempt_id
+    ack_and_status_timeout_sim_s: 5
+    max_status_query_retries_per_attempt: 2
+    evidence_deadline_sim_s: 120
+    deadline_rule: 不得越过所属任务截止；超时/次数耗尽按实际阶段结束并保留outbox证据
+    missing_chunks: radio NACK或status_response返回缺片集合/位图；分片身份含chunk_hash
+    final_ack: 全文件SHA-256匹配且持久入库后经radio发送；重复同message_id重发ACK，不重复入库/创建事件/投送
+    required_causal_binding:
+    - source_file_and_chunk_hash
+    - native_packet_id_and_attempt
+    - per_hop_delivery_or_drop
+    - last_hop_delivery
+    - receiver_chunk_commit
+    - full_file_hash_and_persistent_commit
+    - radio_final_ack
+    payload_gate_claim: 真实应用文件由原生无线事件门控交付；若native只按长度建包，明确原始图片字节未置于native packet buffer
+    payload_gate_isolation: 不可变payload保存于receiver不可访问区；未到末跳的分片不可读取，禁止共享源文件路径
+  payload_delivery:
+    package_mass_kg: 1.0
+    person_separation_initial_m: 5.0
+    drop_selection: 按当前RGB/depth和估计不确定度排除人员附近区域；无足够可行区域返回不可投，不改隐藏人员位置
+    agent_receiver: Gazebo接收面Contact sensor + TouchPlugin，对指定package_id的真实接触生成本地接收记录
+    receiver_program_location: simulator内的本地接收器程序，仅订阅其接收面的contact源
+    receiver_radio_identity: drop-receiver-1：位于屋顶接收面的固定无线节点；可复用地面节点实现，不复用位于别处的centre身份/坐标；不新增容器
+    receiver_radio_node_id: drop-receiver-1
+    receiver_contact_min_sim_s: 1.0
+    receiver_receipt_transport: 业务radio，包含原始contact事件/本地记录引用；不得由scorer in_zone/真值速度生成
+    post_drop_rgb_role: 实际新帧作为视觉佐证，照片存在本身不是机器交付确认
+    settle_timeout_sim_s: 30
+    settle_timeout_anchor: 实际分离事件的sim时刻；未分离由释放操作超时单独报告
+    evaluator_only:
+      linear_speed_max_mps: 0.1
+      angular_speed_max_radps: 0.1
+      stable_duration_sim_s: 1.0
+      inside_drop_polygon_required: true
+      check_true_person_separation: true
+  cancellation:
+    queued: 移出未派发队列；之后无飞控派发；地面queued取消不强迫等待hold
+    running: cancel_requested由同机owner处理；结束或隔离旧低层请求/重试/回调，再观察PX4模式与减速；新航线等待取消终态
+    accept_to_hold_max_sim_s: 5
+    initial_horizontal_speed_mps: 3.0
+    initial_speed_tolerance_mps: 0.25
+    initial_speed_is_measured: true
+    payload_mass_kg: 0.0
+    additional_wind: false
+    airframe_and_dynamics: 沿用锁定基线机型，记录实际速度/加速度限制与初态；不更换软件或机型以宣称同一结果
+    late_results:
+    - 旧模型回复
+    - 旧低层动作请求/重试/状态回调
+    post_cancel_watch_sim_s: 5
+    failure: 无法完成真实取消时报告原因与当前模式，不伪写canceled
+  incident_queue:
+    max_active_rescue_incidents: 1
+    minimum_queued_second_clues: 1
+    policy: 第二event_id排队/明确拒绝/允许时转交，不做本轮多事件全局最优；task/message/chunk/ACK都按事件关联
+  scene_parameters_to_lock_before_run:
+  - 实际公开地图和建筑碰撞几何
+  - 地面/屋顶起点与每机原点
+  - 搜索高度和观察距离
+  - 模型输入缩放后的人员像素尺寸
+  - 复核最小几何视角差
+  - 投放高度和接收区尺寸
+  - 候选路径/中继/投放点生成规则
+  - 人员间隔与定位不确定度的几何余量
+cases:
+- id: C00
+  title: 基础运行、固定身份和推进活性
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  setup: 锁定镜像；同一Gazebo world、U1–U4独立空卷和固定身份私有socket；公开合法地面/屋顶起飞点；禁用旧决策/运动owner。
+  contract_sections:
+  - run_identity
+  - identity_and_ownership
+  - decision_loop
+  - telemetry_and_geometry
+  steps:
+  - 记录main SHA、资源、实际构建并运行现有PX4/ns3 smoke
+  - 核对S25端口/系统ID、唯一world owner及每机socket/卷映射
+  - 逐机真实起飞、不同航点、hold、降落；操作结果使用PX4估计及飞控状态
+  - 四机同时请求下一帧且一机运行长动作，工具返回pending/yield后coordinator继续advance
+  - 经U2私有端点伪报U4身份，验证拒绝或仍绑定U2，U4不被控制且其socket/原文件不可读
+  - 无DISPLAY下实际取得四机带源时刻/K的RGB和float32深度，运动后画面改变
+  expected:
+  - single_world_and_owner
+  - correct_vehicle_receipts_from_estimates
+  - private_endpoint_identity_binding
+  - future_requests_do_not_block_advance
+  - actual_headless_four_uav_rgbd
+  - no_unreceived_cross_vehicle_files
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-D01
+  - REQ-D02
+  - REQ-D03
+  - REQ-D04
+  - REQ-D05
+  - REQ-D06
+  - REQ-F01
+  - REQ-F02
+  - REQ-F05
+  - REQ-O01
+  - REQ-H03
+  - REQ-H05
+  - REQ-E02
+  - REQ-E05
+  execution_status: NOT_RUN
+- id: C01
+  title: 完整四机救援
+  seeds:
+  - 42
+  - 43
+  - 44
+  agent_modes:
+  - rule
+  - model
+  model_mode_minimum_seeds:
+  - 42
+  setup: 白天小区域屋顶洪涝；实际人员、U1受保护旧任务、U2初始侦察能力、U3预授权中继能力、U4实际1kg包裹和独立接收面。初始四机在声明的指挥radio覆盖内；任务通告声明救援需求来源，视觉只确认人员存在与位置。
+  contract_sections:
+  - identity_and_ownership
+  - decision_loop
+  - business_radio
+  - payload_delivery
+  - run_identity
+  steps:
+  - 先经业务radio送达公开任务区域/初始任务与U3失联恢复承诺，取得实际回执后再进入遮挡区；不下发隐藏人员或最佳中继坐标
+  - 本机搜索、拍照和历史查询，从真实RGB形成疑似线索
+  - 检测、估计位姿定位、真实换视角复核，生成本地证据文件
+  - 直传probe失败时outbox保留；U3依预授权策略搜索合法候选并实际probe建立path ready
+  - 每阶段notice进入radio时启动10sim s收bid窗口；中心只消费已收有效本机摘要和逐航段cost，未收为unknown
+  - 真实文件经中继，核对chunk hash/native packet/末跳delivery/receiver commit/最终ACK链
+  - 中心任务版本经radio送达并接受后运输和真实释放，投放点含人员不确定度余量
+  - 接收面Contact sensor持续接触>=1sim s生成现场回执，经radio送中心；保留新RGB和独立落点/稳定性评分
+  - 责任合法交接/释放后恢复旧任务或返航；保护任务由唯一owner持续管理
+  expected:
+  - completed_with_delivery
+  - protected_task_preserved
+  - radio_bootstrap_recorded
+  - bounded_bid_window_unknown_missing
+  - received_only_solver_inputs
+  - actual_receiver_contact_receipt
+  - all_evidence_linked
+  simulation_deadline_s: 900
+  required_agent_modes:
+  - rule
+  - model
+  requirements:
+  - REQ-F01
+  - REQ-F02
+  - REQ-F04
+  - REQ-F06
+  - REQ-O07
+  - REQ-M03
+  - REQ-C01
+  - REQ-C03
+  - REQ-P01
+  - REQ-P02
+  - REQ-P03
+  - REQ-T01
+  - REQ-T02
+  - REQ-T03
+  - REQ-T05
+  - REQ-H01
+  - REQ-H02
+  - REQ-H03
+  - REQ-H05
+  - REQ-E01
+  - REQ-E02
+  - REQ-E03
+  - REQ-E05
+  execution_status: NOT_RUN
+- id: C02
+  title: 阴性和不确定
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  variants:
+  - no_person
+  - occluded_then_visible
+  - still_uncertain
+  contract_sections:
+  - telemetry_and_geometry
+  - detection_and_history
+  steps:
+  - 运行真实相机和检测，缺图/失配/超量程按原因不可用
+  - 首次不确定时真实移动换视角补拍，不复用同图或读取作者正负字段
+  - 结合新证据结束阴性分支或保持unresolved，不把遮挡直接判离开
+  expected:
+  - no_false_drop
+  - new_viewpoint_for_uncertain
+  - unavailable_has_reason
+  - uncertain_is_not_rescue_success
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-O07
+  - REQ-O08
+  - REQ-T05
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C03
+  title: 无线分片、链路恢复和ACK幂等
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  variants:
+  - direct_blocked_relay_works
+  - missing_fragment_nack_then_retry
+  - path_lost_then_second_attempt
+  - no_valid_path
+  - lost_assignment_before_acceptance
+  - final_ack_lost
+  contract_sections:
+  - business_radio
+  - run_identity
+  steps:
+  - 预先生成真实可解码证据文件与不可变chunk hash清单；独立验证业务消息同走ns3
+  - 通过实际probe确认direct阻断，借已送达的U3恢复承诺建立中继；path ready前保持pending
+  - path ready后开始attempt，记录原生packet ID、每跳事件和末跳投递
+  - 指定丢失一个必需分片，核对接收端缺片、无完整文件/最终ACK，随后经radio NACK或状态查询补片
+  - 每attempt每片补发最多2次；路径恢复可新attempt，但全消息attempt总数最多2，deadline为min(开始时刻+120sim s,任务截止)
+  - 丢失最终ACK，5sim s超时后经radio查询/补确认；接收端不重复入库或生成任务
+  - 核对chunk hash→native packet/attempt→last-hop delivery→receiver commit→全文件hash→最终ACK
+  - 无路径/未收妥指派不得启动任务或绕到可靠HTTP/共享源文件；记录超时的真实阶段
+  expected:
+  - no_premature_visibility
+  - missing_fragment_prevents_complete_file
+  - exact_hash
+  - native_packet_to_commit_causality
+  - radio_nack_status_and_final_ack
+  - bounded_attempt_and_chunk_retry_counters
+  - lost_ack_idempotent
+  - explicit_pending_or_failure_without_route
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-F05
+  - REQ-M03
+  - REQ-C01
+  - REQ-C02
+  - REQ-C03
+  - REQ-C04
+  - REQ-C05
+  - REQ-C06
+  - REQ-H03
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C04
+  title: 参与条件改变与中心有限输入
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  - model
+  model_mode_minimum_variants:
+  - low_energy_after_offer
+  variants:
+  - busy_protected_vehicle
+  - low_energy_after_offer
+  - payload_unavailable
+  - role_id_permutation
+  contract_sections:
+  - business_radio
+  - identity_and_ownership
+  steps:
+  - 在本机生成带时刻、有效期、承诺版本和逐航段路线cost的摘要/bid，经radio送中心
+  - 在已声明的资源/任务状态模型中改变条件并记录来源，使旧建议过期
+  - 每阶段收集窗口10sim s，到期只使用已收有效bid；失联/缺失为unknown，不等齐全机或读取全局vehicles
+  - 中心复用有界枚举并采用当前点/前序目标至候选目标的cost，实际重新分配
+  - 模型模式至少实际完成一个改变计划分支；同工具/owner下不静默回退规则
+  expected:
+  - updated_bid_inputs
+  - received_only_local_summaries
+  - per_leg_cost_used_by_solver
+  - unknown_missing_bid
+  - no_double_commitment
+  - changed_plan_when_needed
+  required_agent_modes:
+  - rule
+  - model
+  requirements:
+  - REQ-F06
+  - REQ-C01
+  - REQ-C04
+  - REQ-T01
+  - REQ-T03
+  - REQ-H02
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C05
+  title: queued/running取消及迟到指令
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  - model
+  variants:
+  - queued_not_dispatched
+  - running_cancel_with_late_results
+  contract_sections:
+  - cancellation
+  - decision_loop
+  - identity_and_ownership
+  - run_identity
+  steps:
+  - 锁定基线机型及实际动力学参数；running片段达到实测水平3±0.25m/s、空载、无额外风，记录初态
+  - 取消queued请求并验证以后从未派发，地面取消不强迫hold
+  - running请求由按机owner进入cancel_requested，登记后立即返回使coordinator继续advance
+  - 结束或隔离旧低层请求/重试/回调，再观察PX4 hold及减速；从后端接受cancel起5sim s内达hold才记canceled
+  - 送入旧task_revision的迟到模型结果及可控迟到的低层动作请求/状态回调，验证不能覆盖新owner或重新产生旧目标
+  - 取消成功/明确失败前新航线保持待提交；终态后提交合法新任务，并再推进5sim s观察旧目标不复活
+  expected:
+  - queued_cancellation_never_dispatched
+  - cancel_does_not_block_advance
+  - physical_hold_within_5_sim_s_from_acceptance
+  - fixed_measured_initial_speed
+  - no_late_low_level_or_model_override
+  - explicit_cancel_failure_if_not_observed
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-F03
+  - REQ-F05
+  - REQ-T02
+  - REQ-H03
+  - REQ-H04
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C06
+  title: 持久历史、未检出旧帧重分析及跨机隔离
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  contract_sections:
+  - detection_and_history
+  - identity_and_ownership
+  - run_identity
+  steps:
+  - 保存真实图像及移动/遮挡记录，包含原先无检测记录的关键帧和相机观察足迹
+  - 执行20个有证据中文/时空问题和5个无证据问题，核对精确过滤与top5命中
+  - 按时间/观察区域取回原未检出帧并实际重新分析；结果可仍uncertain，保存原frame/hash/observed_at和新的analyzed_at
+  - 重启该companion，恢复历史/任务/收件状态后重新查询，保留所有原run证据
+  - 先验证无法读队友原文件/私有socket；队友经radio完整发送后才能查收妥副本，保留observer及observed/received时间
+  expected:
+  - persistent_local_history
+  - top5_hits_at_least_18_of_20
+  - no_fabricated_records
+  - actual_undetected_history_frame_reanalysis
+  - observed_received_analyzed_times_distinct
+  - cross_uav_only_received_copies
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-D06
+  - REQ-D07
+  - REQ-O07
+  - REQ-M01
+  - REQ-M02
+  - REQ-M04
+  - REQ-H04
+  - REQ-H05
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C07
+  title: 物资接触确认、超时和回执异常
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  variants:
+  - joint_did_not_release
+  - package_outside_dropzone
+  - receiver_receipt_lost
+  - confirmation_final_ack_lost
+  contract_sections:
+  - payload_delivery
+  - business_radio
+  - run_identity
+  steps:
+  - 执行真实运输/释放操作，分别保存命令回执、关节状态和接收面原始contact事件
+  - 未脱离保持未释放；区域外不产生合法接收接触，实际分离后30sim s未满足接触条件应超时
+  - 接收器只在指定包裹持续接触接收面>=1sim s时形成本地回执；新RGB只是佐证，禁止把scorer布尔/速度当传感器
+  - 独立evaluator核对接收多边形、实际人员间隔和速度<=0.1m/s/角速度<=0.1rad/s持续1sim s，不向Agent提供判定输入
+  - 分别丢失现场回执或其最终ACK；沿chunk hash/native packet/末跳delivery/receiver commit核查真实阶段
+  - 按5sim s状态查询与同一传输上限补发/补ACK，接收幂等；任务结果不能提前完成
+  - 重启后先与执行器/接收记录对账，不重复释放包裹
+  expected:
+  - no_false_delivery_verified
+  - real_contact_local_receipt
+  - no_scorer_to_agent_receipt
+  - settle_timeout_explicit
+  - physical_and_communication_stages_separate
+  - bounded_lost_ack_recovery
+  - reconcile_before_retry
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-C03
+  - REQ-C05
+  - REQ-P01
+  - REQ-P02
+  - REQ-P03
+  - REQ-P04
+  - REQ-T05
+  - REQ-H04
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C08
+  title: 单活动事件与第二线索队列
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  variants:
+  - second_incident_queued
+  - no_eligible_vehicle
+  - deadline_expired
+  contract_sections:
+  - incident_queue
+  - business_radio
+  - identity_and_ownership
+  steps:
+  - 第一救援尚活动时由真实观察产生第二线索，经业务radio形成独立event_id
+  - 保持最多一个活动救援事件，将第二线索入队或明确拒绝，不要求同时全局最优
+  - 证据、task版本、分片和ACK分别关联事件，原事件不能被新字段覆盖
+  - 跟踪队列激活/无资源/截止及承诺释放；缺失bid为unknown，不双重分配
+  expected:
+  - distinct_incident_ids
+  - one_active_incident
+  - second_clue_queue_recorded
+  - no_double_resource_assignment
+  - correct_unfulfilled_or_expired_outcome
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-F04
+  - REQ-C06
+  - REQ-T04
+  - REQ-T05
+  - REQ-E02
+  execution_status: NOT_RUN
+- id: C09
+  title: 新空卷冷启动和离线回放
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  contract_sections:
+  - run_identity
+  - decision_loop
+  steps:
+  - 以case/seed/mode/attempt新run namespace和新空卷启动，拒绝覆盖并保留前序成功/失败证据
+  - 仅阻断外部下载/模型API网络，保留内部服务和业务无线模型接口；镜像/模型/资产均从已锁定本地文件读取
+  - 四机与中心都选rule，不构造模型client，实际进入相同工具闭环
+  - 停止模型服务与原生仿真后读取一个保留run回放，核对新模型/物理/相机调用都为0
+  expected:
+  - fresh_empty_volumes_old_evidence_preserved
+  - unique_mode_attempt_run_id
+  - no_runtime_download
+  - rule_centre_and_uavs_zero_model_clients
+  - zero_new_model_calls
+  - zero_new_physics_steps
+  - zero_new_sensor_capture
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-D04
+  - REQ-D07
+  - REQ-H01
+  - REQ-E02
+  - REQ-E04
+  execution_status: NOT_RUN
+- id: C10
+  title: 固定真实RGB、源时钟与双原点几何
+  seeds:
+  - 42
+  agent_modes:
+  - rule
+  contract_sections:
+  - telemetry_and_geometry
+  - localization_acceptance
+  - detection_and_history
+  steps:
+  - 冻结SeaDronesSee OD v2原始ID和类别映射，至少200真实帧并含50负例/易混淆帧；训练/开发与验收按视频/场景分离
+  - 至少30留出仿真观察覆盖不同视角/距离/遮挡；10图实际比较已加载权重的PyTorch与ONNX输出
+  - 在推理前锁定>=30全部适用定位目标样本，涵盖至少两个不同spawn原点/朝向UAV及图像边缘/倾斜视角
+  - 记录LOCAL_POSITION_NED/ATTITUDE_QUATERNION原始源时刻、每机空间/高度原点和boot-to-run映射；只使用估计位姿
+  - 先作独立几何反投影校准：native相机声明实际depth convention；另用明确标记的校准输入检查optical_z与ray_range两条公式，不冒称native同时输出两种
+  - 实际检测框与配准深度选择目标簇；记录背景占优、多簇和无效深度案例，不用真值挑选像素
+  - 执行一次reset，重建时间epoch和每机原点，再重复同一已知几何点；旧样本不进入新run
+  - 报告全量eligible/matched/attempted/valid/unavailable原因；valid/全部预定适用样本>=90%，有效输出水平中位<=2m、P95<=5m
+  - 场景留出检测IoU>=0.5时P>=0.90/R>=0.85；真实数据独立如实报告分数、漏检及原始错误图
+  expected:
+  - fixed_v2_data_and_class_mapping
+  - trained_model_parity_and_real_inference
+  - two_distinct_uav_origin_transforms
+  - reset_clock_and_origin_rebuilt
+  - source_timestamps_not_receive_wall_clock
+  - optical_z_and_ray_range_verified
+  - fixed_eligible_count_at_least_30
+  - valid_output_rate_at_least_0.90
+  - position_median_le_2m_p95_le_5m
+  - precision_ge_0.90_recall_ge_0.85_on_scenario_set
+  - all_failure_denominators_and_error_gallery
+  required_agent_modes:
+  - rule
+  requirements:
+  - REQ-F05
+  - REQ-O01
+  - REQ-O02
+  - REQ-O03
+  - REQ-O04
+  - REQ-O05
+  - REQ-O06
+  - REQ-O08
+  - REQ-E01
+  - REQ-E02
+  execution_status: NOT_RUN

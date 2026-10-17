@@ -1,0 +1,36 @@
+{
+  "recorded_at_utc": "2026-10-17T10:20:31.620943+00:00",
+  "system": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "architecture": "x86_64",
+  "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+  "python": "3.12.14",
+  "cpu_count": 9,
+  "memory": {
+    "MemTotal_bytes": 10451439616,
+    "MemAvailable_bytes": 9517400064
+  },
+  "disk_bytes": {
+    "total": 33770192896,
+    "free": 30043361280
+  },
+  "uid": 1000,
+  "security": {
+    "CapEff": "0000000000000000",
+    "NoNewPrivs": "1",
+    "Seccomp": "2"
+  },
+  "docker": {
+    "available": false,
+    "reason": "docker not installed"
+  },
+  "compose": {
+    "available": false,
+    "reason": "docker not installed"
+  },
+  "docker_sockets": [],
+  "graphics_devices": [],
+  "recommended_build_jobs": 4,
+  "native_container_status": "BLOCKED",
+  "native_camera_status": "NOT_RUN",
+  "note": "A working daemon and real container smoke are required. No nested privileged Docker or host security changes are attempted."
+}

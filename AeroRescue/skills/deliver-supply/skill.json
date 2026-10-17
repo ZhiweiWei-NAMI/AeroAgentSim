@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "deliver-supply",
+  "description": "Fly to a safe selected point, then command the physical release actuator.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "deliver-supply",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "package_id, drop_site_id produced by select-drop-site.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "probe-route",
+  "description": "Submit actual radio probes and return pending while the world advances.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "probe-route",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "destination, optional route. Result waits for actual radio round trip.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

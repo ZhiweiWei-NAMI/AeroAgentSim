@@ -63,8 +63,9 @@ class Processes:
         )
 
     async def gazebo(self, config):
+        flags = ["--headless-rendering"] if config.rgbd_camera is not None else []
         await self.spawn(
-            ("gz", "sim", "--seed", config.seed, "-s", config.sdf), "gazebo"
+            ("gz", "sim", "--seed", config.seed, "-s", *flags, config.sdf), "gazebo"
         )
 
     async def px4(self, vehicle, config):

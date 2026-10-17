@@ -1,0 +1,1 @@
+Adapter template and registry copied from AeroAgentSim base 0b406d01f27920da45facd8d2d6cdde1e7c3d49e. Native application source migrated from 56e1bc9b0aec286337b7b94aa3a7b1436cc54288.

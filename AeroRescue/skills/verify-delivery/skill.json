@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "verify-delivery",
+  "description": "Require observed detachment, a new frame and an actual radio contact receipt.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "verify-delivery",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "package_id and a real inbox receipt_message_id. Omit post_drop_frame_id to acquire a fresh post-contact frame; then call again with the resulting post_drop_frame_id to check actual receiving-site visibility and the payload ledger. Arbitrary actuator/receipt objects are not accepted.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

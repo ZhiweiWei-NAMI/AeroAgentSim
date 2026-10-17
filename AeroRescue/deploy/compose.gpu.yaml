@@ -1,0 +1,8 @@
+# Optional NVIDIA host path. Requires Docker NVIDIA Container Toolkit on the
+# chosen simulator host; this does not install drivers or change host settings.
+# Use: docker compose -f compose.yaml -f compose.gpu.yaml ...
+services:
+  simulator:
+    gpus: all
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: graphics,utility

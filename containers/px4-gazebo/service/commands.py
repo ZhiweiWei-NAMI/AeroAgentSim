@@ -41,10 +41,12 @@ def enu_to_wgs84(enu, origin):
 
 
 class Commands:
-    def __init__(self, config, telemetry, altitude_offsets):
+    def __init__(self, config, telemetry, altitude_offsets, *, estimate_completion=False):
         self.config, self.telemetry = config, telemetry
         self.altitude_offsets = altitude_offsets
+        self.estimate_completion = estimate_completion
         self.records, self.updates = {}, []
+        self.blocked = set()
 
     def accept(self, payload, sim_ns):
         fields(payload, ("vehicle", "action", "params", "command_id"))
@@ -63,8 +65,8 @@ class Commands:
                 "reason": "unknown vehicle or unsupported action",
                 "command_id": cid,
             }
-        if any(
-            r["vehicle"] == vehicle and r["status"] in ("queued", "running")
+        if vehicle in self.blocked or any(
+            r["vehicle"] == vehicle and r["status"] in ("queued", "running", "cancel_requested")
             for r in self.records.values()
         ):
             return {
@@ -101,6 +103,59 @@ class Commands:
         )
         return {"status": "accepted", "command_id": cid, "sim_ns": sim_ns}
 
+    def cancel(self, payload, sim_ns):
+        """Register cancellation without occupying the world's advance connection."""
+        fields(payload, ("vehicle", "command_id"))
+        cid, vehicle = payload["command_id"], payload["vehicle"]
+        record = self.records.get(cid)
+        if record is None or record["vehicle"] != vehicle:
+            return {"status": "rejected", "reason": "unknown command for this vehicle"}
+        if record["status"] == "cancel_requested":
+            return {"status": "accepted", "command_id": cid,
+                    "sim_ns": record["cancel_accepted_ns"]}
+        if record["status"] not in ("queued", "running"):
+            return {"status": "rejected", "reason": "command already terminal"}
+        record["cancel_accepted_ns"] = sim_ns
+        record["observed_since"] = None
+        if record["status"] == "queued":
+            self.emit(record, "canceled", sim_ns, "canceled before dispatch")
+        else:
+            # Do NOT cancel the grpc Future and mistake it for canceled MAVLink
+            # retries. Wait for the original SDK call's terminal response first.
+            # A timeout leaves the vehicle quarantined rather than allowing an
+            # old request to race a new route.
+            record["status"] = "cancel_requested"
+            record["original_task"] = record["task"]
+            record["cancel_hold_started"] = False
+        return {"status": "accepted", "command_id": cid, "sim_ns": sim_ns}
+
+    def fail_cancel(self, record, sim_ns, reason):
+        self.blocked.add(record["vehicle"])
+        self.emit(record, "failed", sim_ns, reason + "; vehicle quarantined until reset")
+
+    async def dispatch_cancel(self, record, sim_ns):
+        if sim_ns - record["cancel_accepted_ns"] > 5_000_000_000:
+            self.fail_cancel(record, sim_ns, "cancel did not observe hold within 5 sim seconds")
+            return
+        if record["cancel_hold_started"]:
+            return
+        old = record["original_task"]
+        if not old.done():
+            return
+        if old.cancelled() or isinstance(old.exception(), (TimeoutError, asyncio.CancelledError)):
+            self.fail_cancel(record, sim_ns, "old low-level request termination is unconfirmed")
+            return
+        if old.exception() is not None:
+            # Unknown transport errors do not prove that server retries stopped.
+            # A normal MAVSDK action rejection is a completed command response.
+            if type(old.exception()).__name__ != "ActionError":
+                self.fail_cancel(record, sim_ns, "old low-level request failed without a terminal PX4 response")
+                return
+        session = self.telemetry.sessions[record["vehicle"]]
+        record["task"] = asyncio.create_task(asyncio.wait_for(session.action.hold(), 30))
+        record["cancel_hold_started"] = True
+        record.pop("ack_versions", None)
+
     async def issue(self, record):
         session = self.telemetry.sessions[record["vehicle"]]
         action, params = record["action"], record["params"]
@@ -109,8 +164,8 @@ class Commands:
             await session.action.takeoff()
         elif action == "goto_location":
             lat, lon, _ = enu_to_wgs84(params["position_enu"], self.config.origin_wgs84)
-            # Use the real PX4 vertical datum measured at stationary reset,
-            # rather than equating ellipsoidal altitude with PX4 AMSL.
+            # Estimate-based profiles use the declared world AMSL origin. Legacy
+            # adapter profiles retain their stationary-reset datum mapping.
             alt = params["position_enu"][2] + self.altitude_offsets[record["vehicle"]]
             await session.action.goto_location(lat, lon, alt, params["yaw_deg"])
         else:
@@ -119,6 +174,9 @@ class Commands:
     async def dispatch(self, sim_ns):
         dispatched = False
         for record in self.records.values():
+            if record["status"] == "cancel_requested":
+                await self.dispatch_cancel(record, sim_ns)
+                dispatched = dispatched or record.get("cancel_hold_started", False)
             if record["status"] == "queued":
                 dispatched = True
                 record["status"] = "running"
@@ -147,14 +205,28 @@ class Commands:
     def observe(self, samples, sim_ns):
         by_vehicle = {s["vehicle"]: s for s in samples}
         for record in self.records.values():
-            if record["status"] != "running":
+            canceling = record["status"] == "cancel_requested"
+            if record["status"] not in ("running", "cancel_requested"):
+                continue
+            if canceling and sim_ns - record["cancel_accepted_ns"] > 5_000_000_000:
+                mode = by_vehicle[record["vehicle"]].get("flight_mode", "unknown")
+                self.fail_cancel(record, sim_ns, f"cancel hold deadline exceeded; current mode={mode}")
+                continue
+            if canceling and not record.get("cancel_hold_started"):
                 continue
             task = record["task"]
+            if task.done() and task.cancelled():
+                self.blocked.add(record["vehicle"])
+                self.emit(record, "failed", sim_ns, "low-level request canceled without confirmed termination")
+                continue
             if task.done() and task.exception() is not None:
+                if canceling or isinstance(task.exception(), TimeoutError):
+                    self.blocked.add(record["vehicle"])
                 self.emit(record, "failed", sim_ns, str(task.exception()))
                 continue
             if sim_ns - record["submitted_ns"] > 180_000_000_000:
                 task.cancel()
+                self.blocked.add(record["vehicle"])
                 self.emit(
                     record,
                     "failed",
@@ -164,7 +236,8 @@ class Commands:
                 continue
             if not task.done():
                 continue
-            sample, action = by_vehicle[record["vehicle"]], record["action"]
+            sample = by_vehicle[record["vehicle"]]
+            action = "hold" if canceling else record["action"]
             keys = {
                 "arm": ("armed",),
                 "disarm": ("armed",),
@@ -188,7 +261,17 @@ class Commands:
             versions = self.telemetry.versions[record["vehicle"]]
             if not all(versions[key] > record["ack_versions"][key] for key in keys):
                 continue
-            speed = math.sqrt(sum(v * v for v in sample["velocity_enu"]))
+            estimate = sample.get("vehicle_estimate", {})
+            # Cancellation uses the selected completion profile too. A legacy
+            # reset has no declared global datum for a full PX4 estimate.
+            use_estimate = self.estimate_completion
+            if use_estimate and action in ("goto_location", "hold", "takeoff"):
+                if estimate.get("status") != "available":
+                    record["observed_since"] = None
+                    continue
+                speed = math.sqrt(sum(v * v for v in estimate["velocity_enu_m_s"]))
+            else:
+                speed = math.sqrt(sum(v * v for v in sample["velocity_enu"]))
             if action == "arm":
                 reached = sample["armed"]
             elif action == "disarm":
@@ -214,7 +297,8 @@ class Commands:
                     and sample["landed_state"] == "IN_AIR"
                     and speed < 1.5
                     and math.dist(
-                        sample["position_enu"], record["params"]["position_enu"]
+                        estimate["position_enu_m"] if use_estimate else sample["position_enu"],
+                        record["params"]["position_enu"]
                     )
                     <= 2
                 )
@@ -223,7 +307,7 @@ class Commands:
                     record["observed_since"] = sim_ns
                 delay = 0 if action in ("arm", "disarm") else 1_000_000_000
                 if sim_ns - record["observed_since"] >= delay:
-                    self.emit(record, "succeeded", sim_ns)
+                    self.emit(record, "canceled" if canceling else "succeeded", sim_ns)
             else:
                 record["observed_since"] = None
 

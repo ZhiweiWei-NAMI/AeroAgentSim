@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "select-drop-site",
+  "description": "Choose a point inside the public receiving polygon away from uncertain people locations.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "select-drop-site",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "frame_id and detection_id from local observations, or plan_message_id for the accepted radio delivery plan. Optional observation_refs lists frame_id/detection_id pairs; all recorded people in those frames enter the exclusion set, including people not observed in the newer frame.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}
