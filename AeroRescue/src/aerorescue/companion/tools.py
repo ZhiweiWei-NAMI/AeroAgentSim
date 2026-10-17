@@ -568,6 +568,11 @@ class CompanionTools:
         return self.payload.status(package_id, self.context["sim_ns"])
 
     def resume_or_return(self, request: dict[str, Any]) -> dict[str, Any]:
+        if self.context.get("recovery_authorization"):
+            spawn = self.config["vehicles"][self.uav_id]["spawn"]
+            home = [spawn[0], spawn[1], max(3.0, spawn[2])]
+            if request.get("remaining_route") or request.get("return_position_enu_m") != home:
+                raise ValueError("post-release recovery requires this UAV's configured home and no remaining rescue route")
         state = self.flight.state()
         if state.get("landed_state") in {"ON_GROUND", "on_ground"}:
             return {"status": "succeeded", "disposition": "already_on_ground", "returned_to_base": False, "reason": "No airborne return action is needed; this does not assert base arrival"}
@@ -580,7 +585,7 @@ class CompanionTools:
             previous = point
         if not request.get("remaining_route"):
             steps.extend([{"action": "land", "params": {}}, {"action": "disarm", "params": {}}])
-        return self.submit_mission("resume-or-return", steps, {"remaining_obligations": request.get("remaining_route", [])})
+        return self.submit_mission("resume-or-return", steps, {"remaining_obligations": request.get("remaining_route", []), "return_position_enu_m": points[-1] if not request.get("remaining_route") else None})
 
 
 def main() -> None:

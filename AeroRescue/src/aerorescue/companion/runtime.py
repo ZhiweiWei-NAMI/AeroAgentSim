@@ -96,7 +96,17 @@ class CompanionRuntime:
         task = self.state.get("task") or {}
         relays = [m for m in self.state["missions"].values() if m["tool_name"] == "hold-relay" and m["status"] == "succeeded" and (m["task_id"], m["task_revision"]) == (task.get("task_id"), task.get("task_revision"))]
         relay = {k: copy.deepcopy(relays[-1][k]) for k in ("operation_id", "metadata", "probe_results")} if relays else None
-        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state"), "local_energy": self.state.get("local_energy"), "relay_mission": relay, "handover_authorized": task.get("accept_relay_handover", False), "handover_incoming": copy.deepcopy(self.state.get("handover_incoming")), "handover_outgoing": copy.deepcopy(self.state.get("handover_outgoing"))}
+        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "recovery_authorization": self._recovery_authorization(), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state"), "local_energy": self.state.get("local_energy"), "relay_mission": relay, "handover_authorized": task.get("accept_relay_handover", False), "handover_incoming": copy.deepcopy(self.state.get("handover_incoming")), "handover_outgoing": copy.deepcopy(self.state.get("handover_outgoing"))}
+
+    def _recovery_authorization(self) -> dict[str, Any] | None:
+        task = self.state.get("task") or {}
+        closed = self.state.get("mission_closed") or {}
+        if closed.get("event_id") == task.get("event_id") and closed:
+            return {"kind": "applied_centre_closure", "message_id": closed["message_id"]}
+        handover = self.state.get("handover_released")
+        if handover and handover.get("data", {}).get("previous_task") == {k: task.get(k) for k in ("event_id", "task_id", "task_revision")}:
+            return {"kind": "accepted_relay_handover", "message_id": handover["message_id"]}
+        return None
 
     def _send_resource_report(self, key: str, data: dict[str, Any], task: dict[str, Any]) -> None:
         submissions = self.state.setdefault("resource_submissions", {})
@@ -171,6 +181,16 @@ class CompanionRuntime:
             raise ValueError("one task worker may own only one active mission")
         operation_id = "mission-" + uuid.uuid4().hex
         mission = {"operation_id": operation_id, "tool_name": name, "steps": steps, "index": 0, "pending": None, "status": "accepted", "metadata": metadata, "frames": [], **self.context()}
+        authorization = self._recovery_authorization()
+        if name == "resume-or-return" and authorization:
+            spawn = self.config["vehicles"][self.uav_id]["spawn"]
+            home = [spawn[0], spawn[1], max(3.0, spawn[2])]
+            if metadata.get("remaining_obligations") or metadata.get("return_position_enu_m") != home or any(step["action"] not in {"goto", "land", "disarm"} for step in steps):
+                raise ValueError("post-release recovery is a return to this UAV's configured home only")
+            window = self.state.setdefault("recovery_windows", {}).setdefault(authorization["message_id"], {"started_ns": self.state["sim_ns"], "deadline_ns": self.state["sim_ns"] + int(self.config.get("recovery_timeout_ns", 120 * NS)), **authorization})
+            mission.update(task_deadline_ns=mission["deadline_ns"], deadline_ns=window["deadline_ns"], recovery_authorization=dict(window))
+        else:
+            mission.pop("recovery_authorization", None)
         self.state["missions"][operation_id] = mission
         return {"operation_id": operation_id, "status": "accepted"}
 
@@ -381,7 +401,7 @@ class CompanionRuntime:
                     mission["submission_uncertainty_reported"] = True
                     self._decision_event()
                 continue
-            if (self.state.get("mission_closed", {}).get("event_id") == mission["event_id"] and mission["tool_name"] != "resume-or-return") or self._assignment_is_canceled(mission):
+            if not mission.get("recovery_authorization") and ((self.state.get("mission_closed", {}).get("event_id") == mission["event_id"] and mission["tool_name"] != "resume-or-return") or self._assignment_is_canceled(mission)):
                 pending = mission.get("pending") or {}
                 if pending.get("kind") == "flight":
                     canceled = self.flight.cancel(pending["operation_id"])

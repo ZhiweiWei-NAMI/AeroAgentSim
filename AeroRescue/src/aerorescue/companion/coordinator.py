@@ -105,6 +105,9 @@ class Coordinator:
         self.scene, self.run_id, self.data = scene, run_id, data
         data.mkdir(parents=True, exist_ok=True)
         self.until_ns = until_ns
+        # A longer observation horizon must not extend an incident's task budget.
+        self.incident_deadline_ns = int(scene.get('incident', {}).get(
+            'deadline_ns', scene.get('until_ns', 900_000_000_000)))
         self.max_real_time_factor = float(scene.get('max_real_time_factor', 1.0))
         if not math.isfinite(self.max_real_time_factor) or self.max_real_time_factor <= 0:
             raise ValueError('max_real_time_factor must be positive')
@@ -263,6 +266,7 @@ class Coordinator:
         """Initial public tasks use the same lossy radio as later plans."""
         for uid, row in self.scene['vehicles'].items():
             task = copy.deepcopy(row.get('initial_task', {}))
+            task.setdefault('deadline_ns', self.incident_deadline_ns)
             task_id = task.get('task_id', f'initial-{uid}')
             revision = task.get('task_revision', 1)
             data = {'task': task, 'capabilities': row.get('capabilities', []),
@@ -270,12 +274,12 @@ class Coordinator:
                     'incident': self.scene.get('incident', {})}
             mid = self.transport.queue_message('centre', uid, 'notice', data,
                 event_id=self.scene.get('incident', {}).get('event_id', 'initial'),
-                task_id=task_id, task_revision=revision, deadline_ns=self.until_ns, now_ns=0)
+                task_id=task_id, task_revision=revision, deadline_ns=task['deadline_ns'], now_ns=0)
             self.bootstrap_messages.append(mid)
         incident = self.scene.get('incident', {})
         self.bridge.state_cache['centre'] = {'status': 'available', 'uav_id': 'centre', 'sim_ns': 0,
             'notice_submissions': [{'event_id': incident.get('event_id', 'initial'),
-                'submitted_ns': 0, 'deadline_ns': self.until_ns,
+                'submitted_ns': 0, 'deadline_ns': self.incident_deadline_ns,
                 'demand_source': incident.get('demand_source')}],
             'public_map': self.scene.get('public_map', {})}
 
@@ -316,7 +320,7 @@ class Coordinator:
                         cancel_rejected=True, cancel_reason='kernel rejected cancellation; original action state retained')
             elif op == 'radio_send':
                 common = {'event_id': request['event_id'], 'task_id': request['task_id'],
-                    'task_revision': request['task_revision'], 'deadline_ns': min(request['deadline_ns'], self.until_ns),
+                    'task_revision': request['task_revision'], 'deadline_ns': request['deadline_ns'],
                     'now_ns': now_ns, 'route': request.get('route')}
                 if request.get('content_base64') is not None:
                     mid = self.transport.queue_file(uid, request['destination'],
@@ -347,7 +351,7 @@ class Coordinator:
                 if route[0] != uid:
                     raise PermissionError('probe source is fixed by endpoint')
                 mid = self.transport.start_probe(uid, request['destination'], route=route,
-                    now_ns=now_ns, deadline_ns=min(now_ns + 10_000_000_000, self.until_ns))
+                    now_ns=now_ns, deadline_ns=now_ns + 10_000_000_000)
                 self.bridge.reply(request, {'status': 'accepted', 'message_id': mid, 'submitted_ns': now_ns})
             elif op in ('payload_release', 'payload_status'):
                 package_id = request['package_id']
@@ -366,6 +370,7 @@ class Coordinator:
                 if op == 'payload_release' and result['status'] == 'accepted':
                     self.release_tasks[package_id] = {key: request[key]
                         for key in ('event_id', 'task_id', 'task_revision')}
+                    self.release_tasks[package_id]['deadline_ns'] = request.get('deadline_ns', self.incident_deadline_ns)
                 self.bridge.reply(request, result)
             elif op in ('capture_request', 'capture_poll', 'capture_read'):
                 if uid not in self.scene['vehicles']:
@@ -412,6 +417,10 @@ class Coordinator:
             self.log('receiver-contact-receipts.jsonl', receipt)
             task = self.release_tasks.get(receipt['package_id'])
             if task is not None:
+                if now_ns >= task['deadline_ns']:
+                    self.log('receiver-radio-deadlines.jsonl', {'receipt_id': receipt['receipt_id'],
+                        'sim_ns': now_ns, 'reason': 'task_deadline_passed', **task})
+                    continue  # Keep the physical receipt above; it cannot reopen the task.
                 transfers = []
                 for destination in ('centre', self.scene['payload']['carrier']):
                     # Re-draining one physical receipt must retain its existing
@@ -420,7 +429,7 @@ class Coordinator:
                     message_id = 'receipt-' + uuid.uuid5(uuid.NAMESPACE_URL,
                         json.dumps([self.run_id, receipt['receipt_id'], destination])).hex
                     self.transport.queue_message(self.receiver_id, destination, 'receipt', receipt,
-                        deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id,
+                        now_ns=now_ns, message_id=message_id,
                         route=self.receiver_route(task['event_id'], destination, now_ns), **task)
                     transfers.append({'destination': destination, 'message_id': message_id})
                 self.receiver_transfers.setdefault(receipt['receipt_id'], {
@@ -511,7 +520,7 @@ class Coordinator:
     def confirm_receiver_transfers(self, now_ns: int) -> None:
         """The physical receiver reports only its own completed radio transfers."""
         for receipt in self.receiver_transfers.values():
-            if receipt.get('confirmation_message_id') or now_ns >= self.until_ns:
+            if receipt.get('confirmation_message_id') or now_ns >= receipt['deadline_ns']:
                 continue
             transfers = []
             for transfer in receipt['transfers']:
@@ -527,7 +536,7 @@ class Coordinator:
             message_id = 'confirmation-' + uuid.uuid5(uuid.NAMESPACE_URL,
                 json.dumps([self.run_id, receipt['receipt_id'], 'delivery-confirmation'])).hex
             self.transport.queue_message(self.receiver_id, 'centre', 'report', data,
-                deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id,
+                deadline_ns=receipt['deadline_ns'], now_ns=now_ns, message_id=message_id,
                 route=self.receiver_route(task['event_id'], 'centre', now_ns), **task)
             receipt['confirmation_message_id'] = message_id
             # This is a queued notification, not a claim that centre received it.

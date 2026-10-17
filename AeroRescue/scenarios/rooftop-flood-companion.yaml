@@ -3,6 +3,7 @@ profile: native_companion
 seed: 42
 until_ns: 900000000000
 max_real_time_factor: 1.0
+recovery_timeout_ns: 120000000000  # Independent home-return budget after received closure or accepted handover.
 agent_mode: rule
 model_path: /models/rtdetrv2_r18vd_120e_coco.onnx
 embedding_path: /models/bge-small-zh-v1.5
