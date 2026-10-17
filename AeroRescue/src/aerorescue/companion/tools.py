@@ -185,7 +185,30 @@ class CompanionTools:
         camera = {"orientation": calibration["orientation"], "horizontal_fov_deg": math.degrees(2 * math.atan(width / (2 * k[0]))), "vertical_fov_deg": math.degrees(2 * math.atan(height / (2 * k[4]))), "depth_max_m": calibration["depth_max_m"]}
         previous = frame["vehicle_estimate"]["position_enu_m"]
         target = location["position_enu_m"]
-        result = PublicMapPlanner(self.config.get("public_map", {})).viewpoints(self._position(), target, radius_m=12, altitude_m=self.config["public_map"]["search_altitude_m"], previous_camera=previous, camera=camera)
+        # Use only the actual near-depth samples retained by this detection's
+        # locator. A clear centre ray need not leave its visible ROI unobscured.
+        import numpy as np
+        from .geometry import backproject, quaternion_matrix
+        samples = location.get("selected_depth", {}).get("samples", [])
+        if not samples:
+            return {"status": "unavailable", "reason": "recorded target surface samples unavailable"}
+        extrinsic = np.asarray(calibration["T_body_frd_from_camera_optical"], dtype=float).reshape(4, 4)
+        rotation = quaternion_matrix(frame["vehicle_estimate"]["attitude_body_frd_to_world_enu_xyzw"])
+        detection = next(row for row in frame["last_analysis"]["detections"] if row["detection_id"] == request["detection_id"])
+        x1, y1, x2, y2 = detection["bbox_xyxy"]
+        selected = location["selected_depth"]
+        optical_z = backproject(selected["pixel"], selected["depth_m"], calibration)[2]
+        # Box edges use a stated planar support hypothesis at the actual target
+        # depth, not invented person dimensions or hidden scene coordinates.
+        camera_points = [backproject([x, y], value, calibration) for x, y, value in samples]
+        plane_calibration = {**calibration, "depth_convention": "optical_z"}
+        camera_points.extend(backproject([x, y], optical_z, plane_calibration) for x, y in ((x1, y1), (x2, y1), (x2, y2), (x1, y2)))
+        surface_points = [(rotation @ (extrinsic @ np.append(point, 1))[:3] + np.asarray(previous)).tolist() for point in camera_points]
+        previous_camera = (np.asarray(previous) + rotation @ extrinsic[:3, 3]).tolist()
+        # Submitted viewpoints use compass yaw 0 and a level hover hypothesis.
+        planned_rotation = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, -1]])
+        camera["origin_offset_enu_m"] = (planned_rotation @ extrinsic[:3, 3]).tolist()
+        result = PublicMapPlanner(self.config.get("public_map", {})).viewpoints(self._position(), target, radius_m=12, altitude_m=self.config["public_map"]["search_altitude_m"], previous_camera=previous_camera, camera=camera, observed_surface_points=surface_points)
         if result["status"] != "succeeded":
             return result
         steps = [{"action": "goto", "params": {"position_enu_m": point, "yaw_deg": 0}} for point in result["candidates"][0]["path_enu_m"][1:]]

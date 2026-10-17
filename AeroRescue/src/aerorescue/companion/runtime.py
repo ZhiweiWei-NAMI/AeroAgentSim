@@ -205,6 +205,10 @@ class CompanionRuntime:
         self.flight.request("radio_inbox_ack", message_id=mid)
 
     def _consume_message(self, message: dict[str, Any], *, apply: bool = False) -> None:
+        if message.get("kind") == "report" and message["source"] == "centre" and message.get("data", {}).get("kind") == "mission_closed":
+            # Record a received fact before any policy ordering. Closing the
+            # currently executing task still needs explicit apply below.
+            self.state.setdefault("mission_closures", {})[message["event_id"]] = message
         if not apply:
             if self.centre is not None:
                 self.centre.consume(message, self.state["sim_ns"])
@@ -220,11 +224,14 @@ class CompanionRuntime:
                 self.state.pop("task_blocker", None)
             if self.state.get("pending_task") and self._assignment_is_canceled(self.state["pending_task"]):
                 self.state.pop("pending_task")
-        if message.get("kind") == "report" and message["source"] == "centre" and message.get("data", {}).get("kind") == "mission_closed" and message["event_id"] == current_task.get("event_id") and not (current_task.get("commitment") or {}).get("protected"):
-            self.state["mission_closed"] = message
-            self.state["relay_release_authorized"] = message["message_id"]
-            self.state["relay_held"] = False
-            self.state.pop("task_blocker", None)
+        if message.get("kind") == "report" and message["source"] == "centre" and message.get("data", {}).get("kind") == "mission_closed":
+            # Closure is an event fact even when another task is still current.
+            # A delayed notice must not reopen an already closed incident.
+            if message["event_id"] == current_task.get("event_id") and not (current_task.get("commitment") or {}).get("protected"):
+                self.state["mission_closed"] = message
+                self.state["relay_release_authorized"] = message["message_id"]
+                self.state["relay_held"] = False
+                self.state.pop("task_blocker", None)
         relevant_event = self.centre.state["active"] if self.centre is not None else current_task.get("event_id")
         if message.get("kind") == "report" and message.get("data", {}).get("kind") == "relay_ready" and message["event_id"] == relevant_event and message["data"].get("valid_until_ns", -1) >= self.state["sim_ns"]:
             self.state["ready_relay"] = message["source"]
@@ -248,7 +255,7 @@ class CompanionRuntime:
         if self.role != "uav" or message["kind"] not in {"notice", "plan"}:
             return
         data = message.get("data", {})
-        if self.state.get("mission_closed", {}).get("event_id") == message["event_id"]:
+        if message["event_id"] in self.state.get("mission_closures", {}) or self.state.get("mission_closed", {}).get("event_id") == message["event_id"]:
             self._log("decisions.jsonl", {"decision": "late_plan_after_terminal_event_ignored", "message_id": message["message_id"]})
             return
         old = self.state.get("task")
@@ -518,7 +525,7 @@ class CompanionRuntime:
     def _inspection_decision(self) -> dict[str, Any] | None:
         results = self.state["results"]
         search = results.get("search", {})
-        frames = search.get("frames", [])
+        frames = [*search.get("frames", []), *results.get("uncertain_view", {}).get("frames", [])]
         if "inspection_report" in results:
             return None
         policy = self.state.setdefault("inspection", {"cursor": 0, "detection_cursor": 0})
@@ -533,7 +540,8 @@ class CompanionRuntime:
                 detected = results[key]
                 if detected["status"] != "succeeded":
                     policy["failure"] = detected.get("reason", "detection unavailable")
-                    break
+                    policy.update(cursor=policy["cursor"] + 1, detection_cursor=0)
+                    continue
                 detections = detected["detections"]
                 if policy["detection_cursor"] >= len(detections):
                     policy.update(cursor=policy["cursor"] + 1, detection_cursor=0)
@@ -549,7 +557,15 @@ class CompanionRuntime:
                 policy["first"] = first
                 break
             if first is None:
-                report = {"observation_verdict": "uncertain", "reason": policy.get("failure", "No located person in the actually captured frames; planned coverage is not proof of observed coverage"), "frame_ids": [row["frame_id"] for row in frames]}
+                public = self.state["task"].get("public_map", self.config.get("public_map", {}))
+                alternate_altitude = public.get("uncertain_reobserve_altitude_m")
+                if "uncertain_view" not in results and alternate_altitude is not None:
+                    # One bounded, area-based new observation when no target
+                    # location is available. No private person coordinates or
+                    # assumed visibility enter this request.
+                    return self._policy_call("search-area", {"polygon": public["search_polygon"], "altitude_m": alternate_altitude, "footprint_width_m": public["search_row_spacing_m"] / 0.7}, "uncertain_view")
+                report = {"observation_verdict": "uncertain", "reason": policy.get("failure", "No located person in the actually captured frames; planned coverage is not proof of observed coverage"), "frame_ids": [row["frame_id"] for row in frames],
+                          "alternate_observation": {"status": results.get("uncertain_view", {}).get("status", "unavailable"), "reason": results.get("uncertain_view", {}).get("reason", "No public alternate observation altitude configured" if alternate_altitude is None else "No consistent target after one alternate area observation"), "altitude_m": alternate_altitude}}
                 return self._policy_call("send-evidence", {"data": report, "destination": "centre", "route": self._evidence_route()}, "inspection_report")
         second_clue = self._secondary_clue_decision(first, frames)
         if second_clue:
@@ -1084,6 +1100,11 @@ class CompanionRuntime:
                 raise ValueError("accept-task requires a received UAV notice/plan")
             if action == "apply-radio-control" and not (message["kind"] == "report" and message.get("data", {}).get("kind") in {"cancel_assignment", "mission_closed", "relay_ready"}):
                 raise ValueError("unsupported received control report")
+            if action == "apply-radio-control" and message["data"]["kind"] in {"mission_closed", "cancel_assignment"} and message["source"] != "centre":
+                result = {"status": "rejected", "message_id": mid, "reason": "task closure and cancellation require the centre radio sender"}
+                self.state.setdefault("applied_messages", []).append(mid)
+                self.state.setdefault("message_applications", {})[mid] = result
+                return result
             self._consume_message(message, apply=True)
             self.state.setdefault("applied_messages", []).append(message["message_id"])
             if action == "accept-task":
@@ -1217,7 +1238,12 @@ class CompanionRuntime:
                         self.state.pop("pending_task")
                         self._consume_message(pending, apply=True)
                     final = {"status": "succeeded", "task": self.state["task"]} if (self.state.get("task") or {}).get("message_id") == result["message_id"] else None
-                    data = self._received(result["message_id"])["data"]
+                    received = self._received(result["message_id"])
+                    if final is None and received["event_id"] in self.state.get("mission_closures", {}):
+                        final = {"status": "failed", "reason": "incident closed before task acceptance"}
+                        if self.state.get("pending_task", {}).get("message_id") == result["message_id"]:
+                            self.state.pop("pending_task")
+                    data = received["data"]
                     deadline = data.get("deadline_ns", data.get("task", {}).get("deadline_ns", data.get("incident", {}).get("deadline_ns", self.context()["deadline_ns"])))
                     if final is None and deadline <= self.state["sim_ns"]:
                         final = {"status": "failed", "reason": "task acceptance deadline"}
@@ -1370,7 +1396,7 @@ class CompanionRuntime:
         call = view._closure_return() if view.state.get("mission_closed") else view._rule_decision()
         keys = ("step_index", "inspection", "relay_monitor", "delivery_wait")
         self.proposal_continuation = {k: copy.deepcopy(view.state[k]) for k in keys if k in view.state}
-        if call is None and view.state.get("relay_policy"):
+        if call is None and not view.state.get("mission_closed") and view.state.get("relay_policy"):
             monitor = view.state.get("relay_monitor", {})
             until = max(self.state["sim_ns"] + NS, monitor.get("retry_after_ns", 0), monitor.get("checked_ns", self.state["sim_ns"]) + 5 * NS)
             call = {"control": "wait-until", "request": {"sim_ns": until}, "result_key": "relay-wait-" + str(until)}

@@ -76,12 +76,14 @@ class PublicMapPlanner:
 
     def viewpoints(self, start: list[float], target: list[float], radius_m: float,
                    altitude_m: float, previous_camera: list[float] | None = None,
-                   camera: dict[str, Any] | None = None) -> dict[str, Any]:
+                   camera: dict[str, Any] | None = None,
+                   observed_surface_points: list[list[float]] | None = None) -> dict[str, Any]:
         candidates = []
         if camera is None or camera.get('orientation') != 'downward':
             return {'status': 'unavailable', 'reason': 'declared downward camera geometry required'}
         half_fov = math.radians(min(camera['horizontal_fov_deg'], camera['vertical_fov_deg'])/2)
-        height_above = altitude_m-target[2]
+        camera_offset = camera.get('origin_offset_enu_m', [0, 0, 0])
+        height_above = altitude_m+camera_offset[2]-target[2]
         if (height_above <= 0 or radius_m > height_above*math.tan(half_fov)
                 or math.hypot(radius_m, height_above) > camera['depth_max_m']):
             return {'status': 'unavailable', 'reason': 'target outside camera view or range'}
@@ -90,12 +92,15 @@ class PublicMapPlanner:
         for index in range(12):
             angle = index*math.tau/12
             point = [target[0]+radius_m*math.cos(angle), target[1]+radius_m*math.sin(angle), altitude_m]
-            if any(segment_hits_box(tuple(point), tuple(target), lower, upper) for lower, upper in self.occluders):
+            camera_origin = [point[i]+camera_offset[i] for i in range(3)]
+            sight_targets = [target, *(observed_surface_points or [])]
+            if any(segment_hits_box(tuple(camera_origin), tuple(surface), lower, upper)
+                   for surface in sight_targets for lower, upper in self.occluders):
                 continue
             change = None
             if previous_camera is not None:
                 a = [previous_camera[i]-target[i] for i in range(3)]
-                b = [point[i]-target[i] for i in range(3)]
+                b = [camera_origin[i]-target[i] for i in range(3)]
                 norm = math.sqrt(sum(v*v for v in a)*sum(v*v for v in b))
                 if norm <= 0:
                     continue
@@ -104,7 +109,10 @@ class PublicMapPlanner:
                     continue
             leg = self.route(start, point)
             if leg['status'] == 'succeeded':
-                candidates.append({**leg, 'viewpoint_enu_m': point, 'view_angle_change_deg': change})
+                candidates.append({**leg, 'viewpoint_enu_m': point, 'view_angle_change_deg': change,
+                                   'visible_surface_sample_count': len(observed_surface_points or []),
+                                   'camera_origin_enu_m': camera_origin,
+                                   'visibility_scope': 'recorded near-depth samples plus detector-box planar support; not entire person visibility'})
         candidates.sort(key=lambda c: c['distance_m'])
         return {'status': 'succeeded' if candidates else 'unavailable', 'candidates': candidates,
                 'reason': None if candidates else 'no reachable public-map view with the required geometry'}
