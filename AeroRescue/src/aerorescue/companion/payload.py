@@ -33,6 +33,7 @@ class PayloadDelivery:
         package["delivery_verified"] = bool(package["released"] and package.get("package_observation", {}).get("status") == "confirmed" and package["receipt_delivered"] and package["package_observation"].get("observed_at", -1) > max(package.get("released_ns", 0), package.get("receipt_received_ns", 0)))
         if package["delivery_verified"]:
             package["status"] = "delivery_verified"
+            package.pop("reason", None)
         elif package.get("status") == "delivery_verified":
             package["status"] = "package_visual_unknown"
 
@@ -76,6 +77,8 @@ class PayloadDelivery:
             raise ValueError("sustained physical contact evidence required")
         if (envelope["task_id"], envelope["task_revision"]) != (package["task_id"], package["task_revision"]):
             raise ValueError("stale payload receipt")
+        if package.get("status") == "receipt_unconfirmed":
+            package.pop("reason", None)
         package.update(receipt_delivered=True, receipt_id=envelope["message_id"], receipt_received_ns=envelope["received_ns"])
         package["status"] = "receipt_delivered"
         self._update(package)
