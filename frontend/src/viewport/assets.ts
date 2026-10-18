@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { parseMeshPack, unpackMeshBatch, type PackFile } from './mesh-pack';
 import { createRoofDetails } from './roof-details';
 import { decorateBuildings } from './city-materials';
@@ -79,7 +80,7 @@ export class Assets {
     this.loader = new GLTFLoader().setDRACOLoader(this.draco).setKTX2Loader(this.ktx).setMeshoptDecoder(MeshoptDecoder);
     this.loader.register(shareImageSources);
   }
-  model(url: string): Promise<T.Object3D> {
+  model(url: string, skeletonClone = false): Promise<T.Object3D> {
     let task = sharedModels.get(url);
     if (!task) {
       task = this.loader.loadAsync(url).then(gltf => {
@@ -97,7 +98,9 @@ export class Assets {
       const own = task.then(() => {}, () => { if (sharedModels.get(url) === task) sharedModels.delete(url); });
       this.pending.add(own); void own.finally(() => { this.pending.delete(own); this.releaseLoaders(); });
     }
-    return task.then(scene => scene.clone(true));
+    // Clone from the original cached hierarchy: cloning an ordinary clone later
+    // cannot remap skeleton bones that still refer to the original hierarchy.
+    return task.then(scene => skeletonClone ? cloneSkeleton(scene) : scene.clone(true));
   }
   async hdri(url: string, renderer: T.WebGLRenderer) {
     const hdr = await new RGBELoader().loadAsync(url);

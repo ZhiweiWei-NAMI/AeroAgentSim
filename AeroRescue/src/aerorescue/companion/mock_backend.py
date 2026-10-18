@@ -44,8 +44,11 @@ class MockWorld:
             'execution_backend': 'mock', 'native': False,
             'model': 'bounded-acceleration point vehicle, gravity parcel, geometric RGB-D, delayed lossy packets',
             'seed': seed, 'clock_epoch': self.epoch,
+            'visual_backend': self.config.get('visual_backend', 'legacy_geometric'),
             'limitations': ['not PX4 dynamics', 'not Gazebo contact', 'not ns-3 RF',
-                            'camera-facing sprite rendering, not native human mesh'],
+                ('official city mesh rendering; conservative AABB flight collision; static skinned person'
+                 if self.config.get('visual_backend') == 'platform_city' else
+                 'camera-facing sprite rendering, not native human mesh')],
         }, indent=2))
 
     def log(self, kind, **fields):
@@ -223,8 +226,12 @@ class MockWorld:
         if not p.get('landed'):
             vel[2]-=9.81*dt;pos+=vel*dt
             surface=0.
-            for o in self.scene.get('public_map',{}).get('obstacles',[]):
-                if o['lower'][0]<=pos[0]<=o['upper'][0] and o['lower'][1]<=pos[1]<=o['upper'][1]:surface=max(surface,o['upper'][2])
+            if self.config.get('visual_backend') == 'platform_city':
+                from .platform_city import city_surface_height
+                surface = city_surface_height(pos[0], pos[1])
+            else:
+                for o in self.scene.get('public_map',{}).get('obstacles',[]):
+                    if o['lower'][0]<=pos[0]<=o['upper'][0] and o['lower'][1]<=pos[1]<=o['upper'][1]:surface=max(surface,o['upper'][2])
             inside=all(abs(pos[i]-cfg['receiver_pose'][i])<=cfg['receiver_size'][i]/2 for i in (0,1))
             top=cfg['receiver_pose'][2]+cfg['receiver_size'][2]/2
             if inside:surface=max(surface,top)
@@ -318,6 +325,13 @@ class MockWorld:
             'sha256':hashlib.sha256(v).hexdigest(),'encoding':'png' if k=='rgb' else 'zlib-float32-le-metres'} for k,v in blobs.items()}}
 
     def render(self,uid):
+        visual_backend = self.config.get('visual_backend', 'legacy_geometric')
+        if visual_backend == 'platform_city':
+            if not hasattr(self, 'platform_camera'):
+                raise RuntimeError('platform_city requires the explicit platform camera/geometry setup')
+            return self.platform_camera.render(uid)
+        if visual_backend != 'legacy_geometric':
+            raise ValueError('unknown mock visual_backend: ' + str(visual_backend))
         c=self.scene['simulator']['rgbd_camera'];w,h=c['width'],c['height']
         fx=w/(2*math.tan(c['horizontal_fov_rad']/2));k=np.array([[fx,0,w/2],[0,fx,h/2],[0,0,1.]])
         # Same SDF mount convention as the platform; independent explicit math.

@@ -63,6 +63,65 @@ Full native image construction and execution remain unverified. Local mock
 execution uses the installed Python/Node processes directly, not those images.
 
 The existing runs show scoped end-to-end outcomes and fault behavior. They do
-not establish a general reliability rate or that an LLM is necessary. The
-requested comparison of stage-wise allocation without replanning after resource withdrawal with online replanning is pending;
-a traditional planner can also implement online replanning.
+not establish a general reliability rate or that an LLM is necessary. One paired
+comparison of stage-wise allocation without replanning after resource withdrawal
+against online replanning is complete: online replanning restored inspection,
+but neither arm completed delivery. A traditional planner can also replan online.
+See the actual costs, outcomes and limits in [the report](docs/mock-report.md).
+
+
+## Isolated mock containers (build/run not yet verified)
+
+`deploy/compose.mock.yaml` is a standalone deployment; do not combine it with
+the native Compose file. It explicitly starts the coordinator with
+`--backend mock` and gives each of five rule agents only its own data, file-IPC
+endpoint and read-only configuration. The centre cannot mount other agents'
+histories. Public capabilities, map, incident and inventory geometry are
+configuration; peer spawn, energy, commitments and task bodies are omitted.
+The coordinator alone receives private world inputs and platform visual assets.
+
+The `agent` image target reuses the existing Python/Node/model image and removes
+bundled example scenarios. The `mock-coordinator` target alone adds the built
+AeroAgentSim frontend and official Playwright Chromium. Model weights are build
+inputs; they are not shared writable histories. Each container has its own
+filesystem and no network interface beyond loopback; no Docker socket or whole
+workspace is mounted. This entry supports local rule mode, not a network LLM.
+
+On a Docker/BuildKit/Compose-capable host, after restoring models and the actual
+platform asset pack, run from `AeroRescue` with the installed Python environment:
+
+```sh
+export RUN_ID=isolated-platform-mock-001
+export RUN_ROOT="$PWD/runs/containers/$RUN_ID"
+export AAS_UID="$(id -u)" AAS_GID="$(id -g)"
+export MODEL_ROOT=/absolute/path/to/model-runtime
+export PLATFORM_ASSET_ROOT=/absolute/path/to/platform-assets
+export AEROAGENTSIM_ASSETS_DIR="$PLATFORM_ASSET_ROOT"
+export PLATFORM_SCENARIO=scenarios/huangpu-platform-camera.yaml
+python tools/prepare_mock_compose.py   --scenario "$PLATFORM_SCENARIO" --run-id "$RUN_ID" --run-root "$RUN_ROOT"
+docker compose -f deploy/compose.mock.yaml build
+docker compose -f deploy/compose.mock.yaml up   --abort-on-container-exit --exit-code-from coordinator
+```
+
+Preparation refuses an existing run directory. It requires an authored scenario with
+`mock_backend.visual_backend=platform_city` and derives public obstacle bounds from the restored official GLB assets, then
+validates its source-city geometry before generating mounts. The supplied
+`huangpu-platform-camera.yaml` uses that city geometry; its outcomes are not
+covered by the earlier gray-world runs. The legacy
+`rooftop-flood-mock.yaml` is rejected; merely renaming its visual backend does not
+make its coordinates/collisions match the city. No photograph sprite is required
+by this platform GLB entry. Renderer startup/capture failures
+must remain errors, never silently return the earlier photo-billboard renderer.
+The platform asset mount is read-only and coordinator-only. The image's browser
+uses loopback HTTP and local pipes, so no external web service is required.
+The independent world horizon defaults to 1040 seconds to leave recovery time;
+the incident's existing 900-second business deadline is unchanged. Compose
+stops the other services when the coordinator exits; inspect each agent's
+recorded outcomes/return state and container logs separately rather than treating
+a process exit as mission success.
+
+This host has no Docker/Podman executable or engine socket. These image stages
+and mount declarations have **not** been built or started here; source/config
+inspection is not evidence of container isolation or platform-camera execution.
+The earlier `tools/run_mock.py` results used same-user host processes and cannot
+establish OS/container isolation.

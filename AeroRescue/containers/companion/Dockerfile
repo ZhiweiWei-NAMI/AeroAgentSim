@@ -6,7 +6,15 @@ WORKDIR /opt/cordis-deps
 COPY AeroRescue/harness/package.json AeroRescue/harness/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-FROM ubuntu:24.04
+# Only the coordinator consumes this platform viewer build.
+FROM node:24-bookworm-slim AS platform-viewer
+WORKDIR /opt/aeroagentsim/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+FROM ubuntu:24.04 AS companion-base
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     PATH=/opt/venv/bin:$PATH HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 \
     DETECTOR_MODEL_PATH=/models/rtdetrv2_r18vd_120e_coco.onnx \
@@ -60,3 +68,29 @@ RUN --network=none python -c "import os; from aerorescue.companion.vision import
 # Compose passes per-identity run parameters; coordinator overrides this entrypoint.
 ENTRYPOINT ["node", "/opt/aeroagentsim/AeroRescue/harness/launch.mjs"]
 CMD ["--role", "uav"]
+
+
+# Coordinator-only platform viewer and browser. Agent images do not carry
+# frontend assets, browser dependencies or the private scene mount.
+FROM companion-base AS mock-coordinator
+USER root
+COPY --from=platform-viewer /opt/aeroagentsim/frontend/dist /opt/aeroagentsim/frontend/dist
+COPY --from=platform-viewer /opt/aeroagentsim/frontend/node_modules /opt/aeroagentsim/frontend/node_modules
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers \
+    AEROAGENTSIM_FRONTEND_DIST=/opt/aeroagentsim/frontend/dist \
+    AEROAGENTSIM_FRONTEND_NODE_MODULES=/opt/aeroagentsim/frontend/node_modules \
+    AEROAGENTSIM_CHROMIUM=/usr/local/bin/aero-chromium
+RUN node /opt/aeroagentsim/frontend/node_modules/playwright/cli.js install --with-deps chromium \
+    && node -e "const fs=require('fs'); const {chromium}=require('/opt/aeroagentsim/frontend/node_modules/playwright'); fs.symlinkSync(chromium.executablePath(), '/usr/local/bin/aero-chromium')" \
+    && rm -rf /var/lib/apt/lists/*
+USER 65532:65532
+
+# Explicit config is mandatory for isolated mock agents. Remove bundled example
+# world/profile fixtures from this stage only; installed code and skills remain.
+FROM companion-base AS agent
+USER root
+RUN python -c "from pathlib import Path; import shutil, aerorescue.resources; paths=[Path('/opt/aeroagentsim/AeroRescue/scenarios'), Path(aerorescue.resources.__file__).parent/'scenarios', Path('/opt/aeroagentsim/AeroRescue/build')]; [shutil.rmtree(p) for p in paths if p.exists()]"
+USER 65532:65532
+
+# Preserve the previous default image for native Compose/build.sh consumers.
+FROM companion-base AS companion

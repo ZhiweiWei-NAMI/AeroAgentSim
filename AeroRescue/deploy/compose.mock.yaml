@@ -1,0 +1,111 @@
+# Standalone mock sandbox; do not combine with the native compose.yaml.
+name: aas-rescue-mock
+x-agent: &agent
+  image: ${MOCK_AGENT_IMAGE:-aeroagentsim/companion:mock-agent}
+  build:
+    context: ../..
+    dockerfile: AeroRescue/containers/companion/Dockerfile
+    target: agent
+    additional_contexts:
+      companion_models: ${MODEL_ROOT:?set the prepared runtime-model directory}
+  init: true
+  user: '${AAS_UID:?set to the preparation user UID}:${AAS_GID:?set to the preparation user GID}'
+  network_mode: none
+  environment: &agent-env
+    RUN_ID: ${RUN_ID:?set a fresh run identifier}
+    AGENT_MODE: rule
+    DATA_DIR: /data
+    DSH_HOME: /data/dsh
+    HOME: /data
+    AERORESCUE_PYTHON: /opt/venv/bin/python
+    COMPANION_SOCKET: file:///run/aas-uav/agent.sock
+    RESCUE_CONFIG: /config/scenario.yaml
+services:
+  coordinator:
+    <<: *agent
+    image: ${MOCK_COORDINATOR_IMAGE:-aeroagentsim/companion:mock-coordinator}
+    build:
+      context: ../..
+      dockerfile: AeroRescue/containers/companion/Dockerfile
+      target: mock-coordinator
+      additional_contexts:
+        companion_models: ${MODEL_ROOT:?set the prepared runtime-model directory}
+    entrypoint: [python, -m, aerorescue.companion.coordinator]
+    command: [--backend, mock, --scenario, /private/scenario.yaml,
+              --run-id, '${RUN_ID}', --data, /data, --socket-root, /run/aas,
+              --until-ns, '${UNTIL_NS:-1040000000000}', --seed, '${SEED:-42}']
+    environment:
+      ORT_DISABLE_TELEMETRY: '1'
+      AEROAGENTSIM_ASSETS_DIR: /assets/platform
+      AEROAGENTSIM_FRONTEND_DIST: /opt/aeroagentsim/frontend/dist
+      AEROAGENTSIM_FRONTEND_NODE_MODULES: /opt/aeroagentsim/frontend/node_modules
+    volumes:
+      - ${RUN_ROOT:?run prepare_mock_compose.py first}/coordinator:/data
+      - ${RUN_ROOT}/private:/private:ro
+      - ${RUN_ROOT}/ipc:/run/aas
+      - ${PLATFORM_ASSET_ROOT:?set the restored platform asset directory}:/assets/platform:ro
+    healthcheck:
+      test: [CMD, python, -c, "from pathlib import Path; import sys; sys.exit(not Path('/run/aas/ready.json').is_file())"]
+      interval: 1s
+      timeout: 3s
+      retries: 120
+  uav-u1:
+    <<: *agent
+    command: [--run-id, '${RUN_ID}', --uav-id, u1, --role, uav, --mode, rule]
+    depends_on:
+      coordinator: {condition: service_healthy}
+    environment:
+      <<: *agent-env
+      UAV_ID: u1
+    volumes:
+      - ${RUN_ROOT}/agents/u1:/data
+      - ${RUN_ROOT}/ipc/u1:/run/aas-uav
+      - ${RUN_ROOT}/config/u1:/config:ro
+  uav-u2:
+    <<: *agent
+    command: [--run-id, '${RUN_ID}', --uav-id, u2, --role, uav, --mode, rule]
+    depends_on:
+      coordinator: {condition: service_healthy}
+    environment:
+      <<: *agent-env
+      UAV_ID: u2
+    volumes:
+      - ${RUN_ROOT}/agents/u2:/data
+      - ${RUN_ROOT}/ipc/u2:/run/aas-uav
+      - ${RUN_ROOT}/config/u2:/config:ro
+  uav-u3:
+    <<: *agent
+    command: [--run-id, '${RUN_ID}', --uav-id, u3, --role, uav, --mode, rule]
+    depends_on:
+      coordinator: {condition: service_healthy}
+    environment:
+      <<: *agent-env
+      UAV_ID: u3
+    volumes:
+      - ${RUN_ROOT}/agents/u3:/data
+      - ${RUN_ROOT}/ipc/u3:/run/aas-uav
+      - ${RUN_ROOT}/config/u3:/config:ro
+  uav-u4:
+    <<: *agent
+    command: [--run-id, '${RUN_ID}', --uav-id, u4, --role, uav, --mode, rule]
+    depends_on:
+      coordinator: {condition: service_healthy}
+    environment:
+      <<: *agent-env
+      UAV_ID: u4
+    volumes:
+      - ${RUN_ROOT}/agents/u4:/data
+      - ${RUN_ROOT}/ipc/u4:/run/aas-uav
+      - ${RUN_ROOT}/config/u4:/config:ro
+  centre-agent:
+    <<: *agent
+    command: [--run-id, '${RUN_ID}', --uav-id, centre, --role, centre, --mode, rule]
+    depends_on:
+      coordinator: {condition: service_healthy}
+    environment:
+      <<: *agent-env
+      UAV_ID: centre
+    volumes:
+      - ${RUN_ROOT}/agents/centre:/data
+      - ${RUN_ROOT}/ipc/centre:/run/aas-uav
+      - ${RUN_ROOT}/config/centre:/config:ro

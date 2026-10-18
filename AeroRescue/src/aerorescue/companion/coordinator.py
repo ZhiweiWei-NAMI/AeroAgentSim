@@ -116,16 +116,28 @@ class Coordinator:
             transport='file' if backend == 'mock' else 'unix')
         self.transport = RadioTransport(data / 'radio', run_id)
         self.document = adapter_document(scene, run_id, seed, until_ns)
+        catalog = register(EngineCatalog())
+        platform_visual = backend == 'mock' and scene.get('mock_backend', {}).get('visual_backend') == 'platform_city'
+        if backend == 'mock':
+            from .mock_backend import MockWorld, MockRpcClient
+            if platform_visual:
+                from .platform_city import validate_geometry, add_visual_document, VisualCatalog
+                validate_geometry(scene)
+                add_visual_document(self.document, scene)
+            self.mock_world = MockWorld(scene, run_id, data, seed)
+            if platform_visual:
+                catalog = VisualCatalog(catalog, self.mock_world)
         (data / 'resolved-scenario.yaml').write_text(yaml.safe_dump(self.document, sort_keys=False))
         self.simulation = Simulation(load_scenario(self.document), journal=Journal(data / 'kernel.jsonl'),
-                                     catalog=register(EngineCatalog()))
+                                     catalog=catalog)
         self.flight = next(e for e in self.simulation.engines if isinstance(e, PX4GazeboEngine))
         self.radio = next(e for e in self.simulation.engines if isinstance(e, NS3Engine))
         if backend == 'mock':
-            from .mock_backend import MockWorld, MockRpcClient
-            self.mock_world = MockWorld(scene, run_id, data, seed)
             self.flight.client = MockRpcClient(self.mock_world, 'flight')
             self.radio.client = MockRpcClient(self.mock_world, 'radio')
+            if platform_visual:
+                from .platform_city import PlatformCityCamera
+                self.mock_world.platform_camera = PlatformCityCamera(self.mock_world, self.simulation)
         self.commands: dict[str, str] = {}
         self.bootstrap_messages: list[str] = []
         self.release_tasks: dict[str, dict[str, Any]] = {}
@@ -614,6 +626,8 @@ class Coordinator:
                 self.simulation.close()
             finally:
                 self.bridge.close()
+                if self.backend == 'mock' and hasattr(self.mock_world, 'platform_camera'):
+                    self.mock_world.platform_camera.close()
 
 
 def main() -> None:

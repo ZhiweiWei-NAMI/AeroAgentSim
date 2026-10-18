@@ -1,0 +1,297 @@
+# Prepare source GLB geometry before launching; do not use the legacy photo sprite.
+format: aeroagentsim.rescue-companion/v1
+profile: platform_city_mock
+seed: 42
+until_ns: 900000000000
+max_real_time_factor: 1.0
+recovery_timeout_ns: 120000000000
+agent_mode: rule
+model_path: /models/rtdetrv2_r18vd_120e_coco.onnx
+embedding_path: /models/bge-small-zh-v1.5
+simulator:
+  host: simulator
+  port: 9000
+  world: /worlds/rooftop-flood.sdf
+  altitude_datum: amsl
+  warmup_ns: 10000000000
+  rgbd_camera:
+    sensor_id: downward-rgbd
+    topic_prefix: /aas
+    pose_flu:
+    - 0
+    - 0
+    - -0.1
+    - 0
+    - 1.5707963267948966
+    - 0
+    width: 1280
+    height: 960
+    horizontal_fov_rad: 1.3962634015954636
+    near_m: 0.2
+    far_m: 60
+    update_rate_hz: 5
+    max_alignment_ns: 40000000
+    orientation: downward
+radio:
+  host: radio
+  port: 9000
+  nodes:
+  - id: centre
+    position_enu:
+    - -80
+    - 45
+    - 0
+  - id: drop-receiver-1
+    position_enu:
+    - -80
+    - 75
+    - 12.05
+  reset:
+    channel:
+      tx_power_dbm: 20.0
+    propagation:
+      exponent: 2.4
+    scene_volumes: []
+public_map:
+  id: huangpu-source-roof-observation
+  rescue_roof_id: building.way.1202226026.component.0
+  clearance_m: 1.0
+  obstacles: []
+  search_polygon:
+  - - -92
+    - 60
+  - - -68
+    - 60
+  - - -68
+    - 90
+  - - -92
+    - 90
+  search_altitude_m: 36
+  search_row_spacing_m: 6
+  release_altitude_m: 15
+  drop_edge_margin_m: 1.0
+  receiver_polygon:
+  - - -85
+    - 70
+  - - -75
+    - 70
+  - - -75
+    - 80
+  - - -85
+    - 80
+  relay_candidates:
+  - - -90
+    - 65
+    - 36
+  - - -70
+    - 85
+    - 36
+  return_position_enu_m:
+  - -80
+  - 45
+  - 0.2
+incident:
+  event_id: huangpu-roof-observation-1
+  discover_secondary_clue: false
+  secondary_clue_separation_m: 15.0
+  secondary_clue_ttl_ns: 120000000000
+  secondary_demand_source: null
+  description: Observe the declared Huangpu rooftop with the actual platform city
+    camera and verify marked-box placement when supported by the images.
+  demand_source: Public task notice reports the area is flood-isolated and requests
+    emergency supplies.
+  deadline_ns: 900000000000
+  payload_kg: 1.0
+  initial_graph:
+    actions:
+    - id: inspect-area
+      role: inspect
+      target:
+      - -80
+      - 75
+      - 36
+      duration_s: 30
+      after: []
+    payload_kg: 1.0
+payload:
+  package_id: rescue-package-1
+  carrier: u4
+  receiver_pose:
+  - -80
+  - 75
+  - 12.05
+  - 0
+  - 0
+  - 0
+  receiver_size:
+  - 10
+  - 10
+  - 0.1
+  attachment_offset_enu_m:
+  - 0
+  - 0
+  - -0.35
+  receiver_id: drop-receiver-1
+  contact_topic: /rescue/receiver/contacts
+  detach_topic: /rescue/rescue-package-1/detach
+  state_topic: /rescue/rescue-package-1/state
+  contact_duration_ns: 1000000000
+  package_size_m:
+  - 0.3
+  - 0.3
+  - 0.2
+  package_mass_kg: 1
+  visual_marker:
+    dictionary: DICT_4X4_50
+    id: 7
+    size_m: 0.24
+    border_bits: 1
+  parent_link: base_link
+  child_link: parcel
+  receiver_link: surface
+  receiver_collision: receiver_collision
+vehicles:
+  u1:
+    spawn:
+    - -86
+    - 45
+    - 0.2
+    - 0
+    - 0
+    - 0
+    model: x500
+    capabilities:
+    - deliver
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: 0.0
+    energy_model: declared distance-proportional research estimate, not PX4 measured
+      consumption
+    payload_capacity_kg: 2
+    initial_task:
+      task_id: protected-original-1
+      task_revision: 1
+      commitment:
+        protected: true
+        busy_until_s: 900
+      workflow:
+      - tool: flight-command
+        request:
+          action: arm
+      - tool: flight-command
+        request:
+          action: takeoff
+          params:
+            altitude_m: 10
+      - tool: flight-command
+        request:
+          action: hold
+    spawn_clearance_m: 0.2
+  u2:
+    spawn:
+    - -80
+    - 45
+    - 0.2
+    - 0
+    - 0
+    - 0
+    model: x500
+    capabilities:
+    - inspect
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: 0.0
+    energy_model: declared distance-proportional research estimate, not PX4 measured
+      consumption
+    payload_capacity_kg: 0
+    initial_task:
+      task_id: survey-ready-2
+      task_revision: 1
+      intent: offer
+    spawn_clearance_m: 0.2
+  u3:
+    spawn:
+    - -74
+    - 45
+    - 0.2
+    - 0
+    - 0
+    - 0
+    model: x500
+    capabilities:
+    - relay
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: 0.0
+    energy_model: declared distance-proportional research estimate, not PX4 measured
+      consumption
+    payload_capacity_kg: 0
+    initial_task:
+      task_id: relay-ready-3
+      task_revision: 1
+      intent: offer
+      recovery_policy:
+        candidate_source: public_map.relay_candidates
+        readiness: actual_probe_round_trip
+        hold_until: end_to_end_ack_or_accepted_handover
+    spawn_clearance_m: 0.2
+  u4:
+    spawn:
+    - -68
+    - 45
+    - 0.6
+    - 0
+    - 0
+    - 0
+    model: x500
+    capabilities:
+    - deliver
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: null
+    energy_model: declared distance-proportional research estimate, not PX4 measured
+      consumption
+    payload_capacity_kg: 2
+    initial_task:
+      task_id: supply-ready-4
+      task_revision: 1
+      intent: offer
+    spawn_clearance_m: 0.6
+perception:
+  engineering_horizontal_margin_m: 3.0
+  engineering_margin_basis: initial research allowance; not measured covariance; must
+    be calibrated against C10
+execution_backend: mock
+mock_backend:
+  startup_timeout_s: 120
+  acceleration_m_s2: 3.0
+  radio_range_m: 2000
+  radio_delay_ns: 20000000
+  packet_loss_rate: 0.0
+  receiver_sensitivity_dbm: -92
+  people:
+  - feet_enu_m:
+    - -88
+    - 82
+    - 12
+    heading_enu_deg: 0
+  visual_backend: platform_city
+  platform_city:
+    roof_id: building.way.1202226026.component.0
+mock_scope: Official Huangpu geometry and skinned pedestrian in the shared Three.js
+  camera; explicit mock kinematics/radio. Source GLB AABBs provide conservative flight
+  collision; source roof triangles provide vertical parcel support. This new scene
+  is not calibrated or visually accepted yet; prior simplified-renderer results do
+  not transfer.

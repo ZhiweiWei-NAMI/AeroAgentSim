@@ -5,6 +5,10 @@
 !src/**
 !pyproject.toml
 !README.md
+!frontend/
+!frontend/**
+frontend/dist/
+frontend/node_modules/
 !AeroRescue/
 !AeroRescue/pyproject.toml
 !AeroRescue/setup.py
