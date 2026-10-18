@@ -136,6 +136,17 @@ class RescueCentre:
         receipts = [row for row in incident["receipts"] if row["data"].get("package_id") == delivery.get("package_id") and row["task_id"] == delivery.get("task_id") and row["task_revision"] == plan.get("task_revision")]
         if not receipts or not delivery.get("delivery_verified") or delivery.get("task_revision") != plan.get("task_revision"):
             raise ValueError("current plan's physical and radio delivery evidence required")
+        visual = delivery.get("package_observation", {})
+        report = next((row for row in incident["reports"] if row["source"] == carrier_id and row.get("data", {}).get("kind") == "delivery_verified" and row["data"].get("delivery") == delivery and row["received_ns"] <= now_ns), None)
+        observed = visual.get("observed_at")
+        if (report is None or visual.get("status") != "confirmed"
+                or visual.get("method") != "public_aruco_inventory_id_and_registered_depth"
+                or visual.get("package_id") != delivery.get("package_id")
+                or not visual.get("frame_id") or visual["frame_id"] != delivery.get("post_drop_frame_id")
+                or not all(visual.get(key) for key in ("rgb_artifact_id", "depth_artifact_id", "analysis_artifact_id"))
+                or not isinstance(observed, int) or not all(isinstance(delivery.get(key), int) for key in ("released_ns", "receipt_received_ns"))
+                or not max(delivery["released_ns"], delivery["receipt_received_ns"]) < observed <= report["received_ns"]):
+            raise ValueError("received carrier report requires a new traceable marked-package RGB-D observation; legacy site-only booleans are insufficient")
         # The carrier's local receipt commit does not establish that the receiver
         # knows either transfer completed. Only its subsequent radio notice can
         # carry that fact here. Do not recursively wait for this notice's ACK.

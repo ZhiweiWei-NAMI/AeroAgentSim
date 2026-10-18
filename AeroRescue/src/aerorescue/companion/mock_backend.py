@@ -367,11 +367,11 @@ class MockWorld:
             visible=alpha&(camera[2]<=depth[ya:yb,xa:xb]+.05)
             arr=np.array(image);piece=np.array(patch)[ya-top:yb-top,xa-left:xb-left,:3];arr[ya:yb,xa:xb][visible]=piece[visible];image=Image.fromarray(arr)
             depth[ya:yb,xa:xb][visible]=camera[2]
-        # Render a landed parcel as image evidence, never as a tool success flag.
-        if self.payload and self.payload.get('landed'):
-            point=rotation.T@(np.array(self.payload['position'])-origin)
-            if point[2]>0:
-                u,v=fx*point[:2]/point[2]+[w/2,h/2];size=max(2,round(fx*.3/point[2]));ImageDraw.Draw(image).rectangle((u-size,v-size,u+size,v+size),fill=(224,115,25))
+        # The same moving box surface supplies RGB, occlusion and optical-Z.
+        # Pose is private simulator state; only rendered sensor arrays leave it.
+        rgb = np.asarray(image).copy()
+        self.render_parcel(rgb, depth, origin, rays, c)
+        image = Image.fromarray(rgb)
         stream=io.BytesIO();image.save(stream,format='PNG');png=stream.getvalue()
         depth[~np.isfinite(depth)]=np.nan
         metadata={'run_id':self.run_id,'uav_id':uid,'sensor_id':c['sensor_id'],
@@ -384,9 +384,62 @@ class MockWorld:
                 'vertical_fov_deg':math.degrees(2*math.atan(h/(2*fx))),'registered_rgb_depth':True,
                 'depth_convention':'optical_z','depth_min_m':c['near_m'],'depth_max_m':c['far_m'],
                 'T_body_frd_from_camera_optical':t.tolist(),'extrinsic_source':'explicit mock camera mount',
-                'version':self.epoch+':camera','render_model':'public box roofs and private camera-facing person sprites'},
+                'version':self.epoch+':camera','render_model':'public boxes, private camera-facing person sprites, axis-aligned moving parcel with optional public top marker'},
             'rgb_sha256':hashlib.sha256(png).hexdigest()}
         return metadata,{'rgb':png,'depth':zlib.compress(depth.astype('<f4').tobytes(),3)}
+
+    def render_parcel(self, rgb, depth, origin, rays, camera):
+        """Ray-cast a world-ENU-aligned box; this mock has no parcel rotation."""
+        if not self.payload:
+            return
+        config = self.scene['payload']
+        size = np.asarray(config['package_size_m'], dtype=float)
+        if self.payload['released']:
+            center = np.asarray(self.payload['position'], dtype=float)
+        else:
+            center = self.vehicles[self.payload['carrier']]['position'] + config['attachment_offset_enu_m']
+        lower, upper = center-size/2, center+size/2
+        entry, exit = np.full(depth.shape, -np.inf), np.full(depth.shape, np.inf)
+        for axis in range(3):
+            direction = rays[:, :, axis]
+            parallel = np.abs(direction) < 1e-12
+            with np.errstate(divide='ignore', invalid='ignore'):
+                one = (lower[axis]-origin[axis])/direction
+                two = (upper[axis]-origin[axis])/direction
+            lo, hi = np.minimum(one, two), np.maximum(one, two)
+            inside = lower[axis] <= origin[axis] <= upper[axis]
+            entry = np.maximum(entry, np.where(parallel, -np.inf if inside else np.inf, lo))
+            exit = np.minimum(exit, np.where(parallel, np.inf if inside else -np.inf, hi))
+        distance = np.where(entry >= camera['near_m'], entry, exit)
+        visible = ((exit >= entry) & (distance >= camera['near_m']) &
+                   (distance <= camera['far_m']) & (distance < depth))
+        if not visible.any():
+            return
+        depth[visible] = distance[visible]
+        rgb[visible] = [224, 115, 25]
+        marker = config.get('visual_marker')
+        if marker is None:
+            return  # An unmarked box never receives an implicit identity tag.
+        import cv2
+        marker_size = float(marker['size_m'])
+        if not 0 < marker_size < min(size[:2]):
+            raise ValueError('marker must fit on the parcel top with a white margin')
+        dictionary_name = marker['dictionary']
+        if not dictionary_name.startswith('DICT_') or not hasattr(cv2.aruco, dictionary_name):
+            raise ValueError('unsupported public marker dictionary')
+        dictionary = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dictionary_name))
+        texture = cv2.aruco.generateImageMarker(dictionary, int(marker['id']), 256,
+                                               borderBits=int(marker.get('border_bits', 1)))
+        rows, columns = np.nonzero(visible)
+        points = origin + distance[rows, columns, None]*rays[rows, columns]
+        top = (np.abs(points[:, 2]-upper[2]) <= 1e-6) & (rays[rows, columns, 2] < 0)
+        # Top is white outside the tag; .24 m is the black border's outer size.
+        rgb[rows[top], columns[top]] = 255
+        u = (points[:, 0]-center[0])/marker_size + .5
+        v = .5-(points[:, 1]-center[1])/marker_size
+        tagged = top & (u >= 0) & (u < 1) & (v >= 0) & (v < 1)
+        gray = texture[(v[tagged]*256).astype(int), (u[tagged]*256).astype(int)]
+        rgb[rows[tagged], columns[tagged]] = gray[:, None]
 
 
 class MockRpcClient:

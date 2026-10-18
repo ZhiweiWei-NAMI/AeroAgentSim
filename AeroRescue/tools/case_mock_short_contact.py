@@ -36,8 +36,9 @@ def run_branch(args, base, variant):
     scene = copy.deepcopy(base)
     scene.update(max_real_time_factor=3, execution_backend='mock')
     scene['incident']['deadline_ns'] = 300 * NS
+    scene['vehicles']['u2']['initial_task'] = {'task_id': 'contact-inspection', 'task_revision': 1, 'intent': 'diagnostic'}
     scene['vehicles']['u4']['initial_task'] = {'task_id': 'contact-diagnostic', 'task_revision': 1, 'intent': 'diagnostic'}
-    scene['mock_backend'].update(expected_clients=['u4'], startup_timeout_s=30, person_sprite_path=str(sprite))
+    scene['mock_backend'].update(expected_clients=['u2', 'u4'], startup_timeout_s=30, person_sprite_path=str(sprite))
     for person in scene['mock_backend']['people']:
         person.pop('sprite_path', None)
     scene['mock_backend'].pop('payload_contact_impulse', None)
@@ -52,13 +53,19 @@ def run_branch(args, base, variant):
     (root / 'private-scene.yaml').write_text(yaml.safe_dump(scene))
     public = copy.deepcopy(scene); public.pop('mock_backend')
     public.update(model_path=str(args.model.resolve()), embedding_path=None)
+    if variant == 'unmarked_contact':
+        # Physical negative: public inventory still expects ID 7; the actual
+        # simulated box has no printed marker. No receipt/result is suppressed.
+        scene['payload'].pop('visual_marker', None)
+        (root / 'private-scene.yaml').write_text(yaml.safe_dump(scene))
     (root / 'agent-config.yaml').write_text(yaml.safe_dump(public))
     save_json(root / 'fixed-inputs.json', {
         'execution_backend': 'mock', 'variant': variant,
         'contact_threshold_ns': scene['payload']['contact_duration_ns'],
         'impulse': scene['mock_backend'].get('payload_contact_impulse'),
-        'diagnostic_camera_goal_enu_m': [60, 60, 40],
-        'input_scope': 'public receiver centre chosen before detector; no person position enters tool requests',
+        'diagnostic_search_polygon': public['public_map']['receiver_polygon'],
+        'diagnostic_search_altitude_m': 40,
+        'input_scope': 'public receiver polygon searched by inspector; only actual radio-received visual report enters carrier plan',
     })
     run_id = args.output.name + '-' + variant
     coordinator = Coordinator(scene, run_id, root / 'coordinator', root / 'ipc', backend='mock', until_ns=300 * NS)
@@ -68,7 +75,7 @@ def run_branch(args, base, variant):
         except Exception as error:
             errors.append(repr(error)); traceback.print_exc()
     thread = threading.Thread(target=run); thread.start()
-    runtime = None
+    runtime = inspector = None
     try:
         until = time.monotonic() + 30
         while not (root / 'ipc/ready.json').exists():
@@ -77,22 +84,27 @@ def run_branch(args, base, variant):
             time.sleep(.01)
         runtime = CompanionRuntime(public, run_id=run_id, uav_id='u4', data_dir=root / 'u4',
             socket_path='file://' + str(root / 'ipc/u4/agent.sock'))
+        inspector = CompanionRuntime(public, run_id=run_id, uav_id='u2', data_dir=root / 'u2',
+            socket_path='file://' + str(root / 'ipc/u2/agent.sock'))
         centre = FlightClient('file://' + str(root / 'ipc/centre/agent.sock'), run_id)
         received = {}
         def tick():
             if errors: raise RuntimeError(errors)
             runtime.tick()
+            inspector.tick()
             for message in centre.request('radio_inbox').get('messages', []):
                 if message['message_id'] not in received:
                     received[message['message_id']] = message
                     centre.request('radio_inbox_ack', message_id=message['message_id'])
             time.sleep(.01)
-        def call(name, request, control=False):
+        def call(name, request, control=False, worker=None, result_key=None):
+            worker = worker or runtime
             rid = uuid.uuid4().hex
-            folder = runtime.root / 'tasks/tool-requests'; folder.mkdir(exist_ok=True)
+            folder = worker.root / 'tasks/tool-requests'; folder.mkdir(exist_ok=True)
             item = {'request_id': rid, 'control' if control else 'tool': name, 'request': request,
                     'continue_on_unavailable': True}
-            task = runtime.state.get('task')
+            if result_key: item['result_key'] = result_key
+            task = worker.state.get('task')
             if task: item.update(task_id=task['task_id'], task_revision=task['task_revision'])
             save_json(folder / (rid + '.queued.json'), item)
             until = time.monotonic() + 100
@@ -103,27 +115,45 @@ def run_branch(args, base, variant):
             print(variant, name, result.get('status'), flush=True)
             return result
         until = time.monotonic() + 30
-        while not runtime.state['seen_messages']:
+        while not runtime.state['seen_messages'] or not inspector.state['seen_messages']:
             if time.monotonic() > until: raise TimeoutError('initial radio notice did not arrive')
             tick()
         result = call('accept-task', {'message_id': runtime.state['seen_messages'][0]}, True)
         assert result['status'] == 'succeeded', result
-        for action, params in [('arm', {}), ('takeoff', {'altitude_m': 40}),
-                ('goto', {'position_enu_m': [60, 60, 40], 'yaw_deg': 0})]:
+        accepted = call('accept-task', {'message_id': inspector.state['seen_messages'][0]}, True, worker=inspector)
+        assert accepted['status'] == 'succeeded', accepted
+        for action, params in [('arm', {}), ('takeoff', {'altitude_m': 40})]:
+            result = call('flight-command', {'action': action, 'params': params}, worker=inspector)
+            assert result['status'] == 'succeeded', result
+        # The carrier's mounted parcel correctly blocks its downward camera.
+        # Use the real inspector, its archive, and its radio-delivered report.
+        survey = call('search-area', {'polygon': public['public_map']['receiver_polygon'],
+            'altitude_m': 40, 'footprint_width_m': 20}, worker=inspector, result_key='search')
+        assert survey['status'] == 'succeeded', survey
+        while 'inspection_report' not in inspector.state['results']:
+            proposal = inspector._inspection_decision()
+            assert proposal is not None, inspector.state['results']
+            call(proposal['tool'], proposal['request'], worker=inspector, result_key=proposal['result_key'])
+        report_transfer = inspector.state['results']['inspection_report']
+        assert report_transfer['status'] == 'succeeded', report_transfer
+        target_report = received[report_transfer['message_id']]['data']
+        assert target_report['observation_verdict'] == 'confirmed', target_report
+        reply = centre.request('radio_send', destination='u4', kind='plan',
+            event_id=runtime.state['task']['event_id'], task_id='contact-diagnostic', task_revision=2,
+            deadline_ns=300*NS, data={'intent': 'diagnostic', 'deadline_ns':300*NS, 'target_report':target_report})
+        pending = reply['request_id']
+        while not reply.get('message_id'):
+            tick(); reply = centre.request('result', pending_request_id=pending)
+        plan_id = reply['message_id']
+        while plan_id not in runtime.state['seen_messages']: tick()
+        accepted = call('accept-task', {'message_id':plan_id}, True)
+        assert accepted['status'] == 'succeeded', accepted
+        site = call('select-drop-site', {'plan_message_id':plan_id})
+        assert site['status'] == 'succeeded', site
+        detected = inspector.state['results']['detect_0']
+        for action, params in [('arm', {}), ('takeoff', {'altitude_m': 40})]:
             result = call('flight-command', {'action': action, 'params': params})
             assert result['status'] == 'succeeded', result
-        after = runtime.flight.state()['sim_ns']
-        while True:
-            capture = runtime._gateway_request(op='capture_request', after_sim_ns=after)
-            if capture['status'] != 'pending': break
-            tick()
-        assert capture['status'] == 'succeeded', capture
-        first = download_capture(runtime.tools.perception_tools().store, runtime._gateway_request, capture)
-        detected = call('detect-persons', {'frame_id': first['frame_id']})
-        assert detected.get('detections'), detected
-        person = max(detected['detections'], key=lambda row: row['score'])
-        site = call('select-drop-site', {'frame_id': first['frame_id'], 'detection_id': person['detection_id']})
-        assert site['status'] == 'succeeded', site
         package_id = scene['payload']['package_id']
         delivery = call('deliver-supply', {'drop_site_id': site['drop_site_id'], 'package_id': package_id})
         assert delivery['status'] == 'succeeded' and delivery['frames'], delivery
@@ -135,13 +165,21 @@ def run_branch(args, base, variant):
         receipts = [json.loads((runtime.root / 'inbox' / mid / 'message.json').read_text())
                     for mid in runtime.state['seen_messages']]
         receipts = [m for m in receipts if m['kind'] == 'receipt' and m['data'].get('package_id') == package_id]
-        if variant == 'sustained_contact':
+        if variant in {'sustained_contact', 'unmarked_contact'}:
             assert len(receipts) == 1, receipts
             capture_after = call('verify-delivery', {'package_id': package_id, 'receipt_message_id': receipts[0]['message_id']})
             assert capture_after['status'] == 'succeeded' and capture_after['frames'], capture_after
             result = call('verify-delivery', {'package_id': package_id,
                 'post_drop_frame_id': capture_after['frames'][-1]['frame_id']})
-            assert result.get('delivery_verified') is True, result
+            if variant == 'sustained_contact':
+                assert result.get('delivery_verified') is True and result['package_observation']['status'] == 'confirmed', result
+            else:
+                assert result.get('delivery_verified') is False and result['package_observation']['status'] == 'unknown', result
+                repeated = call('verify-delivery', {'package_id': package_id, 'receipt_message_id': receipts[0]['message_id']})
+                recheck = call('verify-delivery', {'package_id': package_id, 'post_drop_frame_id': repeated['frames'][-1]['frame_id']})
+                assert recheck['package_observation']['observed_at'] > result['package_observation']['observed_at']
+                assert recheck['delivery_verified'] is False and recheck['package_observation']['status'] == 'unknown', recheck
+                result = recheck
         else:
             assert receipts == [], receipts
             result = call('verify-delivery', {'package_id': package_id,
@@ -177,7 +215,7 @@ def run_branch(args, base, variant):
             'carrier_receipts': receipts, 'centre_receipts': centre_receipts, 'centre_confirmations': confirmations,
             'verification': result, 'radio_report': received[sent['message_id']],
             'return_status': returned['status'], 'original_task': runtime.state['task'],
-            'checks': 'short contact remains unconfirmed; only sustained contact creates actual radio receipt and verifies delivery',
+            'checks': 'short contact has no receipt; sustained contact only verifies with a newly decoded public marker at the receiving site; unmarked contact remains unknown',
             'evidence': ['coordinator/mock-world.jsonl', 'coordinator/mock-rpc.jsonl', 'coordinator/flight/operations.jsonl',
                 'coordinator/radio/packet-ledger.jsonl', 'u4/logs/tool-trace.jsonl', 'u4/tasks/tool-requests', 'u4/inbox']}
         assert report['release_count'] == 1
@@ -189,6 +227,7 @@ def run_branch(args, base, variant):
         raise
     finally:
         if runtime is not None: runtime.close()
+        if inspector is not None: inspector.close()
         coordinator.stop_requested = True; thread.join(10)
         if thread.is_alive(): raise RuntimeError('coordinator did not stop')
         if errors: raise RuntimeError(errors)
@@ -199,6 +238,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--model', type=Path, required=True)
     parser.add_argument('--person-sprite', type=Path, required=True)
+    parser.add_argument('--variants', nargs='+', choices=['short_contact', 'sustained_contact', 'unmarked_contact'], default=['short_contact', 'sustained_contact'])
     parser.add_argument('--scenario', type=Path, default=Path(__file__).parents[1] / 'scenarios/rooftop-flood-mock.yaml')
     args = parser.parse_args()
     os.environ.setdefault('ORT_DISABLE_TELEMETRY', '1')
@@ -207,9 +247,12 @@ def main():
     from aerorescue.companion import mock_backend
     shutil.copy2(mock_backend.__file__, args.output / 'mock_backend.py')
     base = yaml.safe_load(args.scenario.read_text())
-    reports = [run_branch(args, base, variant) for variant in ('short_contact', 'sustained_contact')]
+    for name in ['payload', 'tools', 'runtime']:
+        module = __import__('aerorescue.companion.' + name, fromlist=['__file__'])
+        shutil.copy2(module.__file__, args.output / (name + '.py'))
+    reports = [run_branch(args, base, variant) for variant in args.variants]
     save_json(args.output / 'summary.json', {'execution_backend': 'mock', 'native': False,
-        'scope': 'two actual tool-chain contact components',
+        'scope': 'actual driver-selected tool-chain contact and marked-package components',
         'results': [{k: r[k] for k in ['variant', 'release_count', 'contact_threshold_ns', 'return_status']} |
                     {'delivery_verified': r['verification']['delivery_verified'],
                      'verification_status': r['verification']['status'],

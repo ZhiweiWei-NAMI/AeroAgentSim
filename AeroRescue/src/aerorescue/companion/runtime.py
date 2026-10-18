@@ -27,6 +27,7 @@ from .tools import CompanionTools
 from .transport import NS, encoded, save_json
 
 TERMINAL = {"succeeded", "failed", "canceled", "unavailable", "rejected"}
+FLIGHT_STOP_CONFIRMED = {"succeeded", "canceled"}
 
 
 class CompanionRuntime:
@@ -100,6 +101,8 @@ class CompanionRuntime:
 
     def _recovery_authorization(self) -> dict[str, Any] | None:
         task = self.state.get("task") or {}
+        if self.state.get("flight_cleanup_unconfirmed") or any(m.get("cleanup_unconfirmed") for m in self.state["missions"].values()):
+            return None
         closed = self.state.get("mission_closed") or {}
         if closed.get("event_id") == task.get("event_id") and closed:
             return {"kind": "applied_centre_closure", "message_id": closed["message_id"]}
@@ -162,7 +165,7 @@ class CompanionRuntime:
         # report_submitted is set only after active jobs and canceled mission
         # operations have reached their real terminal states.
         return bool(authorization.get("kind") == "applied_centre_closure" and cancel.get("report_submitted")
-                    and all(row.get("status") in TERMINAL for row in cancel.get("operation_results", [])))
+                    and all(row.get("status") in FLIGHT_STOP_CONFIRMED for row in cancel.get("operation_results", [])))
 
     def _assignment_cancel_tick(self) -> None:
         cancel = self.state.get("assignment_cancel")
@@ -175,8 +178,12 @@ class CompanionRuntime:
         if self.future is not None or self.active_tool is not None or any(self._assignment_is_canceled(m) and m["status"] not in TERMINAL for m in self.state["missions"].values()):
             return
         released = any((p["task_id"], p["task_revision"]) == (cancel["task_id"], cancel["task_revision"]) and p.get("released") for p in self.tools.payload.packages.values())
-        data = {"kind": "assignment_canceled", "cancel_message_id": cancel["message_id"],
-            "operation_results": cancel.get("operation_results", []), "no_active_operation": True,
+        cleanup_failures = [m.get("last_result", m.get("deadline_cancel_result")) for m in self.state["missions"].values() if self._assignment_is_canceled(m) and m.get("cleanup_unconfirmed")]
+        if self.state.get("flight_cleanup_unconfirmed"):
+            cleanup_failures.append(self.state["flight_cleanup_unconfirmed"])
+        stopped = not cleanup_failures and all(row.get("status") in FLIGHT_STOP_CONFIRMED for row in cancel.get("operation_results", []))
+        data = {"kind": "assignment_canceled" if stopped else "assignment_cancel_failed", "cancel_message_id": cancel["message_id"],
+            "operation_results": cancel.get("operation_results", []), "cleanup_failures": cleanup_failures, "no_active_operation": stopped,
             "payload_already_released": released, "commitment_version": self.state["commitment_version"]}
         self._send_resource_report("cancel-" + cancel["message_id"], data, {**cancel, "deadline_ns": cancel["data"]["deadline_ns"]})
         cancel["report_submitted"] = True
@@ -187,6 +194,8 @@ class CompanionRuntime:
     def _register_mission(self, name: str, steps: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
         if any(row["status"] not in TERMINAL for row in self.state["missions"].values()):
             raise ValueError("one task worker may own only one active mission")
+        if name == "resume-or-return" and (self.state.get("flight_cleanup_unconfirmed") or any(m.get("cleanup_unconfirmed") for m in self.state["missions"].values())):
+            raise ValueError("flight cleanup is unconfirmed; home return is not authorized")
         operation_id = "mission-" + uuid.uuid4().hex
         mission = {"operation_id": operation_id, "tool_name": name, "steps": steps, "index": 0, "pending": None, "status": "accepted", "metadata": metadata, "frames": [], **self.context()}
         authorization = self._recovery_authorization()
@@ -419,6 +428,9 @@ class CompanionRuntime:
                         continue
                     if self._assignment_is_canceled(mission):
                         self.state["assignment_cancel"]["operation_results"].append(canceled)
+                    if canceled.get("status") not in FLIGHT_STOP_CONFIRMED:
+                        mission.update(status="failed", cleanup_unconfirmed=True, reason="flight cancellation failed; physical stop is unconfirmed", last_result=canceled)
+                        continue
                 elif pending.get("kind") == "release":
                     released = self._poll_pending(pending)
                     if released.get("status") not in TERMINAL | {"detached"}:
@@ -435,6 +447,9 @@ class CompanionRuntime:
                 if pending.get("kind") == "flight":
                     actual = self.flight.cancel(pending["operation_id"])
                     mission["deadline_cancel_result"] = actual
+                    if actual.get("status") in TERMINAL - FLIGHT_STOP_CONFIRMED:
+                        mission.update(status="failed", cleanup_unconfirmed=True, reason="deadline cancellation failed; physical stop is unconfirmed", last_result=actual)
+                        continue
                     if actual.get("status") not in TERMINAL:
                         mission["reason"] = "task deadline reached; awaiting actual flight cancellation terminal"
                         continue
@@ -775,11 +790,19 @@ class CompanionRuntime:
             return self._policy_call("verify-delivery", {"package_id": package_id, "receipt_message_id": receipt_id}, "settled_observation")
         settled = results["settled_observation"]
         if settled["status"] != "succeeded" or not settled.get("frames"):
-            return self._policy_call("send-evidence", {"data": {"kind": "delivery_failed", "reason": "No post-contact observation", "observation": settled}, "route": self._evidence_route()}, "delivery_report")
+            return self._policy_call("send-evidence", {"data": {"kind": "delivery_uncertain", "reason": "No post-contact observation", "observation": settled}, "route": self._evidence_route()}, "delivery_report")
         if "delivery_verification" not in results:
             return self._policy_call("verify-delivery", {"package_id": package_id, "receipt_message_id": receipt_id, "post_drop_frame_id": settled["frames"][-1]["frame_id"]}, "delivery_verification")
         verified = results["delivery_verification"]
-        return self._policy_call("send-evidence", {"data": {"kind": "delivery_verified" if verified.get("delivery_verified") else "delivery_failed", "delivery": verified}, "route": self._evidence_route()}, "delivery_report")
+        if not verified.get("delivery_verified"):
+            if "package_recheck_frame" not in results:
+                return self._policy_call("verify-delivery", {"package_id": package_id, "receipt_message_id": receipt_id}, "package_recheck_frame")
+            recheck = results["package_recheck_frame"]
+            if recheck.get("status") == "succeeded" and recheck.get("frames"):
+                if "package_recheck_result" not in results:
+                    return self._policy_call("verify-delivery", {"package_id": package_id, "receipt_message_id": receipt_id, "post_drop_frame_id": recheck["frames"][-1]["frame_id"]}, "package_recheck_result")
+                verified = results["package_recheck_result"]
+        return self._policy_call("send-evidence", {"data": {"kind": "delivery_verified" if verified.get("delivery_verified") else "delivery_uncertain", "delivery": verified}, "route": self._evidence_route()}, "delivery_report")
 
     def _closure_return(self) -> dict[str, Any] | None:
         """Common harness disposition after a received cancellation, in both modes."""
@@ -1029,7 +1052,7 @@ class CompanionRuntime:
                 continue
             if reply.get("message_id"):
                 cancel["message_id"] = reply["message_id"]
-            acknowledgement = next((row for row in incident["reports"] if cancel.get("message_id") and row["source"] == cancel["uav_id"] and row["task_id"] == cancel["task_id"] and row["task_revision"] == cancel["task_revision"] and row["received_ns"] <= now and row.get("data", {}).get("kind") == "assignment_canceled" and row["data"].get("cancel_message_id") == cancel["message_id"] and row["data"].get("no_active_operation") and all(op.get("status") in TERMINAL for op in row["data"].get("operation_results", []))), None)
+            acknowledgement = next((row for row in incident["reports"] if cancel.get("message_id") and row["source"] == cancel["uav_id"] and row["task_id"] == cancel["task_id"] and row["task_revision"] == cancel["task_revision"] and row["received_ns"] <= now and row.get("data", {}).get("kind") == "assignment_canceled" and row["data"].get("cancel_message_id") == cancel["message_id"] and row["data"].get("no_active_operation") and all(op.get("status") in FLIGHT_STOP_CONFIRMED for op in row["data"].get("operation_results", []))), None)
             if acknowledgement:
                 if acknowledgement["data"].get("payload_already_released"):
                     incident["reason"] = "Resources changed after a physical release; replacement delivery is not authorized"
@@ -1397,6 +1420,8 @@ class CompanionRuntime:
                 if "observation_verdict" in report:
                     outcome = self._inspection_report_status(event_id, message)
                     return action("centre-notice", event_id=event_id, kind="delivery", report_message_id=message["message_id"]) if outcome == "ready" else action("centre-finish", event_id=event_id, outcome=outcome)
+                if report.get("kind") == "delivery_uncertain":
+                    return action("centre-finish", event_id=event_id, outcome="unresolved_evidence")
                 if report.get("kind") == "delivery_failed":
                     return action("centre-finish", event_id=event_id, outcome="failed_execution")
                 if report.get("kind") == "delivery_verified":
@@ -1434,6 +1459,8 @@ class CompanionRuntime:
         if any(op["status"] == "pending" for op in self.state.get("control_operations", {}).values()):
             return None
         if not self.state.get("task") or self.state.get("task_blocker") and not self.state.get("mission_closed"):
+            return None
+        if self.state.get("flight_cleanup_unconfirmed") or any(m.get("cleanup_unconfirmed") for m in self.state["missions"].values()):
             return None
         if self._assignment_is_canceled(self.state["task"]) and not self._closed_cancel_reconciled():
             return None
@@ -1586,6 +1613,8 @@ class CompanionRuntime:
             if result.get("status") in TERMINAL | {"submitted", "available", "confirmed", "uncertain"}:
                 if canceled and "flight_operation_id" in active:
                     self.state["assignment_cancel"]["operation_results"].append(result)
+                if "flight_operation_id" in active and (canceled or self.state.get("mission_closed")) and result.get("status") not in FLIGHT_STOP_CONFIRMED:
+                    self.state["flight_cleanup_unconfirmed"] = result
                 self.active_tool = None
                 self._complete_tool(result, active["call"])
         if self.future and self.future.done():

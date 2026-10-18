@@ -1,13 +1,13 @@
 ---
 name: verify-delivery
-description: Require observed detachment, a new frame and an actual radio contact receipt.
+description: Require detachment, a real radio contact receipt and a new RGB-D observation of the public package marker at the receiving site.
 ---
 
 # verify-delivery
 
-Require observed detachment, a new frame and an actual radio contact receipt.
+Require detachment, a real radio contact receipt and a new RGB-D observation of the public package marker at the receiving site.
 
-Input: package_id and a real inbox receipt_message_id. Omit post_drop_frame_id to acquire a fresh post-contact frame; then call again with the resulting post_drop_frame_id to check actual receiving-site visibility and the payload ledger. Arbitrary actuator/receipt objects are not accepted.
+Input: package_id and a real inbox receipt_message_id. Omit post_drop_frame_id to acquire a fresh post-contact frame; then call again with the resulting post_drop_frame_id to decode the inventory ArUco marker and back-project its actual numerical depth into the public receiving polygon. The frame must be newer than release and receipt. Site visibility alone cannot confirm the package. Unmarked, occluded, ambiguous or unresolved markers remain package_visual_unknown. The rule policy permits one additional new frame, then reports unresolved evidence. This only identifies the marked box at the site; human collection is not modeled. Arbitrary actuator/receipt objects are not accepted.
 
 Run through the already-running local worker:
 

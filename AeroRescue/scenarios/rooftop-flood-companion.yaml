@@ -173,6 +173,11 @@ payload:
   - 0.3
   - 0.2
   package_mass_kg: 1
+  visual_marker:
+    dictionary: DICT_4X4_50
+    id: 7
+    size_m: 0.24
+    border_bits: 1
   parent_link: base_link
   child_link: parcel
   receiver_link: surface

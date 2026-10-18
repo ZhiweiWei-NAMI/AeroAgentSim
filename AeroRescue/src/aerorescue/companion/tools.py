@@ -13,7 +13,7 @@ from typing import Any
 
 from .planning import PublicMapPlanner
 
-from .payload import PayloadDelivery, select_drop_site
+from .payload import PayloadDelivery, observe_marked_package, select_drop_site
 from .transport import NS, encoded, save_json
 
 TOOL_DESCRIPTIONS = {
@@ -34,7 +34,7 @@ TOOL_DESCRIPTIONS = {
     "handover-role": "Transfer a held relay using delivered evidence, actual replacement flight/probes and a task-bound radio acceptance before releasing the old owner.",
     "select-drop-site": "Choose a point inside the public receiving polygon away from uncertain people locations.",
     "deliver-supply": "Fly to a safe selected point, then command the physical release actuator.",
-    "verify-delivery": "Require observed detachment, a new frame and an actual radio contact receipt.",
+    "verify-delivery": "Require detachment, an actual radio contact receipt and a new RGB-D frame decoding the public package marker at the receiving site.",
     "flight-command": "Submit an arm/takeoff/goto/hold/land primitive and yield until its actual operation completes.",
     "reobserve-target": "Move to a reachable geometrically different viewpoint and capture a new frame.",
     "resume-or-return": "Resume explicitly saved task obligations or fly a public return route and land.",
@@ -547,24 +547,28 @@ class CompanionTools:
         if not request.get("post_drop_frame_id"):
             if not self.payload.packages[package_id].get("receipt_delivered"):
                 return {"status": "pending", "reason": "actual contact receipt required before settled observation"}
-            return self.submit_mission("verify-delivery", [{"action": "capture", "params": {}}], {"package_id": package_id, "observation_purpose": "post-contact receiving site, not automatic package recognition"})
+            return self.submit_mission("verify-delivery", [{"action": "capture", "params": {}}], {"package_id": package_id, "observation_purpose": "decode public package ID and locate visible marked box in a new post-contact RGB-D frame"})
         if request.get("post_drop_frame_id"):
-            frame = self.perception_tools().store.observation(request["post_drop_frame_id"])
+            store = self.perception_tools().store
+            frame = store.observation(request["post_drop_frame_id"])
             package = self.payload.packages[package_id]
-            site = package.get("drop_site")
-            if not site or not frame.get("depth_artifact_id"):
-                raise ValueError("post-drop image needs its selected site and numerical depth")
             import io
             import numpy as np
-            from .geometry import site_visible_in_frame
-            depth_bytes, _ = self.perception_tools().store.read(frame["depth_artifact_id"])
-            position = list(site["position_enu_m"])
             physical = self.config["payload"]
-            position[2] = physical["receiver_pose"][2] + physical["receiver_size"][2] / 2
-            visibility = site_visible_in_frame(frame, np.load(io.BytesIO(depth_bytes), allow_pickle=False), position)
-            if not visibility.get("visible"):
-                return {"status": "unavailable", "reason": "selected receiving site is not visible in the actual new frame", "site_visibility": visibility}
-            self.payload.observe(package_id, frame["frame_id"], frame["observed_at"])
+            if package_id != physical["package_id"]:
+                raise ValueError("package is not associated with the public inventory marker")
+            if not frame.get("depth_artifact_id"):
+                observation = {"status": "unknown", "frame_id": frame["frame_id"], "observed_at": frame["observed_at"], "reason": "numerical depth is unavailable"}
+            else:
+                depth_bytes, _ = store.read(frame["depth_artifact_id"])
+                rgb_bytes, _ = store.read(frame["rgb_artifact_id"])
+                observation = observe_marked_package(rgb_bytes, np.load(io.BytesIO(depth_bytes), allow_pickle=False), frame,
+                    physical.get("visual_marker"), self.config["public_map"]["receiver_polygon"],
+                    physical["receiver_pose"][2] + physical["receiver_size"][2] / 2, physical["package_size_m"][2])
+            observation.update(package_id=package_id, analyzed_at=self.context["sim_ns"])
+            saved = store.save_artifact(encoded(observation), ".json", {"kind": "package_visual_observation", "frame_id": frame["frame_id"]})
+            observation["analysis_artifact_id"] = saved["artifact_id"]
+            self.payload.observe(package_id, observation)
         return self.payload.status(package_id, self.context["sim_ns"])
 
     def resume_or_return(self, request: dict[str, Any]) -> dict[str, Any]:
