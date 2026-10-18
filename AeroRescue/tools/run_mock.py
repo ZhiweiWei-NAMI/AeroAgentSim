@@ -42,6 +42,7 @@ def main() -> int:
     parser.add_argument('--output', type=Path)
     parser.add_argument('--agents', default='u1,u2,u3,u4,centre')
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--allocation-policy', choices=['online', 'no-resource-replan'], default='online', help='Comparison only: omit new offer after a resource withdrawal is actually canceled; preserve normal inspection/delivery stages')
     parser.add_argument('--case', choices=['C01', 'C02', 'C03', 'C04', 'C07', 'C08'], default='C01')
     parser.add_argument('--variant', choices=['no_person', 'occluded_then_visible', 'still_uncertain', 'low_energy_after_offer', 'payload_unavailable', 'role_id_permutation', 'missing_fragment_nack_then_retry', 'path_lost_then_second_attempt', 'no_valid_path', 'lost_assignment_before_acceptance', 'joint_did_not_release', 'final_ack_lost', 'confirmation_final_ack_lost', 'second_incident_queued', 'deadline_expired', 'no_eligible_vehicle'])
     parser.add_argument('--until-ns', type=int, default=900_000_000_000)
@@ -131,10 +132,11 @@ def main() -> int:
     # Simulator-only people/sprite/fault truth never enters the agent config.
     config.write_text(yaml.safe_dump({key: value for key, value in scene.items() if key not in {'mock_backend', 'native_radio_fault'}}, sort_keys=False))
     env = {**os.environ, 'ORT_DISABLE_TELEMETRY': '1', 'PYTHONUNBUFFERED': '1',
+           'AERORESCUE_ALLOCATION_POLICY': args.allocation_policy,
            'PYTHONPATH': os.pathsep.join([str(APP / 'src'), str(REPO / 'src'), str(REPO / 'aerokernel'), os.environ.get('PYTHONPATH', '')])}
     manifest = {'run_id': args.run_id, 'backend': 'mock', 'native_started': False,
                 'decision_owner': 'official Cordis/DSH agent-loop', 'agent_mode': 'rule',
-                'agents': agents, 'seed': args.seed, 'case_id': args.case, 'variant': args.variant,
+                'agents': agents, 'seed': args.seed, 'allocation_policy': args.allocation_policy, 'case_id': args.case, 'variant': args.variant,
                 'started_at': dt.datetime.now(dt.timezone.utc).isoformat(),
                 'source_scenario': str(args.scenario.resolve()), 'execution_status': 'RUNNING',
                 'note': 'Mock adapter results are simulated evidence, not native flight, radio, camera, or physical delivery acceptance.'}

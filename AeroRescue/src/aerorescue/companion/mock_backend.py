@@ -214,7 +214,7 @@ class MockWorld:
                     'source':'mock_detachable_joint','source_time_ns':self.now,'execution_backend':'mock'}
         # Position is simulator private; it is never an actuator-status field.
         self.payload['observed_sim_ns'] = self.now
-        return {k:v for k,v in self.payload.items() if k not in ('position','velocity','contact_since','receipt_sent')}
+        return {k:v for k,v in self.payload.items() if k not in ('position','velocity','contact_since','receipt_sent','contact_impulse_applied')}
 
     def advance_payload(self, dt, events, receipts):
         p=self.payload
@@ -234,6 +234,21 @@ class MockWorld:
                 if inside and abs(surface-top)<1e-6:p['contact_since']=self.now
                 self.log('payload_landed',position_enu_m=pos.tolist(),inside_receiver=inside)
             p['position'],p['velocity']=pos.tolist(),vel.tolist()
+            if p.get('contact_impulse_applied'):
+                self.log('payload_motion', position_enu_m=pos.tolist(), velocity_enu_m_s=vel.tolist(),
+                         landed=bool(p.get('landed')), source='explicit_mock_contact_impulse')
+        impulse = self.config.get('payload_contact_impulse')
+        if (impulse and p.get('contact_since') is not None and not p.get('contact_impulse_applied')
+                and self.now-p['contact_since'] >= impulse['after_contact_ns']):
+            # A declared one-shot mechanical disturbance, not a suppressed
+            # receipt: the parcel leaves the surface and resumes gravity-driven
+            # flight. Later physical contact is evaluated by the same rule.
+            velocity = np.asarray(p['velocity']) + np.asarray(impulse['velocity_delta_enu_m_s'], dtype=float)
+            self.log('payload_contact_interrupted', contact_start_ns=p['contact_since'],
+                     contact_end_ns=self.now, contact_duration_ns=self.now-p['contact_since'],
+                     position_enu_m=p['position'], velocity_enu_m_s=velocity.tolist(),
+                     source='explicit_mock_contact_impulse', parameters=impulse)
+            p.update(landed=False, contact_since=None, velocity=velocity.tolist(), contact_impulse_applied=True)
         if p.get('contact_since') is not None and not p.get('receipt_sent') and self.now-p['contact_since']>=cfg['contact_duration_ns']:
             receipt={'source':'mock_contact_model','execution_backend':'mock','receiver_id':cfg['receiver_id'],
                 'package_id':cfg['package_id'],'source_topic':cfg['contact_topic'],'clock_epoch':self.epoch,

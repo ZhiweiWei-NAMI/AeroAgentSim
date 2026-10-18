@@ -8,12 +8,14 @@ separate file and are not installed in the companion Dockerfile.
 
 ## Prepare models
 
+Run these commands from the `AeroRescue` directory with Python 3.12.
+
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/python -m pip install -r containers/companion/requirements.txt
-.venv/bin/python -m pip install -e ./aerokernel -e '.[server,agents]'
+.venv/bin/python -m pip install -e ../aerokernel -e '..[server,agents]' -e .
 export COMPANION_ASSET_ROOT="$PWD/data/companion-assets"
-python -m venv "$COMPANION_ASSET_ROOT/export-venv"
+python3.12 -m venv "$COMPANION_ASSET_ROOT/export-venv"
 "$COMPANION_ASSET_ROOT/export-venv/bin/python" -m pip install \
   -r containers/companion/requirements-export.txt
 .venv/bin/python tools/prepare_models.py \

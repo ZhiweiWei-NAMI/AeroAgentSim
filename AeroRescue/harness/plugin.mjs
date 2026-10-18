@@ -15,7 +15,19 @@ class LocalRuleAdapter extends LlmAdapter {
   }
   async *stream(options) {
     options.signal?.throwIfAborted();
-    const proposal = await this.bridge.propose(options.signal);
+    let proposal = await this.bridge.propose(options.signal);
+    // Scoped comparison: keep normal inspection -> delivery stages, real bids,
+    // cancellation and transport. Only omit replanning after resource withdrawal.
+    if (process.env.AERORESCUE_ALLOCATION_POLICY === 'no-resource-replan') {
+      const local = this.bridge.context();
+      const incident = local.centre?.incidents?.[proposal?.request?.event_id];
+      if (local.role === 'centre' && proposal?.control === 'centre-notice'
+          && proposal.request.kind === 'offer' && incident?.replan_requested?.status === 'succeeded') {
+        proposal = { ...proposal, control: 'centre-finish', request: {
+          event_id: proposal.request.event_id, outcome: 'failed_execution',
+        } };
+      }
+    }
     let block;
     if (proposal?.tool || proposal?.control || proposal?.wait_until_ns !== undefined) {
       const control = proposal.control ?? (proposal.wait_until_ns !== undefined ? 'wait-until' : undefined);

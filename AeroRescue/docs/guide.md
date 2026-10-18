@@ -73,15 +73,16 @@ with `docker load --input <archive>`. Keep earlier run archives separately.
 
 ## Build and run
 
-On a Docker-capable host, prepare models and scene assets as described above.
+These native build/run commands have not been executed on the current host.
+On a Docker-capable host, run from the `AeroRescue` directory and prepare models and scene assets as described above.
 Set `ASSET_ROOT` to the restored `cache/scene` directory containing
 `makehuman_person/`. The runner generates each attempt's world and keeps its
 labels evaluator-only. Add `--gpu` when using the supplied NVIDIA override:
 
 ```sh
 ./tools/check-host.sh --out runs/acceptance/P0/host-report.json
-containers/px4-gazebo/build.sh
-containers/ns3/build.sh
+../containers/px4-gazebo/build.sh
+../containers/ns3/build.sh
 sh containers/companion/build.sh
 export RUN_ID=build-only RUN_ROOT="$PWD/runs/build-only"
 docker compose -f deploy/compose.yaml build

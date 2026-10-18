@@ -156,6 +156,14 @@ class CompanionRuntime:
         cancel = self.state.get("assignment_cancel")
         return bool(cancel and (cancel["task_id"], cancel["task_revision"]) == (task.get("task_id"), task.get("task_revision")))
 
+    def _closed_cancel_reconciled(self) -> bool:
+        cancel = self.state.get("assignment_cancel") or {}
+        authorization = self._recovery_authorization() or {}
+        # report_submitted is set only after active jobs and canceled mission
+        # operations have reached their real terminal states.
+        return bool(authorization.get("kind") == "applied_centre_closure" and cancel.get("report_submitted")
+                    and all(row.get("status") in TERMINAL for row in cancel.get("operation_results", [])))
+
     def _assignment_cancel_tick(self) -> None:
         cancel = self.state.get("assignment_cancel")
         if not cancel or cancel.get("report_submitted"):
@@ -182,6 +190,8 @@ class CompanionRuntime:
         operation_id = "mission-" + uuid.uuid4().hex
         mission = {"operation_id": operation_id, "tool_name": name, "steps": steps, "index": 0, "pending": None, "status": "accepted", "metadata": metadata, "frames": [], **self.context()}
         authorization = self._recovery_authorization()
+        if name == "resume-or-return" and self._assignment_is_canceled(mission) and not self._closed_cancel_reconciled():
+            raise ValueError("canceled assignment requires applied closure and reconciled cancellation before home return")
         if name == "resume-or-return" and authorization:
             spawn = self.config["vehicles"][self.uav_id]["spawn"]
             home = [spawn[0], spawn[1], max(3.0, spawn[2])]
@@ -1423,7 +1433,9 @@ class CompanionRuntime:
             return self._centre_proposal()
         if any(op["status"] == "pending" for op in self.state.get("control_operations", {}).values()):
             return None
-        if not self.state.get("task") or self._assignment_is_canceled(self.state["task"]) or self.state.get("task_blocker") and not self.state.get("mission_closed"):
+        if not self.state.get("task") or self.state.get("task_blocker") and not self.state.get("mission_closed"):
+            return None
+        if self._assignment_is_canceled(self.state["task"]) and not self._closed_cancel_reconciled():
             return None
         # Existing rule helpers use cursors. Compute them against a detached copy;
         # commit only when Cordis explicitly submits the matching proposal.
