@@ -17,7 +17,8 @@ from aerokernel.values import thaw
 from .contracts import CaptureRequest, browser_encode
 from .renderer import BrowserRenderer, RenderedFrame
 
-FRONTEND_DIST = Path(__file__).resolve().parents[3] / 'frontend' / 'dist'
+FRONTEND_DIST = Path(os.environ.get('AEROAGENTSIM_FRONTEND_DIST',
+    str(Path(__file__).resolve().parents[3] / 'frontend' / 'dist')))
 _PRIVATE_CONSOLE: dict[Path, tuple[str, threading.Thread]] = {}
 
 
