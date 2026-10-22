@@ -65,7 +65,7 @@ const externalTemplate: ScenarioTemplate = {
 };
 
 const run: RunRecord = { id: 'run-1', status: 'completed', scenario: 'project', studio_workspace: 'project', workspace_version: 2, until_ns: '14000000000' };
-const faulted: RunRecord = { id: 'faulted-run', status: 'faulted', scenario: 'project', studio_workspace: 'project', workspace_version: 2, error: 'worker exited before acknowledgement' };
+const faulted: RunRecord = { id: 'faulted-run', status: 'faulted', scenario: 'project', studio_workspace: 'project', workspace_version: 2, until_ns: '14000000000', error: 'worker exited before acknowledgement' };
 
 function installLocale(locale: string) {
   localStorage.setItem('aeroagentsim.locale', locale);
@@ -97,7 +97,7 @@ function configApi(): WorkbenchApi {
 function renderConfig(locale: string, supplied: Project = project, section = 'controls') {
   installLocale(locale);
   return render(<I18nProvider><ConfigPanel api={configApi()} project={supplied} section={section} onSection={vi.fn()}
-    onInitialize={vi.fn()} initializing={false} onClose={vi.fn()} /></I18nProvider>);
+    onProject={vi.fn()} onInitialize={vi.fn()} initializing={false} onClose={vi.fn()} /></I18nProvider>);
 }
 
 function renderWorkbench(locale: string, path: string) {
@@ -161,8 +161,10 @@ it('keeps confirmation, review and creation identical in both locales', async ()
   for (const locale of LOCALES) {
     const api = { templates: vi.fn().mockResolvedValue([template]), request: vi.fn().mockResolvedValue(report) } as unknown as WorkbenchApi;
     installLocale(locale);
-    render(<ExperimentPanel api={api} onExperimentId={vi.fn()} onOpen={vi.fn()} onCompare={vi.fn()} />);
+    render(<I18nProvider><ExperimentPanel api={api} onExperimentId={vi.fn()} onOpen={vi.fn()} onCompare={vi.fn()} /></I18nProvider>);
     await waitFor(() => expect(screen.getByTestId('experiment-template')).toHaveValue('food-delivery'));
+    expect(screen.getByRole('heading', { name: zh(locale) ? '实验' : 'Experiments', exact: true })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: zh(locale) ? '模板' : 'Template', exact: true })).toHaveValue('food-delivery');
     fireEvent.click(screen.getByRole('checkbox', { name: zh(locale) ? '变化“机队规模”' : 'Vary Fleet size' }));
     fireEvent.change(screen.getByTestId('experiment-values-fleet_size'), { target: { value: '4, 8' } });
     await waitFor(() => expect(screen.getByTestId('experiment-review')).toBeEnabled());

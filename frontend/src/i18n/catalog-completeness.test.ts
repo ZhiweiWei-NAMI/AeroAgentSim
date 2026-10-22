@@ -29,12 +29,21 @@ const attributes = new Set(['title', 'description', 'message', 'buttonLabel', 'p
 const punctuation = /^[\s\d.,:;/×·%()（）+\-–—、]+$/;
 const technicalPath = /^(?:GET|POST|PUT|DELETE|PATCH)?\s*\/[\w./{}:-]*$/;
 
+function isTechnicalPlaceholder(value: string) {
+  // Match whole tokens only: a URL followed by instructions is still prose.
+  if (/^https?:\/\/\S+$/i.test(value)) return true;
+  // Model/version ids and sample slugs need a separator plus a digit or an
+  // ellipsis. Do not exempt ordinary hyphenated words such as "read-only".
+  return /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*(?:[-_](?:…|\.{3}))?$/i.test(value)
+    && /[._-]/.test(value) && /(?:\d|…|\.{3})/.test(value);
+}
+
 function uiCopy(value: string) {
-  return /[A-Za-z]{2}/.test(value) && !properNames.has(value) && !/^[\w.-]+\.(?:json|yaml|md)$/.test(value);
+  return /[A-Za-z]{2}/.test(value) && !isTechnicalCopy(value) && !/^[\w.-]+\.(?:json|yaml|md)$/.test(value);
 }
 
 function isTechnicalCopy(value: string) {
-  return properNames.has(value) || punctuation.test(value) || technicalPath.test(value);
+  return properNames.has(value) || punctuation.test(value) || technicalPath.test(value) || isTechnicalPlaceholder(value);
 }
 
 function untranslatedPair(english: string, chinese: string) {
@@ -144,6 +153,27 @@ describe('whole-console bilingual catalog', () => {
     expect([...sample.raw.keys()].sort()).toEqual(['Missing label', 'New help', 'Run now']);
     expect(sample.keys.has('Translated copy')).toBe(true);
     expect(sample.untranslatedPairs.map(pair => pair.zh)).toEqual(['Run now', 'Still English']);
+  });
+  it.each([
+    'https://…/v1', 'http://localhost:8080/v2', 'https://api.example.org/v3?mode=fast',
+    'glm-5.3-flashx', 'model-2.7-preview', 'v3.1', 'exp-…', 'trial-...', 'uav-1', 'vehicle_42',
+  ])('exempts the technical placeholder %s without translating its id', value => {
+    const text = JSON.stringify(value);
+    const sample = sourceKeys({ 'example.tsx': `<><input placeholder={${text}} /><code>{${text}}</code><i>{L(${text}, ${text})}</i></>` });
+    expect([...sample.raw.keys()]).toEqual([]);
+    expect([...sample.keys.keys()]).toEqual([]);
+    expect(sample.pairs).toHaveLength(1);
+    expect(sample.untranslatedPairs).toEqual([]);
+  });
+  it.each([
+    'Run now', 'Create 6 runs', 'read-only', 'one-click', '2-step review',
+    'Use model-2.7-preview', 'https://example.org/v2 is the endpoint', 'exp-… (example)',
+  ])('still detects real prose containing technical-looking text: %s', value => {
+    const text = JSON.stringify(value);
+    const sample = sourceKeys({ 'example.tsx': `<><input placeholder={${text}} /><button>{${text}}</button><i>{L(${text}, ${text})}</i></>` });
+    expect([...sample.raw.keys()]).toEqual([value]);
+    expect([...sample.keys.keys()]).toEqual([value]);
+    expect(sample.untranslatedPairs.map(pair => pair.zh)).toEqual([value]);
   });
   it('does not render unlocalized product JSX text or accessibility attributes', () => {
     expect([...sourceKeys().raw].map(([key, where]) => `${where} → ${key}`)).toEqual([]);
