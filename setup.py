@@ -1,8 +1,8 @@
-"""Build-time packaging of the authoritative shipped demo resources.
+"""Copy authoritative scenario resources into the wheel build output.
 
-The demo tree lives at ``scenarios/demos/traffic-accident`` (single source of
-truth) and is copied verbatim into ``build_lib/aeroagentsim/demo_data/`` so a
-wheel is self-contained. No duplicate maintained copy exists in the repo.
+``scenarios/`` remains the single maintained source tree. Copy complete demo
+and template trees, including shared root files and nested assets, into
+``build_lib/aeroagentsim/{demo_data,template_data}`` for installed use.
 """
 
 from __future__ import annotations
@@ -21,30 +21,25 @@ class build_py(_build_py):
         super().run()
         if self.dry_run or self.build_lib is None:
             return
-        destination = Path(self.build_lib) / "aeroagentsim" / "demo_data" / DEMO.name
-        self.mkpath(str(destination))
-        for path in sorted(DEMO.rglob("*")):
-            if "__pycache__" in path.parts:
-                continue
-            target = destination / path.relative_to(DEMO)
-            if path.is_dir():
-                self.mkpath(str(target))
-            else:
-                self.copy_file(str(path), str(target), preserve_mode=0)
-        templates = Path(self.build_lib) / "aeroagentsim" / "template_data"
-        if TEMPLATES.is_dir():
-            for template in sorted(TEMPLATES.iterdir()):
-                if not template.is_dir() or template.name.startswith("."):
+        package = Path(self.build_lib) / "aeroagentsim"
+        for source, destination in (
+            (DEMO, package / "demo_data" / DEMO.name),
+            (TEMPLATES, package / "template_data"),
+        ):
+            if not source.is_dir():
+                raise FileNotFoundError(f"Missing scenario resource tree: {source}")
+            for path in sorted(source.rglob("*")):
+                relative = path.relative_to(source)
+                if "__pycache__" in relative.parts or path.suffix in {
+                    ".pyc", ".pyo", ".pyd",
+                }:
                     continue
-                for path in sorted(template.rglob("*")):
-                    if "__pycache__" in path.parts:
-                        continue
-                    target = templates / template.name / path.relative_to(template)
-                    if path.is_dir():
-                        self.mkpath(str(target))
-                    else:
-                        self.mkpath(str(target.parent))
-                        self.copy_file(str(path), str(target), preserve_mode=0)
+                target = destination / relative
+                if path.is_dir():
+                    self.mkpath(str(target))
+                else:
+                    self.mkpath(str(target.parent))
+                    self.copy_file(str(path), str(target), preserve_mode=0)
 
 
 setup(cmdclass={"build_py": build_py})

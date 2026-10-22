@@ -104,6 +104,9 @@ wind = "aeroagentsim.models:WindConsumption"
 aerokernel = {path = "./aerokernel", editable = true}
 
 [tool.setuptools.package-data]
+# setup.py stages these complete trees from the authoritative scenarios/ sources.
+# Recursive globs cover shared root files, nested assets and future resource types.
+"aeroagentsim" = ["template_data/**/*", "demo_data/**/*"]
 "aeroagentsim.observations" = ["viewer_bridge.mjs"]
 "aeroagentsim.packs.traffic_accident" = ["camera.html"]
 "aeroagentsim.packs.lowalt" = ["registry.overlay.yaml", "registry.snapshot.json", "cooperation.snapshot.json"]

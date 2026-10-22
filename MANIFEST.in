@@ -1,5 +1,7 @@
 include setup.py
-recursive-include scenarios/demos/traffic-accident *
-recursive-include scenarios/templates *
+# Keep the authoritative trees in sdists so setup.py can stage wheel resources.
+# Include every extension and depth, including templates/huangpu-placements.json.
+graft scenarios/demos/traffic-accident
+graft scenarios/templates
 global-exclude *.py[cod]
 global-exclude __pycache__
