@@ -14,6 +14,20 @@ containers/ns3/build.sh
 
 These scripts produce `aeroagentsim/px4-gazebo:standalone`, `aeroagentsim/sumo:standalone` and `aeroagentsim/ns3:standalone`. The [Dockerfiles](../../containers/) specify the simulator versions and build dependencies. Builds target Linux amd64 and can take substantially longer than the Python installation. The scripts forward existing HTTP/HTTPS proxy variables; Docker daemon pulls need their own network configuration.
 
+### Bound build parallelism
+
+The PX4/Gazebo and ns-3 images compile C/C++ sources with 16 parallel jobs by default. That default is the value both Dockerfiles previously hard-coded, so an unset `BUILD_JOBS` preserves existing behaviour. To bound compilation on a smaller host or a shared CI runner, set a positive integer:
+
+```bash
+BUILD_JOBS=8 containers/px4-gazebo/build.sh
+docker build --build-arg BUILD_JOBS=8 \
+  -t aeroagentsim/ns3:standalone containers/ns3
+```
+
+The PX4/Gazebo helper validates `BUILD_JOBS` before invoking Docker and forwards it as a build argument. Both Dockerfiles validate it again before compiling. An unset variable uses the default; an explicitly empty value, zero, a negative number or any non-integer is rejected with a `BUILD_JOBS must be a positive integer` message instead of falling back. The ns-3 helper currently forwards only the proxy variables, so pass the argument to `docker build` directly for that image.
+
+`BUILD_JOBS` is a build-time concurrency limit, not a runtime CPU or memory limit for the service container. No image was built while adding this knob: actual resource use and equivalence between default and bounded images remain unverified until an authorised build records both.
+
 ## Choose managed or manual execution
 
 **Managed execution** starts and cleans up the images declared by the adapter scenario, using available loopback ports:
