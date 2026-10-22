@@ -148,6 +148,9 @@ def execute(
     ingress: Connection | None = None,
     started: Any | None = None,
     speed: Any | None = None,
+    ready: Any | None = None,
+    inherited_connections: tuple[Connection, ...] = (),
+    input_close_timeout_s: float = 1.0,
 ) -> None:
     """Run a prepared scenario.
 
@@ -155,12 +158,18 @@ def execute(
     ``initialized`` and advances simulated time only after ``started`` is set.
     ``speed`` (shared double) is the host pacing factor: simulated seconds per
     wall second, or 0 for as fast as possible. Pacing never changes results.
+    ``ready`` acknowledges real session initialization, including its t=0 ACK;
+    it is not engine/provider readiness or a successful-run receipt.
     """
     forked = parent_process() is not None
     if forked:
         # A run must not repeatedly collect the HTTP host's retained graphs or
         # execute its abandoned finalizers. Keep new run objects collectable.
         gc.disable()
+        # Fork must not keep this worker's host endpoint or another run's pipe
+        # alive. In particular, an inherited host endpoint would hide EOF.
+        for connection in inherited_connections:
+            connection.close()
         close_inherited_network_sockets()
         gc.freeze()
         gc.enable()
@@ -242,19 +251,22 @@ def execute(
 
     def accept_ingress(active: RunSession, connection: Connection) -> None:
         while True:
-            if not connection.poll(0.02):
-                if ingress_done.is_set():
-                    return
-                continue
             try:
+                if not connection.poll(0.02):
+                    if ingress_done.is_set():
+                        return
+                    continue
                 operation, body = connection.recv()
-            except EOFError:
+            except (EOFError, OSError):
                 return
             try:
                 if operation == "watermark":
                     superseded = superseded_watermark(body, active.simulation.kernel.ingress_watermarks)
                     if superseded is not None:
-                        connection.send({"result": superseded})
+                        try:
+                            connection.send({"result": superseded})
+                        except (EOFError, OSError):
+                            return
                         continue
                 if finishing.is_set() and operation != "progress":
                     raise ValueError("Run is closing; source progress is read-only")
@@ -327,7 +339,10 @@ def execute(
                         "message": str(exc),
                     }
                 }
-            connection.send(response)
+            try:
+                connection.send(response)
+            except (EOFError, OSError):
+                return
 
     try:
         session = RunSession(scenario, directory, prepared=True)
@@ -343,10 +358,14 @@ def execute(
             ingress_thread.start()
         if started is not None and not started.is_set():
             storage.status("initialized")
+            if ready is not None:
+                ready.set()
             while not started.is_set() and not stopped.is_set():
                 wait.wait(0.02)
             if not stopped.is_set():
                 storage.status("running")
+        elif ready is not None:
+            ready.set()
         # Initialization time is not simulated time. Gate each natural kernel
         # boundary before computation, retaining the headless run-limit records.
         pacer = HostPacer(
@@ -384,29 +403,44 @@ def execute(
             error = storage.metadata().get("error") or f"{type(exc).__name__}: {exc}"
     finally:
         finishing.set()
-        if session is not None:
-            try:
-                session.close()
-            except Exception as exc:  # noqa: BLE001 - retain actual cleanup failure
-                outcome = "faulted"
-                error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
-            try:
-                # Cleanup can fail after committing a real fault/terminal tail.
-                publish_committed(force=True)
-            except Exception as exc:  # noqa: BLE001 - retain publication failure
-                outcome = "faulted"
-                error = f"{error + '; ' if error else ''}publication / 发布: {type(exc).__name__}: {exc}"
-            # Publish the closed kernel's real source frontier before its
-            # terminal status. Keep progress RPC alive throughout cleanup.
-            storage._atomic("input-progress.json", {
-                "watermarks": dict(session.simulation.kernel.ingress_watermarks),
-            })
-        storage.status(outcome, error=error, waiting=timed_out_wait)
-        ingress_done.set()
-        if ingress_thread is not None:
-            ingress_thread.join()
-        if ingress is not None:
-            ingress.close()
+        try:
+            # Retain an observed failure even if subsequent cleanup hangs. This
+            # is deliberately not a terminal status or a success/finality flag.
+            if outcome in {"faulted", "input_timeout"}:
+                try:
+                    storage._atomic("manifest.json", {
+                        **storage.metadata(),
+                        "execution_outcome": {
+                            "status": outcome, "error": error, "waiting": timed_out_wait,
+                        },
+                    })
+                except Exception as exc:  # noqa: BLE001 - still attempt session cleanup
+                    error = f"{error + '; ' if error else ''}failure metadata: {type(exc).__name__}: {exc}"
+            if session is not None:
+                try:
+                    session.close()
+                except Exception as exc:  # noqa: BLE001 - retain actual cleanup failure
+                    outcome = "faulted"
+                    error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
+                try:
+                    # Cleanup can fail after committing a real fault/terminal tail.
+                    publish_committed(force=True)
+                except Exception as exc:  # noqa: BLE001 - retain publication failure
+                    outcome = "faulted"
+                    error = f"{error + '; ' if error else ''}publication / 发布: {type(exc).__name__}: {exc}"
+                # Publish the closed kernel's real source frontier before its
+                # terminal status. Keep progress RPC alive throughout cleanup.
+                storage._atomic("input-progress.json", {
+                    "watermarks": dict(session.simulation.kernel.ingress_watermarks),
+                })
+            storage.status(outcome, error=error, waiting=timed_out_wait)
+        finally:
+            ingress_done.set()
+            if ingress_thread is not None:
+                # A blocked reply transport cannot keep a completed process alive.
+                ingress_thread.join(input_close_timeout_s)
+            if ingress is not None:
+                ingress.close()
 
 
 def validate_injection(active: RunSession, body: Any) -> None:
