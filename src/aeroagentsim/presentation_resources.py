@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-HEADER_RESOURCE_KEYS = frozenset({"legacy-huangpu/v1"})
+from .presentation_api import HEADER_RESOURCE_KEYS
 
 
 def resolve_header_resource(

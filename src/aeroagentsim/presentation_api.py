@@ -19,12 +19,14 @@ from inspect import isasyncgenfunction, iscoroutinefunction
 from types import MappingProxyType
 from typing import Any, Protocol
 
+from .extensions.discovery import discover, validate_name
 from .presentation_controls import ControlReader, ControlRegistry, Known, Unavailable, known, read_controls
 
 PRESENTATION_API_VERSION = 1
 PRESENTATION_ENTRY_POINT_GROUP = "aeroagentsim.presentations"
 PRESENTATION_FORMAT = "aeroagentsim.presentation/v1"
 PRESENTATION_SNAPSHOT_FORMAT = "aeroagentsim.presentation-snapshot/v1"
+HEADER_RESOURCE_KEYS = frozenset({"legacy-huangpu/v1"})
 CATEGORIES = frozenset({
     "logistics", "emergency", "inspection", "agriculture", "mobility",
     "security", "airspace", "weather", "energy", "mixed",
@@ -130,7 +132,7 @@ def validate_narratives(data: Any, *, bilingual: bool = False, recipes: bool = F
             raise ValueError(f"{path}: schema id and mapping required")
         allowed = {"template", "template_zh", "category", "severity", "entities", "position", "hidden"}
         if recipes:
-            allowed |= {"selectors", "variants", "category_field", "category_map", "entity_list"}
+            allowed |= {"selectors", "variants", "legacy_variants", "category_field", "category_map", "entity_list"}
         if set(declaration) - allowed:
             raise ValueError(f"{path}: unknown keys {sorted(set(declaration) - allowed)}")
         for name in ("template", "category", "severity"):
@@ -169,11 +171,17 @@ def validate_narratives(data: Any, *, bilingual: bool = False, recipes: bool = F
         variants = declaration.get("variants", {})
         if not isinstance(variants, Mapping):
             raise ValueError(f"{path}.variants: mapping required")
+        legacy_variants = declaration.get("legacy_variants", ())
+        if (not isinstance(legacy_variants, (list, tuple))
+                or any(type(name) is not str or name not in variants for name in legacy_variants)
+                or len(set(legacy_variants)) != len(legacy_variants)):
+            raise ValueError(f"{path}.legacy_variants: unique declared variant names required")
         for name, variant in variants.items():
-            if not isinstance(variant, Mapping) or "variants" in variant:
+            if not isinstance(variant, Mapping) or {"variants", "legacy_variants"} & set(variant):
                 raise ValueError(f"{path}.variants.{name}: one-level declaration required")
             merged = {**declaration, **variant}
             merged.pop("variants", None)
+            merged.pop("legacy_variants", None)
             validate_narratives({schema: merged}, bilingual=bilingual, recipes=recipes)
 
 
@@ -321,6 +329,91 @@ class PresentationPlugin:
         object.__setattr__(self, "control_readers", MappingProxyType(readers))
 
 
+def _header_mapping(value: Any, path: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or any(type(key) is not str for key in value):
+        raise ValueError(f"{path}: string-keyed mapping required")
+    return value
+
+
+def _header_text(value: Any, path: str) -> None:
+    if type(value) is not str or not value.strip():
+        raise ValueError(f"{path}: nonempty string required")
+
+
+def _header_keys(
+    value: Mapping[str, Any], path: str, required: set[str], optional: set[str],
+) -> None:
+    if missing := required - value.keys():
+        raise ValueError(f"{path}: missing keys {sorted(missing)}")
+    if extra := value.keys() - required - optional:
+        raise ValueError(f"{path}: unknown keys {sorted(extra)}")
+
+
+def _header_rows(value: Any, path: str) -> list[Any] | tuple[Any, ...]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{path}: list required")
+    return value
+
+
+def _header_strings(value: Any, path: str) -> None:
+    items = _header_rows(value, path)
+    if not items:
+        raise ValueError(f"{path}: nonempty list required")
+    for item in items:
+        _header_text(item, path)
+    if len(set(items)) != len(items):
+        raise ValueError(f"{path}: duplicate values")
+
+
+def validate_header_hints(data: Any, *, path: str = "presentation.header") -> None:
+    """Validate finite header DATA without importing its runtime interpreter.
+
+    Optional absent sections are empty contributions. A present malformed
+    section is an admission error, not an absent hint. This validator performs
+    no discovery, resource lookup, file I/O, or provider invocation.
+    """
+    hints = _header_mapping(data, path)
+    _header_keys(hints, path, set(), {"engine_gusts", "lighting", "scenes"})
+    for index, value in enumerate(_header_rows(hints.get("engine_gusts", ()), path + ".engine_gusts")):
+        location = f"{path}.engine_gusts[{index}]"
+        row = _header_mapping(value, location)
+        _header_keys(row, location, {"plugin", "fields"}, set())
+        _header_text(row["plugin"], location + ".plugin")
+        _header_strings(row["fields"], location + ".fields")
+    for index, value in enumerate(_header_rows(hints.get("lighting", ()), path + ".lighting")):
+        location = f"{path}.lighting[{index}]"
+        row = _header_mapping(value, location)
+        _header_keys(row, location, {"type_id", "field_id", "values"}, set())
+        _header_text(row["type_id"], location + ".type_id")
+        _header_text(row["field_id"], location + ".field_id")
+        _header_strings(row["values"], location + ".values")
+    for index, value in enumerate(_header_rows(hints.get("scenes", ()), path + ".scenes")):
+        location = f"{path}.scenes[{index}]"
+        row = _header_mapping(value, location)
+        _header_keys(row, location, {"when", "resource", "visuals"}, set())
+        when = _header_mapping(row["when"], location + ".when")
+        if not when:
+            raise ValueError(location + ".when: nonempty mapping required")
+        for key, expected in when.items():
+            _header_text(key, location + ".when")
+            _header_text(expected, location + ".when." + key)
+        _header_text(row["resource"], location + ".resource")
+        if row["resource"] not in HEADER_RESOURCE_KEYS:
+            raise ValueError(location + f".resource: unknown resource {row['resource']!r}")
+        visuals = _header_mapping(row["visuals"], location + ".visuals")
+        for type_id, value in visuals.items():
+            _header_text(type_id, location + ".visuals")
+            visual_path = location + ".visuals." + type_id
+            visual = _header_mapping(value, visual_path)
+            _header_keys(visual, visual_path, set(), {"model", "catalog"})
+            if not visual:
+                raise ValueError(visual_path + ": model or catalog required")
+            for key, item in visual.items():
+                _header_text(item, visual_path + "." + key)
+            if "model" in visual and not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", visual["model"]):
+                raise ValueError(visual_path + ".model: simple model name required")
+
+
 def validate_presentation(data: Any, registry: Any = None) -> None:
     if not isinstance(data, Mapping) or data.get("format") != PRESENTATION_FORMAT:
         raise ValueError(f"presentation format must be {PRESENTATION_FORMAT}")
@@ -380,8 +473,6 @@ def validate_presentation(data: Any, registry: Any = None) -> None:
         if type(hint.get("style", "number")) is not str or hint.get("style", "number") not in {"number", "percent", "duration"}:
             raise ValueError("presentation metric style: number, percent or duration required")
     if "header" in data:
-        from .presentations import validate_header_hints
-
         validate_header_hints(data["header"])
     if registry is not None:
         validate_references(data, registry)
@@ -596,40 +687,36 @@ BUILTINS = MappingProxyType({
 
 
 def discover_presentation_plugins(*, names: tuple[str, ...] | None = None) -> tuple[PresentationPlugin, ...]:
-    """Isolated metrics_api discovery idiom; replace with shared helper later.
+    """Use shared admission, loading only the selected whole providers.
 
-    Duplicate installations fail BEFORE load. Installed names replace whole
-    providers, never merge their declarations with a same-name builtin.
+    Metadata-only enumeration retains every declaration. Reject duplicates first,
+    then admit ALL declared names before filtering or invoking any provider.
     """
-    installed: dict[str, Any] = {}
-    for entry in entry_points(group=PRESENTATION_ENTRY_POINT_GROUP):
-        if entry.name in installed:
-            raise ValueError(f"Duplicate {PRESENTATION_ENTRY_POINT_GROUP} entry point name: {entry.name!r}")
-        installed[entry.name] = entry
-    selected_names = set(BUILTINS) | set(installed)
+    discovery = discover(
+        PRESENTATION_ENTRY_POINT_GROUP, BUILTINS, expected_type=PresentationPlugin,
+        api_version=PRESENTATION_API_VERSION, name_of=lambda plugin: plugin.name,
+        factory_label="presentation plugin", entries=entry_points(group=PRESENTATION_ENTRY_POINT_GROUP),
+        load=False,
+    )
+    discovery.require_unique()
+    for contribution in discovery.contributions:
+        origin = "entry point" if contribution.source == "installed" else "builtin"
+        validate_name(contribution.name, label=f"{PRESENTATION_ENTRY_POINT_GROUP} {origin}")
+    selected_names = discovery.names
     if names is not None:
         if (not isinstance(names, tuple) or any(type(name) is not str or not name for name in names)
                 or len(set(names)) != len(names)):
             raise ValueError("presentation selection: unique provider names required")
-        if missing := set(names) - selected_names:
+        if missing := set(names) - set(selected_names):
             raise ValueError(f"pinned presentation unavailable: missing providers {sorted(missing)}")
-        selected_names = set(names)
+        selected_names = tuple(sorted(names))
+    installed = {item.name: item for item in discovery.contributions if item.source == "installed"}
     plugins = []
-    for name in sorted(selected_names):
-        value = installed[name].load() if name in installed else BUILTINS[name]
-        if not isinstance(value, PresentationPlugin) and callable(value):
-            try:
-                value = value()
-            except TypeError as exc:
-                raise TypeError(f"presentation plugin {name!r}: zero-argument factory failed: {exc}") from exc
-        if not isinstance(value, PresentationPlugin):
-            raise TypeError(f"presentation plugin {name!r}: expected PresentationPlugin or zero-argument factory")
-        if value.name != name:
-            raise ValueError(f"presentation plugin {name!r}: plugin name {value.name!r} does not match")
+    for name in selected_names:
+        value = discovery.resolve(name)
         entry = installed.get(name)
-        distribution = getattr(entry, "dist", None)
-        if distribution is not None:
-            release = [distribution.name, distribution.version]
+        if entry is not None and entry.distribution is not None and entry.version is not None:
+            release = [entry.distribution, entry.version]
         elif entry is None:
             try:
                 release = ["aeroagentsim", version("aeroagentsim")]
@@ -639,7 +726,7 @@ def discover_presentation_plugins(*, names: tuple[str, ...] | None = None) -> tu
             release = None
         plugins.append(replace(value, source={
             "kind": "installed" if entry is not None else "builtin",
-            "entry_point": getattr(entry, "value", None), "distribution": release,
+            "entry_point": entry.entry_point if entry is not None else None, "distribution": release,
         }))
     validate_plugins(tuple(plugins))
     return tuple(plugins)
@@ -796,8 +883,9 @@ def verify_presentation_snapshot(
 
 __all__ = [
     "PRESENTATION_API_VERSION", "PRESENTATION_ENTRY_POINT_GROUP", "PRESENTATION_FORMAT",
-    "PRESENTATION_SNAPSHOT_FORMAT", "PresentationPlugin", "NarrativeNormalizer", "discover_presentation_plugins",
-    "validate_presentation", "admit_presentation_plugins", "resolve_poses", "presentation_snapshot",
+    "PRESENTATION_SNAPSHOT_FORMAT", "HEADER_RESOURCE_KEYS", "PresentationPlugin", "NarrativeNormalizer",
+    "discover_presentation_plugins",
+    "validate_presentation", "validate_header_hints", "admit_presentation_plugins", "resolve_poses", "presentation_snapshot",
     "validate_presentation_snapshot", "verify_presentation_snapshot",
     "ControlReader", "ControlRegistry", "Known", "Unavailable", "known", "read_controls",
 ]

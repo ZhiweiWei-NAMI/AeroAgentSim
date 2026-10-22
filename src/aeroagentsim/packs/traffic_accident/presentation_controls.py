@@ -53,14 +53,21 @@ def read_decision_mode(document: Mapping[str, Any]) -> Known | Unavailable:
 
 def read_physics_hz(document: Mapping[str, Any]) -> Known | Unavailable:
     engines = _mapping(document.get("engines"))
-    road = _mapping(_mapping(engines.get("road_motion")).get("config")).get("step_ns")
-    air = _mapping(_mapping(engines.get("air_motion")).get("config")).get("step_ns")
+    road_motion = _mapping(engines.get("road_motion"))
+    air_motion = _mapping(engines.get("air_motion"))
+    if road_motion.get("plugin") != "traffic_road_motion" or air_motion.get("plugin") != "kinematic":
+        return Unavailable("Pinned physics frequency requires supported traffic_road_motion and kinematic consumers")
+    road = _mapping(road_motion.get("config")).get("step_ns")
+    air = _mapping(air_motion.get("config")).get("step_ns")
     if type(road) is not int or type(air) is not int or road <= 0 or air != road:
         return Unavailable("Pinned road and air motion steps must be explicit, positive and equal")
     frequency = 1e9 / road
     rounded = round(frequency, 6)
     value = rounded if rounded > 0 and round(1e9 / rounded) == road else frequency
-    return known(value, {"reader": "traffic.physics_hz", "road_step_ns": road, "air_step_ns": air})
+    return known(value, {
+        "reader": "traffic.physics_hz", "road_step_ns": road, "air_step_ns": air,
+        "consumers": {"road_motion": road_motion["plugin"], "air_motion": air_motion["plugin"]},
+    })
 
 
 def _wind(document: Mapping[str, Any], axis: int) -> Known | Unavailable:
@@ -84,7 +91,9 @@ def _wind(document: Mapping[str, Any], axis: int) -> Known | Unavailable:
         return Unavailable("A unique pinned environment profile for the wind consumer is required")
     name, profile = profiles[0]
     mode = profile.get("mode")
-    if not isinstance(mode, str) or mode not in {"calm", "constant", "gust"}:
+    if mode == "gust":
+        return Unavailable("A gust profile cannot be represented by a constant wind component")
+    if not isinstance(mode, str) or mode not in {"calm", "constant"}:
         return Unavailable("The pinned wind profile mode is not supported")
     vector = profile.get("value")
     row = source.get("vector_index")

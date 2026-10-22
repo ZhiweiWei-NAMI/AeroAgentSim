@@ -74,10 +74,13 @@ copy a future host version constant. Bump `revision` when provider behavior chan
 observed `.source` metadata: builtin/installed kind, entry-point value and
 available distribution name/version. Builtins `lowalt` and `traffic_accident` load
 lazily. Installed same-name providers replace the **whole** builtin, not a merge.
-`names=(...)` restricts provider loads; global duplicate installed names still fail
-before filtering/loading. Wrong exports, name mismatches, malformed data and
-conflicting owned IDs fail without builtin fallback. Discovery is isolated from
-other families. Service startup checks names without loading factories; only new
+`names=(...)` restricts provider loads. The shared
+[`extensions.discovery`](../../src/aeroagentsim/extensions/discovery.py) helper
+collects declarations and rejects global duplicates first; all declared names are
+validated before filtering/loading, even for `names=()`. Unselected factories are
+never loaded. Wrong exports, name mismatches, malformed data and conflicting owned
+IDs fail without builtin fallback. Discovery is isolated from other families.
+Service startup checks names without loading factories; only new
 launches and legacy summaries discover fully, while pinned reads load saved names.
 
 ## Finite data contract
@@ -118,10 +121,15 @@ by executable predicates. `category_field`/`category_map` select a category from
 normalized data; `entity_list` can name a normalized list of entity identities.
 The host owns labels, interpolation, list formatting, entity links and position
 lookup. Scenario `event_narratives` overrides retain precedence over provider and
-behaviour-package declarations; missing Chinese text is not invented. Genuine
-overrides suppress builtin variant application, but variants are still validated.
-Identical legacy pack declarations copied into a scenario retain their recipe;
-authored entity/position bindings keep their direct-payload semantics.
+behaviour-package declarations. Ordinarily, overrides do not inherit missing
+Chinese text or builtin variants; variants are still validated. A recipe can
+explicitly list `legacy_variants` (unique declared variant names) that still apply
+to legacy authored overrides. This compatibility policy preserves evidence-dependent
+neutral road-conflict wording and actor position even for authored templates,
+missing Chinese text or severity/category-only edits; the road variants retain
+authored category/severity. Other overrides do not inherit translations or variants
+accidentally. Identical legacy pack declarations copied into a scenario retain
+their recipe; authored entity/position bindings keep their direct-payload semantics.
 
 ### Validation and absent evidence
 
@@ -209,7 +217,12 @@ Each declaration needs a unique `id` and **exactly one** RFC 6901 `pointer` or
 called. Readers receive a recursively read-only JSON snapshot. Return
 `known(value, evidence)` (a `Known` with a canonical-evidence SHA-256 digest) or
 `Unavailable(nonempty_reason)`. Bind evidence to the actual pinned runtime
-consumer, not a stale authored copy.
+consumer, not a stale authored copy. Builtin traffic physics readback requires
+`traffic_road_motion` for `road_motion` and `kinematic` for `air_motion`, with
+explicit equal positive steps and both consumer identities in its evidence.
+Replacement implementations need their own trusted readers. Constant traffic wind
+controls accept only `calm`/`constant` profiles; gust profiles are `Unavailable`,
+not their baseline component.
 
 Missing pointer members, missing readers and unsupported/ambiguous source evidence
 are unavailable, not historical defaults. Explicit zero, false or null are not

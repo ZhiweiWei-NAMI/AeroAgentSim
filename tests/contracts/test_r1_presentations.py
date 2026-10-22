@@ -6,6 +6,7 @@ worker or native radio backend. HTTP coverage only reads static completed runs.
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
@@ -17,9 +18,11 @@ from typing import Any
 
 import pytest
 from aerokernel.codec import encode
+from aerokernel.ids import EntityRef
 from aerokernel.messages import Emit, Message
+from aerokernel.operations import FactWrite
 from aerokernel.registry import FieldDescriptor, MemoryRegistry, MessageDescriptor, TypeDescriptor
-from aerokernel.time import Instant
+from aerokernel.time import Instant, Interval, Stamp
 
 import aeroagentsim.presentation_api as presentation_api
 from aeroagentsim.presentation_api import (
@@ -436,6 +439,89 @@ def test_builtin_plugins_publish_pack_owned_control_readers() -> None:
     )} <= set(providers["traffic_accident"].control_readers)
 
 
+def _traffic_document() -> dict[str, Any]:
+    return {"engines": {
+        "road_motion": {"plugin": "traffic_road_motion", "config": {"step_ns": 1_000_000_000}},
+        "air_motion": {"plugin": "kinematic", "config": {
+            "step_ns": 1_000_000_000,
+            "consumption_model": {"plugin": "wind", "config": {
+                "entity": "wind.region", "field": "oo:digital_twin.wind.horizontalVelocity", "vector_index": 0,
+            }},
+        }},
+        "weather": {"plugin": "environment", "config": {"profiles": {
+            "wind.region": {"oo:digital_twin.wind.horizontalVelocity": {"mode": "calm", "value": [[0.0, 0.0]]}},
+        }}},
+    }}
+
+
+def _traffic_registry() -> ControlRegistry:
+    from aeroagentsim.packs.traffic_accident.presentation_controls import CONTROL_READERS
+
+    return ControlRegistry(controls=tuple({
+        "id": name, "apply": "traffic." + name, "default": "not-evidence",
+    } for name in ("physics_hz", "wind_east", "wind_north")), readers=CONTROL_READERS)
+
+
+@pytest.mark.parametrize("matrix", [False, True])
+def test_gust_profile_baseline_is_not_a_known_constant_wind_control(matrix: bool) -> None:
+    document = _traffic_document()
+    profile = document["engines"]["weather"]["config"]["profiles"]["wind.region"]["oo:digital_twin.wind.horizontalVelocity"]
+    gust = [6.0, -4.0]
+    if not matrix:
+        del document["engines"]["air_motion"]["config"]["consumption_model"]["config"]["vector_index"]
+        profile["value"] = [0.0, 0.0]
+    profile.update(mode="gust", gusts=[{
+        "start_ns": 0, "end_ns": 10_000_000_000, "value": [gust] if matrix else gust,
+    }])
+    before = copy.deepcopy(document)
+    result = read_controls(document, _traffic_registry())
+    for identifier in ("wind_east", "wind_north"):
+        assert isinstance(result[identifier], Unavailable)
+        assert "constant" in result[identifier].reason
+    assert document == before
+
+
+@pytest.mark.parametrize("mode,vector", [("calm", [0.0, 0.0]), ("constant", [6.0, -4.0])])
+def test_supported_constant_wind_controls_keep_explicit_zero_and_signed_components(mode: str, vector: list[float]) -> None:
+    document = _traffic_document()
+    profile = document["engines"]["weather"]["config"]["profiles"]["wind.region"]["oo:digital_twin.wind.horizontalVelocity"]
+    profile.update(mode=mode, value=[vector])
+    result = read_controls(document, _traffic_registry())
+    for identifier, expected in zip(("wind_east", "wind_north"), vector):
+        assert isinstance(result[identifier], Known) and result[identifier].value == expected
+
+
+@pytest.mark.parametrize("role,replacement", [
+    ("road_motion", "custom_road"), ("air_motion", "custom_air"),
+    ("road_motion", "kinematic"), ("air_motion", "traffic_road_motion"),
+    ("road_motion", None), ("air_motion", None),
+])
+def test_physics_frequency_is_unavailable_for_unproven_motion_consumers(role: str, replacement: Any) -> None:
+    document = _traffic_document()
+    document["engines"][role]["plugin"] = replacement
+    before = copy.deepcopy(document)
+    # Equal, positive config members do not establish that replacement engines
+    # consume those settings, even if another supported plugin name is reused.
+    result = read_controls(document, _traffic_registry())["physics_hz"]
+    assert isinstance(result, Unavailable) and "consumer" in result.reason
+    assert document == before
+
+
+def test_known_physics_frequency_binds_both_motion_consumer_identities_to_evidence() -> None:
+    document = _traffic_document()
+    result = read_controls(document, _traffic_registry())["physics_hz"]
+    assert isinstance(result, Known) and result.value == 1.0
+    evidence = {
+        "reader": "traffic.physics_hz", "road_step_ns": 1_000_000_000, "air_step_ns": 1_000_000_000,
+        "consumers": {"road_motion": "traffic_road_motion", "air_motion": "kinematic"},
+    }
+    assert result == known(1.0, evidence)
+    for role in evidence["consumers"]:
+        changed = copy.deepcopy(evidence)
+        changed["consumers"][role] = "different-consumer"
+        assert result.evidence_digest != known(1.0, changed).evidence_digest
+
+
 # Provider discovery is strict, deterministic and whole-provider replacement.
 
 
@@ -452,6 +538,71 @@ def test_duplicate_installed_names_fail_before_any_provider_load(monkeypatch: py
     with pytest.raises(ValueError, match="Duplicate.*entry point"):
         discover_presentation_plugins()
     assert loaded == []
+
+
+@pytest.mark.parametrize("names", [None, (), ("a-first",)])
+@pytest.mark.parametrize("invalid_source", ["installed", "builtin"])
+def test_all_declared_names_are_admitted_before_any_load_even_when_unselected(
+    monkeypatch: pytest.MonkeyPatch, names: tuple[str, ...] | None, invalid_source: str,
+) -> None:
+    loaded = []
+
+    def forbidden() -> Any:
+        loaded.append("called")
+        raise AssertionError("every declared name must be admitted before any load")
+
+    builtins = {"a-first": forbidden}
+    entries = [SimpleNamespace(name="selected", load=forbidden)]
+    if invalid_source == "installed":
+        entries.append(SimpleNamespace(name="Bad.Name", load=forbidden))
+    else:
+        builtins["Bad.Name"] = forbidden
+    monkeypatch.setattr(presentation_api, "BUILTINS", builtins)
+    _entry_points(monkeypatch, *entries)
+    with pytest.raises(ValueError, match="name must match"):
+        discover_presentation_plugins(names=names)
+    assert loaded == []
+
+
+@pytest.mark.parametrize("names", [None, ()])
+def test_shared_discovery_rejects_duplicates_before_malformed_names(
+    monkeypatch: pytest.MonkeyPatch, names: tuple[str, ...] | None,
+) -> None:
+    from aeroagentsim.extensions.discovery import DuplicateEntryPointError
+
+    def forbidden() -> Any:
+        raise AssertionError("neither malformed nor duplicate declarations may load")
+
+    monkeypatch.setattr(presentation_api, "BUILTINS", {"also.invalid": forbidden})
+    _entry_points(monkeypatch, SimpleNamespace(name="Bad.Name", load=forbidden),
+                  SimpleNamespace(name="Bad.Name", load=forbidden))
+    with pytest.raises(DuplicateEntryPointError, match="Duplicate.*Bad.Name"):
+        discover_presentation_plugins(names=names)
+
+
+@pytest.mark.parametrize("names", [(), ("selected",)])
+def test_selection_never_loads_unselected_installed_or_builtin_factories(
+    monkeypatch: pytest.MonkeyPatch, names: tuple[str, ...],
+) -> None:
+    loaded = []
+
+    def forbidden() -> Any:
+        raise AssertionError("unselected entries and builtin factories must remain unloaded")
+
+    def selected_factory() -> PresentationPlugin:
+        loaded.append("factory")
+        return PresentationPlugin("selected", _data())
+
+    def selected_load() -> Any:
+        loaded.append("load")
+        return selected_factory
+
+    monkeypatch.setattr(presentation_api, "BUILTINS", {"unused-builtin": forbidden})
+    _entry_points(monkeypatch, SimpleNamespace(name="selected", load=selected_load),
+                  SimpleNamespace(name="unused-installed", load=forbidden))
+    selected = discover_presentation_plugins(names=names)
+    assert tuple(plugin.name for plugin in selected) == names
+    assert loaded == (["load", "factory"] if names else [])
 
 
 def test_installed_override_replaces_the_whole_builtin_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -553,6 +704,51 @@ def test_contribution_id_conflicts_are_not_merged(monkeypatch: pytest.MonkeyPatc
 
 
 # Frozen declarative data admits finite selectors, not browser code or expressions.
+
+
+def test_header_validator_belongs_to_the_contract_and_has_no_interpreter_dependency() -> None:
+    import aeroagentsim.presentations as interpreter
+
+    assert interpreter.validate_header_hints is presentation_api.validate_header_hints
+    assert presentation_api.validate_header_hints.__module__ == "aeroagentsim.presentation_api"
+    contract = ast.parse(Path(presentation_api.__file__).read_text(encoding="utf-8"))
+    runtime_modules = {"presentations", "presentation_resources",
+                       "aeroagentsim.presentations", "aeroagentsim.presentation_resources"}
+    for node in ast.walk(contract):
+        if isinstance(node, ast.ImportFrom):
+            assert node.module not in runtime_modules
+        elif isinstance(node, ast.Import):
+            assert all(alias.name not in runtime_modules for alias in node.names)
+    header = {
+        "engine_gusts": [{"plugin": "environment", "fields": ["external.wind"]}],
+        "lighting": [{"type_id": "external:Environment", "field_id": "external.light", "values": ["day"]}],
+        "scenes": [{"when": {"city": "external-city"}, "resource": "legacy-huangpu/v1",
+                    "visuals": {"external:Sensor": {"model": "sensor"}}}],
+    }
+    provider = PresentationPlugin("external", _data(header=header))
+    presentation_api.validate_header_hints(provider.data["header"])
+    presentation_api.validate_presentation_snapshot(presentation_api.presentation_snapshot((provider,)))
+
+
+@pytest.mark.parametrize("header", [
+    None, [], {"engine_gusts": "not-a-list"},
+    {"lighting": [{"type_id": "external:Environment", "field_id": "external.light", "values": []}]},
+    {"scenes": [{"when": {"city": "external"}, "resource": "unregistered", "visuals": {}}]},
+])
+def test_header_admission_still_rejects_malformed_data_after_validator_move(header: Any) -> None:
+    with pytest.raises(ValueError, match="presentation.header"):
+        presentation_api.validate_header_hints(header)
+    with pytest.raises(ValueError, match="presentation.header"):
+        PresentationPlugin("external", _data(header=header))
+
+
+@pytest.mark.parametrize("legacy_variants", [False, "alternate", ["missing"], ["alternate", "alternate"], [None]])
+def test_legacy_variant_policy_only_admits_unique_declared_variant_names(legacy_variants: Any) -> None:
+    recipe = _simple_recipe()
+    recipe.update(variants={"alternate": {"template": "Alternate {value}", "template_zh": "另一值：{value}"}},
+                  legacy_variants=legacy_variants)
+    with pytest.raises(ValueError, match="legacy_variants"):
+        PresentationPlugin("external", _data(narratives={EVENT: recipe}))
 
 
 def test_plugin_deeply_snapshots_and_freezes_data_and_readers() -> None:
@@ -675,6 +871,27 @@ class _NestedNormalizer:
         with pytest.raises(TypeError):
             record["payload"]["envelope"]["reading"] = "changed"
         return {"payload": {"reading": record["payload"]["envelope"]["reading"]}}
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_only_explicit_legacy_variants_can_replace_authored_templates(legacy: bool) -> None:
+    class VariantNormalizer(_NestedNormalizer):
+        def consume(self, state: Any, record: Mapping[str, Any]) -> dict[str, Any]:
+            return {"payload": {"reading": record["payload"]["envelope"]["reading"]}, "variant": "alternate"}
+
+    recipe = _simple_recipe("reading")
+    recipe["variants"] = {"alternate": {"template": "Alternate {reading}", "template_zh": "另一值：{reading}"}}
+    if legacy:
+        recipe["legacy_variants"] = ["alternate"]
+    provider = PresentationPlugin("external", _data(narratives={"external.raw": recipe}),
+                                  normalizers=(VariantNormalizer(),))
+    override = {"template": "Authored {reading}", "template_zh": "作者值：{reading}",
+                "category": "logistics", "severity": "critical"}
+    projector = NarrativeProjector({"external.raw": override}, plugins=(provider,))
+    row = projector.consume(_encoded_event("external.raw", {"envelope": {"reading": "measured"}}))[0]
+    assert row["text"] == ("Alternate measured" if legacy else "Authored measured")
+    assert row["text_zh"] == ("另一值：measured" if legacy else "作者值：measured")
+    assert row["category"] == "logistics" and row["severity"] == "critical"
 
 
 def test_normalized_selector_references_use_declared_output_schema() -> None:
@@ -830,6 +1047,55 @@ def test_app_does_not_hide_malformed_presentation_discovery(tmp_path: Path, monk
         create_app(tmp_path / "runs")
 
 
+@pytest.mark.parametrize("installed_override", [False, True])
+def test_legacy_chinese_label_uses_public_provider_data_not_the_pack_private_helper(
+    monkeypatch: pytest.MonkeyPatch, installed_override: bool,
+) -> None:
+    from aeroagentsim.packs.lowalt import presentation
+    from aeroagentsim.services import narratives
+
+    provider = presentation.plugin()
+    called = []
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("service compatibility exports must not call pack-private helpers")
+
+    def builtin() -> PresentationPlugin:
+        called.append("builtin")
+        return provider
+
+    monkeypatch.setattr(presentation, "_chinese_label", forbidden)
+    monkeypatch.setattr(presentation_api, "BUILTINS", {"lowalt": builtin, "traffic_accident": forbidden})
+    if installed_override:
+        data = presentation_api.json_data(provider.data)
+        data["labels"]["Customer"]["zh"] = "客户（外部定义）"
+        data["labels"]["Authored vocabulary"] = {"en": "Authored vocabulary", "zh": "公开数据词汇"}
+        provider = replace(provider, data=data)
+
+        def installed() -> PresentationPlugin:
+            called.append("installed")
+            return provider
+
+        _entry_points(monkeypatch, _entry_point("lowalt", installed))
+    expected = {
+        "Customer": "客户（外部定义）" if installed_override else "客户",
+        "Drone P2": "无人机 P2", "Survey drone 12": "巡检无人机 12",
+        "Incident drone Alpha": "事故响应无人机 Alpha", "Route uav Bg 3": "无人机路线 背景机 3",
+        "Road vehicle reporter": "道路车辆 报告车", "Road task vehicle incident a": "道路车辆任务 事故 a",
+        "Unknown authored place": "Unknown authored place", "Drone X": "Drone X",
+        "Authored vocabulary": "公开数据词汇" if installed_override else "Authored vocabulary",
+    }
+    narratives._legacy_label_data.cache_clear()
+    try:
+        projector = NarrativeProjector(plugins=(provider,))
+        for label, translated in expected.items():
+            assert narratives._chinese_label(label) == translated
+            assert projector.label(label, "zh") == translated
+        assert called == (["installed"] if installed_override else ["builtin"])
+    finally:
+        narratives._legacy_label_data.cache_clear()
+
+
 # Focused regressions for legacy copies and non-narrative provider changes.
 
 
@@ -837,8 +1103,11 @@ def test_app_does_not_hide_malformed_presentation_discovery(tmp_path: Path, monk
     ("blocked", "Road traffic conflict detected", "道路交通冲突出现"),
     ("cleared", "Road traffic conflict cleared", "道路交通冲突解除"),
 ])
-def test_copied_legacy_traffic_declarations_do_not_suppress_neutral_road_cause(
-    tmp_path: Path, state: str, en: str, zh: str,
+@pytest.mark.parametrize("override", ["copy", "severity", "category", "custom-template", "english-only"])
+@pytest.mark.parametrize("source", ["scenario", "behaviour"])
+@pytest.mark.parametrize("cause", ["occupancy", "incident", "accident-reason", "traffic-incident-reason"])
+def test_legacy_road_overrides_preserve_main_evidence_dependent_wording_and_style(
+    tmp_path: Path, state: str, en: str, zh: str, override: str, source: str, cause: str,
 ) -> None:
     from aeroagentsim.packs.traffic_accident.narratives import EVENT_NARRATIVES
     from aeroagentsim.packs.traffic_accident.presentation import plugin
@@ -851,15 +1120,56 @@ def test_copied_legacy_traffic_declarations_do_not_suppress_neutral_road_cause(
         })) for name in ("blocked", "cleared")
     ))
     (directory / "runtime.registry.json").write_text(json.dumps(registry.to_data()), encoding="utf-8")
+    schema = "traffic.road." + state
+    declarations = copy.deepcopy(EVENT_NARRATIVES)
+    declaration = declarations[schema]
+    if override == "severity":
+        declaration["severity"] = "critical"
+    elif override == "category":
+        declaration["category"] = "logistics"
+    elif override == "custom-template":
+        declaration.update(template="Authored road event for {actor}", template_zh="作者道路事件：{actor}")
+    elif override == "english-only":
+        declaration.pop("template_zh")
     scenario_path = directory / "scenario.json"
     scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-    scenario["event_narratives"] = copy.deepcopy(EVENT_NARRATIVES)
-    scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
+    if source == "scenario":
+        scenario["event_narratives"] = declarations
+        scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
+    else:
+        (directory / "behaviour.ir.json").write_text(json.dumps({
+            "packages": [{"document": {"event_narratives": declarations}}],
+        }), encoding="utf-8")
     projector = NarrativeProjector.from_directory(directory, plugins=(plugin(),))
-    row = projector.consume(_encoded_event("traffic.road." + state, {"actor": "sensor-1"}))[0]
-    assert row["text"] == en and row["text_zh"] == zh
-    assert "accident" not in row["text"].lower() and "事故" not in row["text_zh"]
-    assert row["entities"] == ["sensor-1"] and "position" not in row
+    actor = EntityRef("external-run", "epoch-0", "sensor-1", 0, "external:Sensor")
+    assert projector.consume_decoded({"items": [{"proposal": FactWrite(
+        (actor, "external.position"), [1.0, 2.0, 3.0],
+        Stamp("canonical", 0, 1, "canonical"), Interval(Instant(0), None),
+    )}]}) == []
+    payload = {"actor": "sensor-1"}
+    if cause == "incident":
+        payload["incident"] = "incident-1"
+    elif cause in {"accident-reason", "traffic-incident-reason"}:
+        payload["reason"] = "accident" if cause == "accident-reason" else "traffic incident"
+    row = projector.consume(_encoded_event(schema, payload))[0]
+
+    # Golden viewer-feed parity with origin/main: cause controls prose/position,
+    # while the authored declaration retains category, severity and entity links.
+    expected = {
+        "message_id": schema + "/1", "schema": schema, "at_ns": "1",
+        "category": declaration["category"], "severity": declaration["severity"],
+        "entities": ["incident-1", "sensor-1"] if cause == "incident" else ["sensor-1"],
+    }
+    if cause == "occupancy":
+        expected.update(text=en, text_zh=zh)
+        assert "accident" not in row["text"].lower() and "事故" not in row["text_zh"]
+    else:
+        expected["text"] = declaration["template"].format(actor="Remote sensor")
+        if "template_zh" in declaration:
+            expected["text_zh"] = declaration["template_zh"].format(actor="远端传感器")
+    if cause != "incident":
+        expected["position"] = [1.0, 2.0, 3.0]
+    assert row == expected
 
 
 @pytest.mark.parametrize("change", ["revision", "labels"])

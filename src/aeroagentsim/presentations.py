@@ -1,7 +1,7 @@
-"""Finite data interpreters for additive viewer-header presentation hints.
+"""Finite data interpreters for public vocabulary and viewer-header hints.
 
-Providers supply ``header`` data, never projection callbacks. The accepted keys
-are ``engine_gusts`` (profile interval unions), ``lighting`` (an authored initial
+Providers supply vocabulary and ``header`` data, never projection callbacks.
+Header keys are ``engine_gusts`` (profile interval unions), ``lighting`` (an authored initial
 fact), and ``scenes`` (literal scenario selectors and a finite host resource).
 Authored scene geometry is still read by the generic authoring scene adapter.
 """
@@ -15,7 +15,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-from .presentation_resources import HEADER_RESOURCE_KEYS, resolve_header_resource
+from .presentation_api import validate_header_hints
+from .presentation_resources import resolve_header_resource
+
+_NUMBERED = re.compile(r"[A-Z]?\d+\Z")
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
@@ -24,83 +27,27 @@ def _mapping(value: Any, path: str) -> Mapping[str, Any]:
     return value
 
 
-def _text(value: Any, path: str) -> None:
-    if type(value) is not str or not value.strip():
-        raise ValueError(f"{path}: nonempty string required")
-
-
-def _keys(
-    value: Mapping[str, Any], path: str, required: set[str], optional: set[str],
-) -> None:
-    if missing := required - value.keys():
-        raise ValueError(f"{path}: missing keys {sorted(missing)}")
-    if extra := value.keys() - required - optional:
-        raise ValueError(f"{path}: unknown keys {sorted(extra)}")
-
-
-def _rows(value: Any, path: str) -> list[Any] | tuple[Any, ...]:
-    if not isinstance(value, (list, tuple)):
-        raise ValueError(f"{path}: list required")
-    return value
-
-
-def _strings(value: Any, path: str) -> None:
-    items = _rows(value, path)
-    if not items:
-        raise ValueError(f"{path}: nonempty list required")
-    for item in items:
-        _text(item, path)
-    if len(set(items)) != len(items):
-        raise ValueError(f"{path}: duplicate values")
-
-
-def validate_header_hints(data: Any, *, path: str = "presentation.header") -> None:
-    """Validate the complete finite header dialect, including frozen mappings.
-
-    Optional absent sections are empty contributions. A present malformed
-    section is an admission error, not an absent hint. This validator performs
-    no discovery, resource lookup, file I/O, or provider invocation.
-    """
-    hints = _mapping(data, path)
-    _keys(hints, path, set(), {"engine_gusts", "lighting", "scenes"})
-    for index, value in enumerate(_rows(hints.get("engine_gusts", ()), path + ".engine_gusts")):
-        location = f"{path}.engine_gusts[{index}]"
-        row = _mapping(value, location)
-        _keys(row, location, {"plugin", "fields"}, set())
-        _text(row["plugin"], location + ".plugin")
-        _strings(row["fields"], location + ".fields")
-    for index, value in enumerate(_rows(hints.get("lighting", ()), path + ".lighting")):
-        location = f"{path}.lighting[{index}]"
-        row = _mapping(value, location)
-        _keys(row, location, {"type_id", "field_id", "values"}, set())
-        _text(row["type_id"], location + ".type_id")
-        _text(row["field_id"], location + ".field_id")
-        _strings(row["values"], location + ".values")
-    for index, value in enumerate(_rows(hints.get("scenes", ()), path + ".scenes")):
-        location = f"{path}.scenes[{index}]"
-        row = _mapping(value, location)
-        _keys(row, location, {"when", "resource", "visuals"}, set())
-        when = _mapping(row["when"], location + ".when")
-        if not when:
-            raise ValueError(location + ".when: nonempty mapping required")
-        for key, expected in when.items():
-            _text(key, location + ".when")
-            _text(expected, location + ".when." + key)
-        _text(row["resource"], location + ".resource")
-        if row["resource"] not in HEADER_RESOURCE_KEYS:
-            raise ValueError(location + f".resource: unknown resource {row['resource']!r}")
-        visuals = _mapping(row["visuals"], location + ".visuals")
-        for type_id, value in visuals.items():
-            _text(type_id, location + ".visuals")
-            visual_path = location + ".visuals." + type_id
-            visual = _mapping(value, visual_path)
-            _keys(visual, visual_path, set(), {"model", "catalog"})
-            if not visual:
-                raise ValueError(visual_path + ": model or catalog required")
-            for key, item in visual.items():
-                _text(item, visual_path + "." + key)
-            if "model" in visual and not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", visual["model"]):
-                raise ValueError(visual_path + ".model: simple model name required")
+def presentation_label(label: str, language: str, data: Mapping[str, Any]) -> str:
+    """Interpret admitted public vocabulary DATA, preserving unknown authored prose."""
+    vocabulary = data.get("labels", {})
+    if label in vocabulary:
+        return vocabulary[label][language]
+    if language != "zh":
+        return label
+    for prefix, localized in data.get("numbered_labels", {}).items():
+        if label.startswith(prefix + " ") and _NUMBERED.fullmatch(label[len(prefix) + 1:]):
+            return localized[language] + label[len(prefix):]
+    for group in data.get("label_groups", ()):
+        prefix = group["prefix"]["en"] + " "
+        if not label.startswith(prefix):
+            continue
+        suffix = label[len(prefix):]
+        if suffix in group["names"]:
+            return group["prefix"][language] + " " + group["names"][suffix][language]
+        for numbered, localized in group["numbered"].items():
+            if suffix.startswith(numbered + " ") and suffix[len(numbered) + 1:].isdecimal():
+                return group["prefix"][language] + " " + localized[language] + suffix[len(numbered):]
+    return label
 
 
 def read_presentation_snapshot(directory: Path) -> dict[str, Any] | None:
@@ -146,7 +93,6 @@ def presentation_selection(
 
 def _headers(plugins: Iterable[Any] | None) -> list[Mapping[str, Any]]:
     if plugins is None:
-        # Import locally: the public API uses the data validator above at admission.
         from .presentation_api import discover_presentation_plugins
 
         plugins = discover_presentation_plugins()
@@ -316,6 +262,6 @@ def apply_header_presentations(
 
 
 __all__ = [
-    "apply_header_presentations", "validate_header_hints",
+    "apply_header_presentations", "validate_header_hints", "presentation_label",
     "read_presentation_snapshot", "presentation_selection",
 ]

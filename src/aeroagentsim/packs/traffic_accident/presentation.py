@@ -227,8 +227,11 @@ def plugin() -> PresentationPlugin:
         declarations[schema]["variants"] = {"conflict": {
             "template": en, "template_zh": zh, "position": "actor",
         }}
+        # Legacy authored prose must not attribute an accident without evidence;
+        # keep its category/severity while retaining main's neutral wording.
+        declarations[schema]["legacy_variants"] = ["conflict"]
     return PresentationPlugin(
-        name="traffic_accident", api_version=1, revision="1",
+        name="traffic_accident", api_version=1, revision="2",
         data={
             "format": PRESENTATION_FORMAT, "narratives": declarations,
             "header": {

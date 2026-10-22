@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 import math
-import re
 from collections.abc import Mapping
 from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -37,15 +37,27 @@ from ..presentation_api import (
     validate_narratives,
     validate_plugins,
 )
+from ..presentations import presentation_label
 
 _MISSING = object()
 _CONTRACT_KEY = "\x00aeroagentsim.presentation/v1"  # Private cache metadata, never a binding.
-_NUMBERED = re.compile(r"[A-Z]?\d+\Z")
+
+
+@lru_cache(maxsize=1)
+def _legacy_label_data() -> Mapping[str, Any]:
+    # Resolve public DATA lazily, not a pack-private translation implementation.
+    provider, = discover_presentation_plugins(names=("lowalt",))
+    return provider.data
+
+
+def _chinese_label(label: str) -> str:
+    """Source-compatible vocabulary rendering through the generic interpreter."""
+    return presentation_label(label, "zh", _legacy_label_data())
 
 
 def __getattr__(name: str) -> Any:
     # Source-compatible legacy exports, not a domain dispatch in projection.
-    if name in {"LOWALT_DEFAULTS", "TASK_KIND_CATEGORY", "TASK_NOUN", "TASK_DONE", "TASK_NOUN_ZH", "TASK_DONE_ZH", "_chinese_label"}:
+    if name in {"LOWALT_DEFAULTS", "TASK_KIND_CATEGORY", "TASK_NOUN", "TASK_DONE", "TASK_NOUN_ZH", "TASK_DONE_ZH"}:
         from ..packs.lowalt import presentation
 
         return getattr(presentation, name)
@@ -157,8 +169,8 @@ class NarrativeProjector:
             self._declarations.pop(self._cache_key)
             self._cache_key = None
         for schema, declaration in declarations.items():
-            # Retain normalized field bindings, but an authored template never
-            # inherits a translated template or a builtin variant by accident.
+            # Retain normalized bindings, but do not inherit translations or
+            # variants accidentally. Explicit legacy variants still apply below.
             base = self._provider_declarations.get(schema, {})
             legacy_keys = {"template", "template_zh", "category", "severity", "entities", "position", "hidden"}
             declared = json_data(declaration)
@@ -364,10 +376,11 @@ class NarrativeProjector:
             payload = normalized["payload"]
             if "variant" in normalized:
                 variant = normalized["variant"]
-                variants = self._provider_declarations[message.schema_id].get("variants", {})
+                recipe = self._provider_declarations[message.schema_id]
+                variants = recipe.get("variants", {})
                 if type(variant) is not str or variant not in variants:
                     raise ValueError("presentation normalizer: undeclared variant")
-                if message.schema_id not in self._overrides:
+                if message.schema_id not in self._overrides or variant in recipe.get("legacy_variants", ()):
                     declaration = {**declaration, **variants[variant]}
         category = declaration["category"]
         if category == "mixed" and "category_field" in declaration:
@@ -461,24 +474,10 @@ class NarrativeProjector:
         label = self._labels.get(identity, identity)
         if language == "zh" and identity in self._labels_zh:
             return self._labels_zh[identity]
-        if label in self._vocabulary:
-            return self._vocabulary[label][language]
-        if language != "zh":
-            return label
-        for prefix, localized in self._numbered.items():
-            if label.startswith(prefix + " ") and _NUMBERED.fullmatch(label[len(prefix) + 1:]):
-                return localized[language] + label[len(prefix):]
-        for group in self._label_groups:
-            prefix = group["prefix"]["en"] + " "
-            if not label.startswith(prefix):
-                continue
-            suffix = label[len(prefix):]
-            if suffix in group["names"]:
-                return group["prefix"][language] + " " + group["names"][suffix][language]
-            for numbered, localized in group["numbered"].items():
-                if suffix.startswith(numbered + " ") and suffix[len(numbered) + 1:].isdecimal():
-                    return group["prefix"][language] + " " + localized[language] + suffix[len(numbered):]
-        return label
+        return presentation_label(label, language, {
+            "labels": self._vocabulary, "numbered_labels": self._numbered,
+            "label_groups": self._label_groups,
+        })
 
     def _render(self, value: Any, language: str = "en") -> str:
         if type(value) is str:

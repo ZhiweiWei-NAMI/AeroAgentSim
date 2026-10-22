@@ -8,8 +8,8 @@ Admission does not grant kernel write authority or prove runtime readiness. See
 ## Shared rules
 
 The implementation is [`extensions/discovery.py`](../../src/aeroagentsim/extensions/discovery.py).
-Scenario and metric discovery use it directly; the engine catalog uses its
-metadata enumeration and lazy resolution without constructing engines.
+Scenario, metric and presentation discovery use it directly; the engine catalog
+uses its metadata enumeration and lazy resolution without constructing engines.
 
 1. **Enumerate once, before loading or admitting names.** Collect every installed
    declaration and duplicate conflict before validating the family's name syntax.
@@ -24,8 +24,8 @@ metadata enumeration and lazy resolution without constructing engines.
    One installed entry replaces the **whole** same-name builtin provider; do not
    call the shadowed builtin or merge back its hooks, templates or reducers. An
    invalid installed replacement fails, with no fallback to the builtin.
-3. **Validate the family's contract.** Versioned scenario/metric providers must
-   have names matching `[a-z0-9][a-z0-9_-]*`, return the expected descriptor type,
+3. **Validate the family's contract.** Versioned scenario/metric/presentation
+   providers must have names matching `[a-z0-9][a-z0-9_-]*`, return the expected descriptor type,
    and have a name equal to their entry-point name. A zero-argument factory may
    return that descriptor. Require an actual integer `api_version=1`: booleans,
    floats, strings, `None` and unknown integer versions are rejected, not coerced
@@ -34,14 +34,16 @@ metadata enumeration and lazy resolution without constructing engines.
 4. **Snapshot declarations, not runtime state.** `DiscoveryResult` is frozen;
    its names, loaded-provider sequence, evidence and conflict diagnostics are
    tuples. `ScenarioPlugin` snapshots its hook mapping read-only, template
-   sources are frozen, and metric descriptors are frozen. Executable callbacks
+   sources are frozen, metric descriptors are frozen, and presentation DATA and
+   reader mappings are frozen/read-only snapshots. Executable callbacks
    and reducer implementations are not deep-copied, made pure or sandboxed by
    discovery. Engine configuration-schema reads return detached normalized data.
 5. **Reject contributed-ID collisions at composition.** Replacing one provider
    does not authorize overwriting another provider's IDs. `TemplateRegistry`
    rejects duplicate template IDs and hook keys; `MetricAccumulator` rejects
-   duplicate metric IDs, including across different providers. These checks stay
-   at composition because they require family-specific resources/descriptors.
+   duplicate metric IDs, including across different providers. Presentations reject
+   conflicting contributed IDs across selected providers. These checks stay at
+   composition because they require family-specific resources/descriptors.
    Engines contribute catalog names, not a second collection of versioned IDs;
    duplicate engine names fail at discovery, and registry/partition authority is
    separately validated by the kernel. Discovery never grants namespace takeover.
@@ -79,11 +81,12 @@ installed-only engine declarations are linked below the table.
 | Algorithms | `aeroagentsim.algorithms` | Unversioned slot protocols | Allocation: `nearest`, `auction`, `hungarian`, `llm`; path planning: `straight`, `corridor_astar`, `coverage`, `survey`, `patrol`; conflict resolution: `altitude_layers`, `hold_and_go`; charging: `threshold_return` | Runtime migration deferred: qualified `<slot>.<name>` entry wins over unqualified installed name, then `module:Class` or builtin; constructors receive configuration. Duplicate installed names fail. |
 | Consumption models | `aeroagentsim.models` | Unversioned `ConsumptionModel` protocol | `linear`, `wind` | Runtime migration deferred: installed factory replaces an explicitly selected name; duplicates are rejected only for the selected name. A legacy scenario without explicit `consumption_model` retains builtin linear behavior. |
 | Assistant operations (**planned; absent in this revision**) | Proposed `aeroagentsim.assistant_operations` | Planned independent version 1 | No discoverable providers | No admission or override API shipped here. Internal assistant operation tables are not this family. |
-| Presentations (**planned**) | Proposed `aeroagentsim.presentations` | Not shipped | No discoverable providers | Existing scenario presentation data does not establish a discoverable provider family. |
+| [Presentations (**shipped**)](presentation-plugins.md) | `aeroagentsim.presentations` | `PresentationPlugin`, version **1** | `lowalt`, `traffic_accident` | Shared discovery; duplicate-first, all names admitted before any load; whole-provider replacement; explicit selections never load unselected factories; contributed IDs must be disjoint. Finite data only, no browser renderers. |
 | Registry overlays (**planned**) | Proposed `aeroagentsim.registry_overlays` | Not shipped | No discoverable providers | Existing inline descriptors/snapshots do not establish an overlay plugin admission API. |
 
 Sources: [scenario builtins](../../src/aeroagentsim/scenarios/__init__.py),
 [metrics](../../src/aeroagentsim/metrics_api.py),
+[presentations](../../src/aeroagentsim/presentation_api.py),
 [engine catalog](../../src/aeroagentsim/platform/plugins.py) and its
 [import-light builtin declarations](../../src/aeroagentsim/extensions/engine_builtins.py),
 [algorithm loader](../../src/aeroagentsim/algorithms/__init__.py),
