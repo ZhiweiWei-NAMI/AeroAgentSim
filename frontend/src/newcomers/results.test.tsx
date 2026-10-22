@@ -111,17 +111,20 @@ describe('CompareRuns', () => {
     r2: { at_ns: '300000000000', commit_index: 2, status: 'completed' },
   };
   it('fetches a real comparison from the API and highlights the best value per metric direction', async () => {
-    const comparison: RunComparison = {
+    const comparison = {
+      alignment: 'recorded_run_end', recorded_ends, config_diff: [],
       runs: [
         { id: 'r1', title: 'Nearest fleet', template_id: 'parcel-delivery',
+          status: 'completed', results_final: true, results_cursor: 3, final_commit_index: 2,
           kpis: { tasks_completed: { value: 5, unit: '', label: 'Tasks completed' }, energy_used_kj: { value: 900, unit: 'kJ', label: 'Energy used', direction: 'min' } },
           knobs: { fleet_size: 6 }, algorithms: { allocation: 'nearest' } },
         { id: 'r2', title: 'Auction fleet', template_id: 'parcel-delivery',
+          status: 'completed', results_final: true, results_cursor: 3, final_commit_index: 2,
           kpis: { tasks_completed: { value: 9, unit: '', label: 'Tasks completed' }, energy_used_kj: { value: 700, unit: 'kJ', label: 'Energy used', direction: 'min' } },
           knobs: { fleet_size: 6 }, algorithms: { allocation: 'auction' } },
       ],
     };
-    const api = { compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue([]) } as unknown as TemplateApi;
+    const api = { request: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue([]) } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} onBack={() => {}} />);
     await waitFor(() => expect(screen.getByRole('heading',{name:'Run 1 · Nearest fleet'})).toBeInTheDocument());
     // Two columns, one per run.
@@ -130,16 +133,17 @@ describe('CompareRuns', () => {
     const energyCells = screen.getAllByText(/kJ/);
     expect(energyCells[1]).toHaveClass('is-best'); // r2 = 700 kJ, second column
     expect(energyCells[0]).not.toHaveClass('is-best');
-    expect(api.compare).toHaveBeenCalledWith(['r1', 'r2'], expect.anything());
+    expect(api.request).toHaveBeenCalledWith('/v1/runs/compare?ids=r1,r2', undefined, expect.anything());
+    expect(api.request).toHaveBeenCalledTimes(1);
     expect(document.querySelectorAll('.newc-bar')).toHaveLength(4);
   });
 
   it('surfaces API errors with a retry instead of mocking data', async () => {
-    const api = { compare: vi.fn().mockRejectedValue(new Error('HTTP 503: unavailable')), templates: vi.fn().mockRejectedValue(new Error('HTTP 503: unavailable')) } as unknown as TemplateApi;
+    const api = { request: vi.fn().mockRejectedValue(new Error('HTTP 503: unavailable')), templates: vi.fn().mockRejectedValue(new Error('HTTP 503: unavailable')) } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} />);
     expect(await screen.findByRole('alert')).toHaveTextContent(/HTTP 503/);
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(api.compare).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.request).toHaveBeenCalledTimes(2));
   });
 
   it('uses template knob labels and deduplicates allocator rows', async () => {
@@ -160,10 +164,10 @@ describe('CompareRuns', () => {
       kpis: ['tasks_completed'],
     }];
     const api = {
-      request: vi.fn().mockResolvedValue({ alignment: 'recorded_run_end', recorded_ends, config_diff: [
+      request: vi.fn().mockResolvedValue({ ...comparison, alignment: 'recorded_run_end', recorded_ends, config_diff: [
         { path: '/algorithms/allocation', values: { r1: 'nearest', r2: 'auction' }, present: { r1: true, r2: true } },
       ] }),
-      compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue(catalog),
+      templates: vi.fn().mockResolvedValue(catalog),
     } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} />);
     await screen.findByRole('heading', { name: 'Run 1 · Nearest' });
@@ -181,7 +185,7 @@ describe('CompareRuns', () => {
         { id: 'r2', title: 'Auction', kpis: { tasks_completed: { value: 9, unit: '', label: 'Tasks completed' } }, knobs: {}, algorithms: {} },
       ],
     };
-    const api = { compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockRejectedValue(new Error('HTTP 503: unavailable')) } as unknown as TemplateApi;
+    const api = { request: vi.fn().mockResolvedValue({ ...comparison, alignment: 'recorded_run_end', recorded_ends, config_diff: [] }), templates: vi.fn().mockRejectedValue(new Error('HTTP 503: unavailable')) } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} />);
     await screen.findByRole('heading', { name: 'Run 1 · Nearest' });
     // Comparison still rendered, with a small note instead of a dead end.
@@ -206,8 +210,8 @@ describe('CompareRuns', () => {
       knobs: [], kpis: ['tasks_completed'],
     }];
     const api = {
-      request: vi.fn().mockResolvedValue({ alignment: 'recorded_run_end', recorded_ends, config_diff: [] }),
-      compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue(catalog),
+      request: vi.fn().mockResolvedValue({ ...comparison, alignment: 'recorded_run_end', recorded_ends, config_diff: [] }),
+      templates: vi.fn().mockResolvedValue(catalog),
     } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} />);
     await screen.findByRole('heading', { name: 'Run 1 · A' });

@@ -68,6 +68,37 @@
 .newc-config-absent { color: var(--csl-text-faint); font-style: italic; }
 .newc-config-null .newc-config-tag { color: #a3541d; border-style: solid; }
 
+/* ---- result finality / refresh state (F6) ---- */
+
+.newc-compare-state {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 0 6px;
+  border: 1px solid var(--csl-border-strong);
+  border-radius: 999px;
+  background: var(--csl-surface);
+  color: var(--csl-text-muted);
+  font-size: var(--csl-fs-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.newc-compare-state.is-final { color: var(--csl-teal-600); border-color: var(--csl-teal-500); }
+.newc-compare-state.is-provisional { color: #a3541d; border-color: #d59a6a; }
+.newc-compare-state.is-unknown { color: var(--csl-text-faint); border-style: dashed; }
+.newc-compare-state-cursor { font-weight: 500; opacity: 0.8; }
+.newc-compare-col h3 .newc-compare-state { margin-left: 6px; vertical-align: middle; }
+
+.newc-compare-refresh {
+  margin: 0;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+}
+.newc-compare-refresh.is-live { color: #a3541d; }
+.newc-compare-refresh.is-frozen { color: var(--csl-teal-600); }
+.newc-compare-refresh.is-unknown { color: var(--csl-text-faint); font-style: italic; }
+
 /* ---- which runs are compared / mixed-template comparability ---- */
 
 .newc-compare-mixed { margin: 0; font-size: var(--csl-fs-xs); color: var(--csl-text-muted); }
