@@ -17,9 +17,12 @@ Two model-driven plugins are built in:
   `StateGraph`; nodes receive the observation and trigger, and must make
   model calls only through the journaled client (`complete` / `ask_json`).
 
-Both record every phase in the kernel WAL — observation, prompt, response,
-validation, command, failure, finished and receipt — so the full decision
-history is ordinary journaled records, never a private log.
+Both record decision evidence in the kernel WAL: observations, model calls,
+validation, output proposals and terminal outcomes (with command receipts
+recorded separately). Committed history is journaled evidence, not a private log.
+The read-only [agent execution view](../reference/agent-execution.md) normalises
+function-tool, structured-JSON and explicitly scripted evidence, including
+partial outcomes and missing historical metadata, without rewriting WALs.
 
 ## Grants: what an agent can see and do
 
@@ -49,13 +52,15 @@ submitted/accepted/executing/terminal receipts.
 (`src/aeroagentsim/agents/provider.py`); scenarios cannot supply provider URLs,
 model settings or credential-variable selectors. A total wall deadline covers DNS,
 connection, headers and body; expiry records `WALL_TIMEOUT` and a late reply
-cannot publish. Transport failures are never auto-retried into success, and
-missing usage is an explicit failure.
+cannot publish. The transport provider does not retry; graph `ask_json` can
+retry `HTTP_STATUS`/`TRANSPORT` errors and JSON rejections within its existing
+retry budget, retaining each attempt. Missing usage is an explicit failure.
 
 Two configuration layers exist:
 
-1. Scenario engines (`decision`, `langgraph`) select `provider: {profile: default}`
-   or another server-configured profile. The default profile reads
+1. `decision` selects `provider: {profile: default}` or another operator profile;
+   the LangGraph wrapper uses `provider: {mode: live, profile: default}`, or an
+   explicit `{mode: stub, model: ..., responses: ...}` script. The default profile reads
    `AAS_LLM_BASE_URL`, `AAS_LLM_MODEL` and `AAS_LLM_API_KEY`. Other profiles
    come from `AEROAGENTSIM_PROVIDER_PROFILES` or `AEROAGENTSIM_PROVIDER_CONFIG`;
    see the [provider guide](../guides/agents.md#the-provider). The model must be
@@ -75,8 +80,9 @@ aeroagentsim demo traffic-accident --profile live-llm
 ```
 
 Recorded/stub decision mode is an explicit, selected alternative — never an
-automatic fallback when a live model is unavailable. Responses and prompts
-are recorded without credentials; the resolved model name is recorded.
+automatic fallback when a live model is unavailable. The resolved model and
+credential-free provider metadata are recorded; raw prompts, responses and
+plugin diagnostics can still contain sensitive supplied text.
 
 For low-altitude cooperation, invalid/failed agent replies record
 `lowalt.incident.decision_failed`; responder incident state is `decision_failed`.
@@ -101,10 +107,13 @@ completion. Two latency profiles are explicit:
 - **Online delayed-reply integration** (named streams returning results at
   recorded availability) is not implemented in the current decision engine.
 
-Replay executes no decision engines or providers: model calls are
-reconstructed from recorded responses. `replay_graph` can additionally
-reexecute a recorded graph against its recorded replies for verification —
-it performs no kernel writes and no model I/O.
+State replay executes no decision engines or providers: committed effects
+are reconstructed from the journal. Separately, `replay_graph` re-imports and
+reexecutes the installed graph factory against recorded replies; its client
+makes no provider calls, but trusted factory Python is not sandboxed or
+verified against all recorded pins. Live inference is not byte-identical replay.
+See the [execution reference](../reference/agent-execution.md#replay-and-audit-limits)
+for audit durability and replay limitations.
 
 ## Where to go next
 

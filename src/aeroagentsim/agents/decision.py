@@ -15,6 +15,7 @@ from aerokernel.values import thaw, typed_equal
 
 from aeroagentsim.platform.plugins import EngineBuild
 
+from .langgraph_client import provider_record_metadata
 from .observation import FieldGrant, build_observation, delivery_route
 from .provider import OpenAIProvider, Provider, ProviderError
 from .tools import ToolCatalog, ToolGrant
@@ -129,6 +130,20 @@ class Decision(ContextEngine):
         )
         if isinstance(self.provider, OpenAIProvider):
             self.provider.bind_session(f"engine:{build.run_directory.resolve() if build.run_directory else build.manifest.run_id}:{build.manifest.epoch}:{build.id}")
+        pcfg = cfg.get("provider")
+        self.provider_metadata = provider_record_metadata(
+            self.provider,
+            self.provider.model,
+            "function_tools",
+            provider_mode="live" if provider is None else None,
+            provider_profile=(
+                pcfg.get("profile", "default")
+                if provider is None and isinstance(pcfg, dict)
+                else "default"
+                if provider is None
+                else None
+            ),
+        )
         self.sequence = 0
         self.pending: deque[tuple[str, str]] = deque()
         self.commands_by_id: dict[str, tuple[str, str]] = {}
@@ -279,6 +294,7 @@ class Decision(ContextEngine):
                     "messages": messages,
                     "tools": self.catalog.tools,
                     "model": self.provider.model,
+                    **self.provider_metadata,
                     "max_tokens": self.budget["max_tokens"] - tokens,
                 },
             )
