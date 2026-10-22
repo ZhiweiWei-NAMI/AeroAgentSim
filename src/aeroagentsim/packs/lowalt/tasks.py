@@ -660,6 +660,8 @@ class LowaltTasks(ContextEngine):
             ):
                 raise ValueError("allocation proposal violates vehicle eligibility")
             job.vehicle, flight.job = proposal.vehicle, job
+            # A hold snapshot belongs to the previous mission, not this assignment.
+            flight.paused_route = None
             ctx.set(job.ref, "lowalt.task_vehicle", proposal.vehicle)
             self._state(ctx, job, "assigned")
             self._event(
