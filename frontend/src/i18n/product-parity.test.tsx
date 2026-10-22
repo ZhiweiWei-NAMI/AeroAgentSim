@@ -90,6 +90,23 @@ function stateSnapshot() {
   };
 }
 
+/** Wait until lazy sections have loaded and controls stop changing, so both locales are compared at rest. */
+async function settledSnapshot() {
+  let previous = '';
+  let current = stateSnapshot();
+  await waitFor(() => {
+    // Lazily loaded sections show a Suspense fallback until their module arrives;
+    // only the first locale pays that cost, so never compare a fallback.
+    expect(screen.queryByText(/Loading this section…|正在加载此分区…/)).toBeNull();
+    current = stateSnapshot();
+    const serialized = JSON.stringify(current);
+    const stable = serialized === previous;
+    previous = serialized;
+    expect(stable).toBe(true);
+  }, { interval: 50, timeout: 3000 });
+  return current;
+}
+
 function configApi(): WorkbenchApi {
   return { base: '/api' } as WorkbenchApi;
 }
@@ -142,7 +159,7 @@ it('configures and initializes the same controls in English and Chinese', async 
     expect(action('wb-validate')).toHaveAccessibleName(zh(locale) ? '校验' : 'Validate');
     expect(action('wb-save-version')).toBeEnabled();
     expect(screen.getByTestId('wb-config')).toHaveAttribute('aria-label', zh(locale) ? '配置场景' : 'Configure scenario');
-    snapshots[locale] = stateSnapshot();
+    snapshots[locale] = await settledSnapshot();
     cleanup();
   }
   expect(snapshots['zh-CN']).toEqual(snapshots['en-US']);
@@ -172,7 +189,7 @@ it('keeps confirmation, review and creation identical in both locales', async ()
     expect(screen.getByTestId('experiment-review-panel')).toHaveTextContent(zh(locale) ? '检查一次，然后创建一次' : 'Review once, then create once');
     expect(screen.getByTestId('experiment-confirm')).toHaveAccessibleName(zh(locale) ? '创建 6 次运行' : 'Create 6 runs');
     expect(api.request).not.toHaveBeenCalled();
-    snapshots[locale] = stateSnapshot();
+    snapshots[locale] = await settledSnapshot();
     fireEvent.click(screen.getByTestId('experiment-confirm'));
     expect(await screen.findByTestId('experiment-results')).toBeInTheDocument();
     expect(screen.getByTestId('experiment-id')).toHaveTextContent('exp-1');
@@ -195,7 +212,7 @@ it('shows the same validation failure state without claiming a valid version', a
     expectAction('wb-save-version', 'Save version', '保存版本', locale, false);
     expect(action('wb-validate')).toHaveAccessibleName(zh(locale) ? '校验' : 'Validate');
     expect(action('wb-validate')).toBeEnabled();
-    snapshots[locale] = stateSnapshot();
+    snapshots[locale] = await settledSnapshot();
     cleanup();
   }
   expect(snapshots['zh-CN']).toEqual(snapshots['en-US']);
@@ -215,7 +232,7 @@ it('renders faulted initialization as a kept run that cannot start in both local
     expect(alert).toHaveTextContent(zh(locale) ? '运行出错' : 'Faulted');
     expect(alert).toHaveTextContent(zh(locale) ? '不能启动' : 'cannot be started');
     expect(screen.queryByTestId('wb-start')).toBeNull();
-    snapshots[locale] = stateSnapshot();
+    snapshots[locale] = await settledSnapshot();
     cleanup();
   }
   expect(snapshots['zh-CN']).toEqual(snapshots['en-US']);
@@ -233,7 +250,7 @@ it('replays the same recorded moment and offers the same exit action in both loc
     expect(screen.getByTestId('wb-playback')).toHaveAccessibleName(zh(locale) ? '播放已记录的时间轴' : 'Play recorded timeline');
     expect(screen.getByTestId('wb-back-live')).toHaveAccessibleName(zh(locale) ? '跳到结束时刻 L' : 'Jump to the end L');
     expect(screen.getByLabelText(zh(locale) ? '已记录的时间轴' : 'Recorded timeline')).toHaveValue('1');
-    snapshots[locale] = stateSnapshot();
+    snapshots[locale] = await settledSnapshot();
     cleanup();
   }
   expect(snapshots['zh-CN']).toEqual(snapshots['en-US']);
@@ -260,7 +277,7 @@ it('compares the same runs and finality state in both locales', async () => {
     expect(screen.getByTestId('comparison-summary')).toHaveAccessibleName(zh(locale) ? '对比总览' : 'Comparison summary');
     expect(screen.getByTestId('comparison-state-r-1')).toHaveTextContent(zh(locale) ? '暂定' : 'Provisional');
     expect(screen.getByRole('button', { name: zh(locale) ? '返回' : 'Go back' })).toBeEnabled();
-    snapshots[locale] = stateSnapshot();
+    snapshots[locale] = await settledSnapshot();
     cleanup();
   }
   expect(snapshots['zh-CN']).toEqual(snapshots['en-US']);
