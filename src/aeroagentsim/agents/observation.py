@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from aerokernel import EntityRef
+from aerokernel.codec import decode_record
+from aerokernel.messages import Delivery, Emit
 from aerokernel.sdk import EngineContext
 from aerokernel.state import Fact
 from aerokernel.values import thaw
@@ -17,11 +19,30 @@ class FieldGrant:
     field: str
 
 
+def delivery_route(ctx: EngineContext, delivery: Delivery) -> str:
+    """Recover the actual route from this delivery's committed publication.
+
+    Delivery.recipient names a partition, even for topic fanout. The event's
+    origin points to its losslessly retained Emit proposal in both WAL modes.
+    """
+    message = delivery.message
+    if message.kind == "command":
+        return delivery.recipient
+    origin = message.origin
+    if origin is None or origin.record_index > ctx.view.cut.index:
+        raise ValueError("event delivery has no visible committed publication")
+    item = ctx.view._store.records.item(origin.record_index - 1, origin.item_index)
+    proposal = decode_record(item["proposal"])
+    if not isinstance(proposal, Emit) or proposal.schema_id != message.schema_id:
+        raise ValueError("event delivery origin is not its Emit proposal")
+    return proposal.target_or_topic
+
+
 def build_observation(
     ctx: EngineContext,
     fields: tuple[FieldGrant, ...],
     relations: tuple[str, ...],
-    event_schemas: tuple[str, ...],
+    event_grants: tuple[tuple[str, str], ...],
     actions: tuple[str, ...],
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
@@ -97,9 +118,14 @@ def build_observation(
                 ],
             }
         )
+    event_schemas = {schema for schema, _ in event_grants}
     for delivery in ctx.inbox:
         message = delivery.message
-        if message.kind == "event" and message.schema_id in event_schemas:
+        if (
+            message.kind == "event"
+            and message.schema_id in event_schemas
+            and (message.schema_id, delivery_route(ctx, delivery)) in event_grants
+        ):
             result["events"].append(
                 {
                     "id": message.id,

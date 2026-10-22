@@ -12,10 +12,8 @@ from importlib.metadata import version
 from typing import Any, cast
 
 from aerokernel import CommandRequest, Dependency, Partition
-from aerokernel.codec import decode_record
 from aerokernel.errors import KernelError
 from aerokernel.journal import iter_records
-from aerokernel.messages import Delivery, Emit
 from aerokernel.relations import RelationDependency
 from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.values import thaw
@@ -25,30 +23,11 @@ from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.services.projector import project
 
 from .langgraph_client import JournalClient, ScriptedProvider, json_copy
-from .observation import FieldGrant, build_observation
+from .observation import FieldGrant, build_observation, delivery_route
 from .provider import OpenAIProvider, Provider, ProviderError
 
 RECORD_SCHEMA = "aas.langgraph.record"
 RECORD_TOPIC = "langgraph-records"
-
-
-def delivery_route(ctx: EngineContext, delivery: Delivery) -> str:
-    """Recover the actual route from this delivery's committed publication.
-
-    Delivery.recipient names a partition, even for topic fanout. The event's
-    origin points to its losslessly retained Emit proposal in both WAL modes.
-    """
-    message = delivery.message
-    if message.kind == "command":
-        return delivery.recipient
-    origin = message.origin
-    if origin is None or origin.record_index > ctx.view.cut.index:
-        raise ValueError("event delivery has no visible committed publication")
-    item = ctx.view._store.records.item(origin.record_index - 1, origin.item_index)
-    proposal = decode_record(item["proposal"])
-    if not isinstance(proposal, Emit) or proposal.schema_id != message.schema_id:
-        raise ValueError("event delivery origin is not its Emit proposal")
-    return proposal.target_or_topic
 
 
 def record_descriptor() -> dict[str, Any]:
@@ -406,7 +385,11 @@ class LangGraphDecision(ContextEngine):
                     ctx,
                     self.fields,
                     self.relations,
-                    tuple(row["schema"] for row in self.triggers if "topic" in row),
+                    tuple(
+                        (row["schema"], row["topic"])
+                        for row in self.triggers
+                        if "topic" in row
+                    ),
                     (),
                 ),
                 "trigger": {
