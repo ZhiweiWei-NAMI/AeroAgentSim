@@ -40,6 +40,27 @@ def _isolate_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugin_inventory_service, "entry_points", query)
 
 
+def _entry(name: str, distribution: str) -> Any:
+    def load() -> None:
+        raise AssertionError(f"{name} must not be loaded")
+
+    return SimpleNamespace(
+        name=name,
+        dist=SimpleNamespace(name=distribution),
+        load=load,
+    )
+
+
+def _install(
+    monkeypatch: pytest.MonkeyPatch, groups: dict[str, tuple[Any, ...]]
+) -> None:
+    def query(*, group: str) -> tuple[Any, ...]:
+        return groups.get(group, ())
+
+    monkeypatch.setattr(plugin_api, "entry_points", query)
+    monkeypatch.setattr(plugin_inventory_service, "entry_points", query)
+
+
 def test_builtin_scenarios_cover_every_shipped_template() -> None:
     inventory = plugin_inventory_service.plugin_inventory()
     scenarios = {row["name"]: row for row in inventory["scenarios"]}
@@ -87,6 +108,86 @@ def test_installed_scenario_entry_point_reports_distribution(
         "distribution": "acme-plugins",
         "templates": ["external-template"],
         "apply_hooks": ["external.mode"],
+        "status": "ok",
+    }
+
+
+@pytest.mark.parametrize(
+    ("group", "name", "builtin"),
+    [
+        ("aeroagentsim.engines", "kinematic", "behaviour"),
+        ("aeroagentsim.algorithms", "allocation.nearest", "allocation.auction"),
+        ("aeroagentsim.models", "wind", "linear"),
+    ],
+)
+def test_duplicate_installed_names_are_reported_once(
+    monkeypatch: pytest.MonkeyPatch, group: str, name: str, builtin: str
+) -> None:
+    _install(
+        monkeypatch,
+        {group: (_entry(name, "acme-plugins"), _entry(name, "other-plugins"))},
+    )
+    section = group.rsplit(".", 1)[1]
+    rows = {
+        row["name"]: row
+        for row in plugin_inventory_service.plugin_inventory()[section]
+    }
+    assert rows[name] == {
+        "name": name,
+        "origin": "entry-point",
+        "distribution": "acme-plugins",
+        "status": "duplicate",
+        "conflict": ["acme-plugins", "other-plugins"],
+    }
+    assert rows[builtin] == {
+        "name": builtin,
+        "origin": "builtin",
+        "distribution": None,
+        "status": "ok",
+    }
+
+
+def test_duplicate_scenario_names_fall_back_to_entry_point_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install(
+        monkeypatch,
+        {
+            "aeroagentsim.scenarios": (
+                _entry("flood-rescue", "acme-scenarios"),
+                _entry("flood-rescue", "other-scenarios"),
+                _entry("external", "acme-scenarios"),
+            )
+        },
+    )
+    scenarios = {
+        row["name"]: row
+        for row in plugin_inventory_service.plugin_inventory()["scenarios"]
+    }
+    assert scenarios["flood-rescue"] == {
+        "name": "flood-rescue",
+        "origin": "entry-point",
+        "distribution": "acme-scenarios",
+        "templates": [],
+        "apply_hooks": [],
+        "status": "duplicate",
+        "conflict": ["acme-scenarios", "other-scenarios"],
+    }
+    assert scenarios["external"] == {
+        "name": "external",
+        "origin": "entry-point",
+        "distribution": "acme-scenarios",
+        "templates": [],
+        "apply_hooks": [],
+        "status": "ok",
+    }
+    assert scenarios["traffic-accident"] == {
+        "name": "traffic-accident",
+        "origin": "builtin",
+        "distribution": None,
+        "templates": [],
+        "apply_hooks": [],
+        "status": "ok",
     }
 
 
