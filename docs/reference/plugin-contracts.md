@@ -102,6 +102,12 @@ Factory callability, slot-method checks and schema descriptors likewise do not e
 | --- | --- |
 | Owner-mediated mission control | [available for the lowalt Tasks owner (v1)](mission-commands.md). Reserve/divert/resume/release use kernel commands and committed-effect receipts; embedded Rescue migration and payload-consume commands remain planned. |
 
+## Assistant operation families
+
+| Capability | Availability |
+| --- | --- |
+| Assistant operation families | [available as `aeroagentsim.assistant_operations` v1](assistant-operations.md). A family contributes namespaced operations with parameter schemas, zh/en copy, prerequisites and a pure compiler; the host keeps staging, diff display, consent and validation. A compiled proposal is not an applied change, and a model reply is not completion. |
+
 ## Planned extension points — not available
 
 These are design directions, not groups or interfaces a distribution can register today.
@@ -109,7 +115,6 @@ These are design directions, not groups or interfaces a distribution can registe
 | Planned capability | Current boundary / supported alternative |
 | --- | --- |
 | Registry overlay plugins | No discoverable `aeroagentsim.registry_overlays` family or `registry.overlays` selection contract. Use explicit inline descriptors or a complete registry snapshot supported by [the loader](scenario.md#registry-section). An overlay filename alone is not discovery. |
-| Assistant families | No external operation/compiler/expectation registration contract. Existing template controls can use pointers/hooks; new semantic assistant operations still require host changes to [dispatch](../../src/aeroagentsim/assistant/compiler.py). |
 | Presentations | No `aeroagentsim.presentations` provider registry. Existing declarative scenario `presentation` bindings and `event_narratives` are available, but do not register new browser renderers or arbitrary remote JavaScript. |
 
 Installing a scenario plugin does not make these planned capabilities available. Keep authoring contributions, runtime ownership and read/presentation integrations separate.
