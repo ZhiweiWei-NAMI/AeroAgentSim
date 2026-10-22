@@ -5,7 +5,7 @@ import { RunsApi, validateCommit, validateHeader } from '../feeds/http';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { parseLosslessJson } from '../feeds/lossless-json';
 import { entityId, resolveBinding } from '../viewport/bindings';
-import { worldPosition } from '../viewport/coordinates';
+import { worldOrientation, worldPosition } from '../viewport/coordinates';
 import { Assets, disposeObject } from '../viewport/assets';
 import { EntityLayer } from '../viewport/entities';
 import { applyWeatherMaterials, setupScene } from '../viewport/scene';
@@ -14,7 +14,7 @@ import { AtmosphereLayer } from '../viewport/atmosphere';
 import { conditionsAt } from '../viewport/conditions';
 import { loadSceneLayer } from '../scene/city-layer';
 import { isLiteCityScene } from '../viewport/procedural-traffic';
-import { parseModelCatalog } from '../viewport/model-catalog';
+import { fitModel, parseModelCatalog } from '../viewport/model-catalog';
 import '../scene/presentation';
 import { translate } from '../i18n/translate';
 
@@ -85,7 +85,14 @@ export interface CaptureScene {
   asset_manifest: ObjectData;
 }
 export interface CaptureInput { request: ObjectData; service_run_id: string; label?: string; scene?: CaptureScene }
-export interface CaptureResult { request: ObjectData; png_data_url: string }
+export interface CaptureDepth {
+  encoding: 'float32-le-metres'; width: number; height: number; depth_convention: 'optical_z';
+  data_base64: string; near_m: number; far_m: number; vertical_origin: 'top-left'; invalid: 'NaN'; source: string;
+}
+export interface CaptureResult {
+  request: ObjectData; png_data_url: string; depth?: CaptureDepth;
+  calibration?: ObjectData; camera_pose?: ObjectData;
+}
 export interface CapturePreparation {
   service_run_id: string; asset_digest: string; header: unknown; asset_manifest: ObjectData; oblique: boolean;
 }
@@ -166,6 +173,8 @@ export class CaptureRenderer {
   private composer?: ReturnType<typeof pipeline>;
   private hdr?: T.WebGLRenderTarget;
   private camera = new T.PerspectiveCamera();
+  private captureHeader?: RunHeader;
+  private staticSkinned = new T.Group();
   private signature?: string;
   private failures: string[] = [];
   constructor(private mount: HTMLElement) {}
@@ -189,6 +198,7 @@ export class CaptureRenderer {
     if (signature === this.signature) return;
     this.dispose();
     header = await loadAssets(assetId,assetManifestUrl,header,signal,manifest);
+    this.captureHeader = header;
     this.renderer = new T.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});
     this.renderer.setPixelRatio(1); this.renderer.outputColorSpace = T.SRGBColorSpace;
     this.mount.replaceChildren(this.renderer.domElement);
@@ -197,9 +207,16 @@ export class CaptureRenderer {
     if (header.scene) await loadSceneLayer(header.scene,header,this.assets,signal,item => {this.scene!.add(item);this.lighting!.grid.visible=false;},status);
     if (oblique) orderCaptureCity(this.scene);
     if (header.scene?.hdri) {this.hdr = await this.assets.hdri(header.scene.hdri,this.renderer);this.scene.environment = this.hdr.texture;}
-    this.layer = new EntityLayer(header,this.assets,document.createElement('div'),() => {},error => this.failures.push(String(error)),status);
+    const skinnedUrls = new Set(Object.values(parseModelCatalog(header.modelCatalog)).filter(model => model.skinned).map(model => model.url));
+    // Static skinned subjects have their own correctly cloned hierarchy below.
+    // A label-only binding keeps them out of the instanced/fallback mesh path.
+    const meshHeader = {...header,presentation:header.presentation.map(binding =>
+      binding.visual.kind === 'model' && skinnedUrls.has(binding.visual.asset ?? '')
+        ? {...binding,visual:{...binding.visual,kind:'label' as const}} : binding)};
+    this.layer = new EntityLayer(meshHeader,this.assets,document.createElement('div'),() => {},error => this.failures.push(String(error)),status);
     this.layer.hideIncidentMarkers = true;
     this.layer.setCatalog(parseModelCatalog(header.modelCatalog)); this.scene.add(this.layer.root);
+    this.scene.add(this.staticSkinned);
     // Captures show the same smoke/rain/fog as the run viewport: the cut's journaled conditions.
     // A capture is a one-shot sensor render, so the atmosphere gets the high tier
     // (full plume) while the render pipeline itself stays 'low'.
@@ -228,6 +245,33 @@ export class CaptureRenderer {
   }
   private dusk = false;
   private atmosphereState = { dusk: false, rain: NaN, visibilityM: null as number | null };
+  private clearStaticSkinned() {
+    for (const root of [...this.staticSkinned.children]) {
+      root.traverse(node => { if (node instanceof T.SkinnedMesh) node.skeleton.dispose(); });
+      disposeObject(root);
+    }
+  }
+  private async updateStaticSkinned(store: ExactCaptureStore) {
+    this.clearStaticSkinned();
+    const header=this.captureHeader!, catalog=Object.values(parseModelCatalog(header.modelCatalog));
+    for (const entity of store.entities.values()) {
+      const binding=resolveBinding(header,entity.typeId);
+      const spec=binding?.visual.kind === 'model' && catalog.find(model => model.skinned && model.url === binding.visual.asset);
+      if (!binding || !spec) continue;
+      if (binding.frame !== 'enu') throw Error('Static skinned capture requires an ENU binding');
+      const model=await this.assets!.model(spec.url,true);
+      model.updateMatrixWorld(true);
+      model.traverse(node => { if (node instanceof T.SkinnedMesh) node.skeleton.update(); });
+      const fit=fitModel(new T.Box3().setFromObject(model),spec);
+      const fitted=new T.Group(); fitted.matrixAutoUpdate=false; fitted.matrix.copy(fit.matrix); fitted.add(model);
+      const root=new T.Group(); root.name=entityId(entity.key);
+      root.position.copy(worldPosition(vector(store.sample(entity.key,binding.positionField)),'enu'));
+      root.quaternion.copy(worldOrientation(binding.orientationField ? store.sample(entity.key,binding.orientationField)! : [0,0,0,1],'enu'));
+      root.scale.setScalar(binding.visual.scale ?? 1); root.add(fitted);
+      root.userData.poseMode='authored static GLB pose; no walking animation';
+      this.staticSkinned.add(root); root.updateMatrixWorld(true);
+    }
+  }
   async render(api: RunsApi, assetManifestUrl: string, input: CaptureInput): Promise<CaptureResult> {
     const request = object(input.request);
     if (typeof request.asset_digest !== 'string' || !request.asset_digest) throw Error('Capture request asset set ID is missing');
@@ -272,8 +316,10 @@ export class CaptureRenderer {
       const entity = store.entities.get(entityId(key));
       if (!entity || entity.typeId !== actor.type_id) throw Error('Capture actor generation/type absent at source cut');
       const manifest = object(request.camera);
-      const supported = new Set(['revision','preset','eye','target','fov','near','far','frame','anchor','snapshot','provenance','pitch_deg','coincident_azimuth_deg','target_field','subject']);
+      const supported = new Set(['revision','preset','eye','target','up','exclude_actor','fov','near','far','frame','anchor','snapshot','provenance','pitch_deg','coincident_azimuth_deg','target_field','subject','depth']);
       if (Object.keys(manifest).some(name => !supported.has(name)) || typeof manifest.revision !== 'string' || !manifest.revision) throw Error('Unsupported / incomplete capture camera manifest');
+      if (manifest.depth !== undefined && typeof manifest.depth !== 'boolean') throw Error('Capture depth option must be boolean');
+      if (manifest.exclude_actor !== undefined && typeof manifest.exclude_actor !== 'boolean') throw Error('Capture exclude_actor option must be boolean');
       if (typeof manifest.fov !== 'number' || !(manifest.fov > 0 && manifest.fov < 180)) throw Error('Invalid capture camera fov');
       // The original traffic-nadir/v1 protocol declares its camera at the
       // snapshot actor pose. Interpret it exactly; do not rewrite the request.
@@ -311,11 +357,17 @@ export class CaptureRenderer {
       this.camera.updateProjectionMatrix(); this.camera.up.set(0,1,0);
       const position = (value: [number,number,number]) => nadir || manifest.frame === 'enu' ? worldPosition(value,'enu') : manifest.frame === undefined || manifest.frame === 'render-world' ? new T.Vector3(...value) : (() => {throw Error('Unsupported capture camera frame');})();
       if (nadir) this.camera.up.set(0,0,-1);
+      if (manifest.up !== undefined) {
+        const up=position(vector(manifest.up)), forward=position(target).sub(position(eye));
+        if (up.lengthSq() === 0 || new T.Vector3().crossVectors(up,forward).lengthSq() < 1e-12) throw Error('Capture up direction is zero or parallel to its optical axis');
+        this.camera.up.copy(up.normalize());
+      }
       this.camera.position.copy(position(eye)); this.camera.lookAt(position(target)); this.camera.updateMatrixWorld();
       this.renderer!.setSize(width,height);this.composer!.setSize(width,height);
       this.lighting!.update(position(target));
       // A photographer is excluded from its own photograph, not from real state.
-      if (nadir || oblique) store.entities.delete(entityId(key));
+      if (nadir || oblique || manifest.exclude_actor === true) store.entities.delete(entityId(key));
+      await this.updateStaticSkinned(store); check();
       do {
         this.layer!.update(store,ns,this.camera,undefined,false);
         check();
@@ -349,12 +401,69 @@ export class CaptureRenderer {
       }
       this.mount.dataset.rendered='true';this.mount.dataset.sourceCut=String(index);
       this.mount.dataset.camera=JSON.stringify({eye:this.camera.position.toArray(),target:position(target).toArray(),fov:manifest.fov,width,height});
-      return {request, png_data_url:canvas.toDataURL('image/png')};
+      if (manifest.depth === true && input.label) throw Error('Registered RGB-D capture cannot contain a diagnostic text overlay');
+      const png_data_url=canvas.toDataURL('image/png');
+      return {request, png_data_url, ...(manifest.depth === true ? this.readDepth(width,height,source) : {})};
     } catch (error) { this.dispose(); throw error; }
     finally {clearTimeout(timer);abort.abort();}
   }
+  /** A registered geometric depth readout of this exact committed scene/camera.
+   * Preserve the actual mesh materials and alpha tests. Transparent weather that
+   * does not write GPU depth is not a physical range sensor measurement.
+   */
+  private readDepth(width: number, height: number, sourceCut: ObjectData) {
+    const renderer = this.renderer!, camera = this.camera;
+    if (!renderer.extensions.has('EXT_color_buffer_float')) throw Error('Float depth readback unavailable');
+    const sceneTarget = new T.WebGLRenderTarget(width, height, {depthBuffer:true, stencilBuffer:false});
+    sceneTarget.depthTexture = new T.DepthTexture(width, height, T.UnsignedIntType);
+    const output = new T.WebGLRenderTarget(width, height, {type:T.FloatType, format:T.RGBAFormat, depthBuffer:false});
+    output.texture.colorSpace = T.NoColorSpace;
+    const material = new T.ShaderMaterial({
+      uniforms:{tDepth:{value:sceneTarget.depthTexture},nearM:{value:camera.near},farM:{value:camera.far}},
+      vertexShader:'varying vec2 vUv; void main(){vUv=uv; gl_Position=vec4(position.xy,0.0,1.0);}',
+      fragmentShader:'precision highp float; varying vec2 vUv; uniform sampler2D tDepth; uniform float nearM; uniform float farM; void main(){float d=texture2D(tDepth,vUv).x; float z=nearM*farM/(farM-(farM-nearM)*d); gl_FragColor=vec4(z,d<1.0?1.0:0.0,0.0,1.0);}',
+      depthTest:false, depthWrite:false, blending:T.NoBlending, toneMapped:false,
+    });
+    const geometry = new T.PlaneGeometry(2,2), quad = new T.Scene();
+    quad.add(new T.Mesh(geometry,material));
+    const oldTarget = renderer.getRenderTarget(), oldMask = camera.layers.mask;
+    try {
+      // Match the low-quality RGB base pass, including atmosphere depth-writing
+      // objects. Neither world time nor animation state advances between passes.
+      camera.layers.enable(30);
+      renderer.setRenderTarget(sceneTarget); renderer.clear(); renderer.render(this.scene!,camera);
+      renderer.setRenderTarget(output); renderer.clear(); renderer.render(quad,new T.Camera());
+      const rgba = new Float32Array(width*height*4);
+      renderer.readRenderTargetPixels(output,0,0,width,height,rgba);
+      const bytes = new Uint8Array(width*height*4), view = new DataView(bytes.buffer);
+      for(let y=0;y<height;y++) for(let x=0;x<width;x++) {
+        const index=((height-1-y)*width+x)*4;
+        const z=rgba[index];
+        view.setFloat32((y*width+x)*4,rgba[index+1]>.5&&Number.isFinite(z)&&z>=camera.near&&z<=camera.far?z:NaN,true);
+      }
+      let binary='';
+      for(let start=0;start<bytes.length;start+=32768) binary+=String.fromCharCode(...bytes.subarray(start,start+32768));
+      const projection=camera.projectionMatrix.elements;
+      const k=[projection[0]*width/2,0,(1-projection[8])*width/2,0,projection[5]*height/2,(1+projection[9])*height/2,0,0,1];
+      // Three world = east/up/south; camera = right/up/back. Export optical
+      // right/down/forward directly into ENU, without pretending to be PX4 pose.
+      const enuFromRender = new T.Matrix4().set(1,0,0,0, 0,0,-1,0, 0,1,0,0, 0,0,0,1);
+      const opticalToCamera = new T.Matrix4().makeScale(1,-1,-1);
+      const transform=enuFromRender.multiply(camera.matrixWorld).multiply(opticalToCamera).elements;
+      const rowMajor=Array.from({length:4},(_,row)=>Array.from({length:4},(_,column)=>transform[column*4+row]));
+      return {
+        depth:{encoding:'float32-le-metres',width,height,depth_convention:'optical_z',data_base64:btoa(binary),near_m:camera.near,far_m:camera.far,vertical_origin:'top-left',invalid:'NaN',source:'same-camera-webgl-depth-buffer'} as CaptureDepth,
+        calibration:{K:k,width,height,registered_rgb_depth:true,depth_convention:'optical_z',depth_min_m:camera.near,depth_max_m:camera.far,distortion:[],depth_semantics:'depth-writing geometric surfaces; transparent weather is not a physical range sensor response'},
+        camera_pose:{T_world_enu_from_camera_optical:rowMajor,source:'applied_committed_capture_camera',source_cut:sourceCut},
+      };
+    } finally {
+      camera.layers.mask=oldMask; renderer.setRenderTarget(oldTarget);
+      geometry.dispose();material.dispose();output.dispose();sceneTarget.depthTexture.dispose();sceneTarget.dispose();
+    }
+  }
   dispose() {
     this.atmosphereState.rain = NaN; this.lastCity = undefined;
+    this.clearStaticSkinned(); this.staticSkinned.removeFromParent(); this.captureHeader=undefined;
     this.layer?.dispose();if(this.scene)disposeObject(this.scene);this.lighting?.dispose();this.hdr?.dispose();this.assets?.dispose();this.composer?.dispose();this.renderer?.dispose();
     this.atmosphere?.dispose();
     this.layer=undefined;this.scene=undefined;this.lighting=undefined;this.hdr=undefined;this.assets=undefined;this.composer=undefined;this.renderer=undefined;this.atmosphere=undefined;this.signature=undefined;this.failures=[];

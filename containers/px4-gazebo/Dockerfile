@@ -3,6 +3,7 @@
 FROM px4io/px4-sitl-gazebo AS mavsdk-builder
 COPY apt-install.sh /usr/local/bin/aas-apt-install
 
+ARG BUILD_JOBS=4
 ARG MAVSDK_VERSION=3.17.2
 ARG MAVSDK_COMMIT=9e3ca17faa84aa868caea10a3bbdab7e53810ced
 ARG MAVLINK_COMMIT=d6a7eeaf43319ce6da19a1973ca40180a4210643
@@ -130,7 +131,7 @@ RUN --network=none mkdir /work/MAVSDK /opt/sources/mavlink \
       -DENABLE_CPPTRACE=OFF \
       -DMAVLINK_HASH="${MAVLINK_COMMIT}" \
       -DMAVLINK_SOURCE_DIR=/opt/sources/mavlink \
-    && cmake --build /work/build --parallel 16 --target install \
+    && cmake --build /work/build --parallel ${BUILD_JOBS} --target install \
     && strip --strip-unneeded /opt/mavsdk-install/bin/mavsdk_server \
     && /opt/mavsdk-install/bin/mavsdk_server --help \
       | grep --fixed-strings --quiet -- "--incoming-heartbeat-timeout-s" \

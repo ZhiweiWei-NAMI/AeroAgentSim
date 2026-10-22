@@ -17,6 +17,7 @@ class Gazebo:
         self.topics, self.callbacks = [], []
         self.lock = threading.Lock()
         self.sim_ns = 0
+        self.step_in_flight = False
         self.stats = None
         self.poses = {}
         self.contacts = []
@@ -231,6 +232,31 @@ class Gazebo:
         raise TimeoutError(f"Gazebo timed out waiting for {label}; stats={self.stats}")
 
     async def step(self, iterations, physics_step_ns):
+        self.step_in_flight = True
+        try:
+            await self._step(iterations, physics_step_ns)
+        finally:
+            self.step_in_flight = False
+
+    async def payload_attachment(self, carrier_model, package_id, *, parent_link="base_link", child_link="parcel"):
+        """Query actual joint state without advancing or exposing world state."""
+        self.check()
+        if self.step_in_flight or self.stats != (self.sim_ns, True):
+            raise RuntimeError("payload attachment query requires the confirmed paused frontier")
+        process = self.control_process
+        request = {"op": "payload_attachment", "carrier_model": carrier_model,
+                   "package_id": package_id, "parent_link": parent_link, "child_link": child_link}
+        process.stdin.write((json.dumps(request) + "\n").encode())
+        await process.stdin.drain()
+        frame = await asyncio.wait_for(process.stdout.readline(), 12)
+        if not frame:
+            raise RuntimeError("EOF querying native payload attachment")
+        response = json.loads(frame)
+        if response.get("status") == "attached" and response.get("native_source_time_ns") != self.sim_ns:
+            raise RuntimeError("native payload snapshot differs from paused frontier")
+        return response
+
+    async def _step(self, iterations, physics_step_ns):
         self.check()
         if type(iterations) is not int or iterations <= 0:
             raise ValueError("multi_step must be positive integer")

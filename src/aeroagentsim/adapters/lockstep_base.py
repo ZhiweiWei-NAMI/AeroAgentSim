@@ -30,6 +30,9 @@ TIMEOUTS = {
     "reset": 180.0,
     "advance": 30.0,
     "command": 30.0,
+    "cancel": 10.0,
+    "capture": 10.0,
+    "payload": 10.0,
     "close": 20.0,
 }
 
@@ -379,6 +382,9 @@ class LockstepEngine(SimpleEngine):
         def apply() -> tuple[object, ...]:
             ctx = EngineContext(view, inbox, dirty, self.commands)
             for delivery in inbox:
+                if delivery.message.kind == "cancel":
+                    self.on_cancel(ctx, delivery)
+                    continue
                 if delivery.message.kind != "command":
                     raise KernelError("ADAPTER_COMMAND", "unsupported input kind")
                 command = ctx.remember(delivery, self.decode_command)
@@ -409,6 +415,9 @@ class LockstepEngine(SimpleEngine):
             return tuple(ctx.ops)
 
         return self.guarded("command", apply)
+
+    def on_cancel(self, ctx: EngineContext, delivery: Delivery) -> None:
+        raise KernelError("ADAPTER_COMMAND", "backend does not support cancellation")
 
     def check_accept(
         self, result: dict[str, Any], backend_id: str, command: Command[dict[str, Any]]
@@ -459,6 +468,15 @@ class LockstepEngine(SimpleEngine):
             if status in ("running", "executing") and previous == "accepted":
                 ctx.execute(command)
                 self.statuses[backend_id] = "executing"
+            elif status in ("running", "executing") and previous == "canceling":
+                # A native execution notification may predate the cancellation
+                # acceptance. It cannot undo canceling or execute it a second time.
+                continue
+            elif status == "canceled" and previous == "canceling":
+                ctx.canceled(command)
+                del self.pending[backend_id]
+                del self.statuses[backend_id]
+                del self.pending_times[backend_id]
             elif status in ("succeeded", "failed"):
                 if status == "succeeded" and previous != "executing":
                     raise KernelError("ADAPTER_COMMAND", "completion before execution")

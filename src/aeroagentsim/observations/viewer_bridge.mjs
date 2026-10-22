@@ -40,7 +40,8 @@ try {
         throw new Error('viewer must return actual PNG bytes and applied request metadata');
       }
       // Echo only metadata reported after the viewer has applied and verified its cut.
-      process.stdout.write(JSON.stringify({ request: frame.request, png_base64: frame.png_data_url.slice(22) }) + '\n');
+      process.stdout.write(JSON.stringify({ request: frame.request, png_base64: frame.png_data_url.slice(22),
+        ...(frame.depth ? { depth: frame.depth, calibration: frame.calibration, camera_pose: frame.camera_pose } : {}) }) + '\n');
     } catch (error) {
       process.stdout.write(JSON.stringify({ error: String(error) }) + '\n');
     }

@@ -21,6 +21,9 @@ from .png import validate_png
 class RenderedFrame:
     png: bytes
     mode: str
+    depth: dict[str, Any] | None = None
+    calibration: dict[str, Any] | None = None
+    camera_pose: dict[str, Any] | None = None
 
 
 class Renderer(Protocol):
@@ -212,7 +215,8 @@ class BrowserRenderer:
             validate_png(png, expected=(request.width, request.height))
             if time.monotonic() > deadline:
                 raise TimeoutError("viewer render deadline exceeded")
-            return RenderedFrame(png, "browser")
+            return RenderedFrame(png, "browser", reply.get("depth"),
+                                 reply.get("calibration"), reply.get("camera_pose"))
         except (ValueError, TypeError, RuntimeError, TimeoutError, OSError, KeyError):
             self.close()
             raise
