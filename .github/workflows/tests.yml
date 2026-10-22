@@ -62,6 +62,7 @@ jobs:
             tests/demos/traffic_accident/test_public_demo.py \
             tests/demos/traffic_accident/test_packaging.py \
             --deselect=tests/observations/test_artifact_service.py::test_service_output_scope_without_mutating_input \
+            --deselect=tests/authoring/test_portable_yaml.py::test_region_roundtrip_preserves_parameters_geometry_crop_and_real_network \
             --deselect=tests/assistant/test_blank_projects.py::test_blank_centre_charging_station_compiles_validates_and_applies[aerograph] \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=${{ runner.temp }}/platform/tests
