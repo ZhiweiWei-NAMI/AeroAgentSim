@@ -8,6 +8,7 @@ import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import ConsoleShell from './console/ConsoleShell';
 import { ConsoleNotifications } from './console/Notifications';
 import { PageState } from './console/PageState';
+import { ApiConnection } from './console/ApiConnection';
 
 const Workbench = lazyWithRetry(() => import('./workbench/Workbench'));
 const AgentConsole = lazyWithRetry(() => import('./pages/AgentConsole'));
@@ -54,7 +55,7 @@ function RoutedContent() {
 function LocalizedConsole() {
   const { locale } = useI18n();
   return <ConfigProvider locale={locale === 'zh-CN' ? zhCN : enUS} button={{ autoInsertSpace: false }} theme={{ token: { colorPrimary: '#1f7ae0', colorText: '#14202e', colorBorder: '#d8dee6', borderRadius: 7, fontFamily: "Inter, 'Segoe UI', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif" } }}>
-    <ConsoleNotifications><RoutedContent /></ConsoleNotifications>
+    <ConsoleNotifications><ApiConnection /><RoutedContent /></ConsoleNotifications>
   </ConfigProvider>;
 }
 

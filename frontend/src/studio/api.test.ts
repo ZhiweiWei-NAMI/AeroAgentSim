@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TransportError } from '../feeds/transport';
 import { StudioApi } from './api';
 
 const BASE = 'http://studio.test';
@@ -81,5 +82,30 @@ describe('StudioApi', () => {
 
     const [url] = fetchMock.mock.calls[0] as [string];
     expect(String(url)).toBe(`${BASE}/v1/studio/workspaces/ws-1/export`);
+  });
+
+  it('classifies a protected-server POST without retrying it', async () => {
+    fetchMock.mockResolvedValue(rawResponse(401, JSON.stringify({ detail: 'Bearer token required' })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const error = await new StudioApi(BASE).request('/v1/studio/workspaces', { name: 'protected' }).catch(value => value);
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error.status).toBe(401);
+    expect(error.kind).toBe('authentication');
+    expect(error.en).toContain('local unprotected server');
+    expect(error.zh).toContain('未受保护');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST');
+  });
+
+  it('keeps an absent capability visible as unavailable', async () => {
+    fetchMock.mockResolvedValue(rawResponse(501, JSON.stringify({ detail: 'not implemented' })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const error = await new StudioApi(BASE).request('/v1/studio/workspaces').catch(value => value);
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error.status).toBe(501);
+    expect(error.kind).toBe('unsupported');
+    expect(error.unavailable).toBe(true);
   });
 });

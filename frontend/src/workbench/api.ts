@@ -1,12 +1,16 @@
 import { parseAuthoringJson, stringifyLossless } from '../feeds/lossless-json';
+import { requestJson, requestText, TransportError } from '../feeds/transport';
 import type { Workspace } from '../studio/api';
 import { TemplateApi, type KnobValue } from '../newcomers/api';
 import type { RunInfo } from '../feeds/http';
 
 /** A server answer that is not success. `status` 501/404 means the capability is absent. */
-export class ApiError extends Error {
-  constructor(readonly status: number, readonly detail: string) { super(`HTTP ${status}: ${detail}`); }
-  get unavailable() { return this.status === 404 || this.status === 501; }
+export class ApiError extends TransportError {}
+
+/** Keep the workbench's long-standing error type while preserving the transport classification. */
+function classified(error: unknown): never {
+  if (error instanceof TransportError) throw new ApiError(error.status, error.detail);
+  throw error;
 }
 
 export type SectionId = 'space' | 'objects' | 'relations' | 'tasks' | 'components' | 'algorithms' | 'run';
@@ -23,19 +27,13 @@ export interface RunRecord extends RunInfo { workspace_version?: number; workspa
 
 export class WorkbenchApi {
   constructor(readonly base: string) {}
-  private url(path: string) { return `${this.base.replace(/\/$/, '')}${path}`; }
   async request<T>(path: string, init?: { method?: string; body?: unknown; signal?: AbortSignal }): Promise<T> {
-    const response = await fetch(this.url(path), {
+    const requestInit: RequestInit = {
       method: init?.method ?? (init?.body === undefined ? 'GET' : 'POST'), signal: init?.signal,
       ...(init?.body === undefined && init?.method !== 'POST' ? {} : { headers: { 'Content-Type': 'application/json' }, body: stringifyLossless(init?.body ?? {}) }),
-    });
-    const text = await response.text();
-    if (!response.ok) {
-      let detail = text;
-      try { const value = JSON.parse(text).detail; detail = typeof value === 'string' ? value : JSON.stringify(value); } catch { /* Keep the raw server text. */ }
-      throw new ApiError(response.status, detail);
-    }
-    const result = parseAuthoringJson(text) as T;
+    };
+    const result = await requestJson(this.base, path, requestInit, parseAuthoringJson)
+      .then(value => value as T, error => classified(error));
     // These writes return legacy draft records as well as summaries. Only GET
     // owns the displayed version, validation, capabilities and authored scene.
     const workspace = /^\/v1\/studio\/workspaces\/([^/?]+)\/(knobs|import|place|remove)$/.exec(path);
@@ -61,7 +59,10 @@ export class WorkbenchApi {
   knobs(id: string, knobs: Record<string, KnobValue>, revision: number) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}/knobs`, { body: { knobs, revision } }); }
   versions(id: string, signal?: AbortSignal) { return this.request<VersionInfo[]>(`/v1/studio/workspaces/${encodeURIComponent(id)}/versions`, { signal }); }
   saveVersion(id: string, revision: number, note?: string) { return this.request<VersionInfo>(`/v1/studio/workspaces/${encodeURIComponent(id)}/versions`, { body: { revision, ...(note ? { note } : {}) } }); }
-  exportYaml(id: string) { return fetch(this.url(`/v1/studio/workspaces/${encodeURIComponent(id)}/export`)).then(async response => { if (!response.ok) throw new ApiError(response.status, await response.text()); return response.text(); }); }
+  async exportYaml(id: string) {
+    try { return await requestText(this.base, `/v1/studio/workspaces/${encodeURIComponent(id)}/export`); }
+    catch (error) { return classified(error); }
+  }
   importYaml(id: string, text: string, revision: number) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}/import`, { body: { yaml: text, revision } }); }
   // Templates.
   templates(signal?: AbortSignal) { return new TemplateApi(this.base).templates(signal); }

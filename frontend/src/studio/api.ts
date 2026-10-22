@@ -1,22 +1,14 @@
 import { parseAuthoringJson, stringifyLossless } from '../feeds/lossless-json';
+import { requestJson, requestText } from '../feeds/transport';
 export class StudioApi {
   constructor(readonly base: string) {}
   async request<T>(path: string, body?: unknown): Promise<T> {
-    const response = await fetch(`${this.base.replace(/\/$/, '')}${path}`, body === undefined ? undefined : {
+    return await requestJson(this.base, path, body === undefined ? undefined : {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: stringifyLossless(body),
-    });
-    if (!response.ok) {
-      const raw = await response.text();
-      let detail = raw;
-      try { const value = JSON.parse(raw).detail ?? JSON.parse(raw); detail = typeof value === 'string' ? value : JSON.stringify(value); } catch { /* Preserve non-JSON server error. */ }
-      throw Error(`HTTP ${response.status}: ${detail}`);
-    }
-    return parseAuthoringJson(await response.text()) as T;
+    }, parseAuthoringJson) as T;
   }
   async export(id: string): Promise<string> {
-    const response = await fetch(`${this.base}/v1/studio/workspaces/${id}/export`);
-    if (!response.ok) throw Error(`HTTP ${response.status}: ${await response.text()}`);
-    return response.text();
+    return requestText(this.base, `/v1/studio/workspaces/${id}/export`);
   }
 }
 export type Scenario = Record<string, any>;

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpViewerFeed, RunsApi, validateCommit, validateHeader } from './http';
+import { TransportError } from './transport';
 import fixture from './contract-fixture.json';
 import type { FeedCommit } from '../contracts/viewer-feed';
 const commit = (index: number): FeedCommit => ({ commitIndex: index, at: { ns: '9223372036854775815', microstep: index }, created: [], removed: [], facts: [], retracted: [], edges: [], messages: [], receipts: [] });
@@ -38,6 +39,26 @@ describe('HTTP viewer transport', () => {
     await expect(new HttpViewerFeed(new RunsApi('http://api'), 'gap').subscribe(0, () => {})).rejects.toThrow('Journal gap');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('offline', { status: 503 })));
     await expect(new RunsApi('http://api').runs()).rejects.toThrow('HTTP 503');
+  });
+  it('stops on an authentication answer instead of reconnecting the feed', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Bearer token required' }), { status: 401 }));
+    vi.stubGlobal('fetch', fetcher);
+    const error = await new HttpViewerFeed(new RunsApi('http://api'), 'protected').subscribe(0, () => {}).catch(value => value);
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error.status).toBe(401);
+    expect(error.kind).toBe('authentication');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('does not reconnect a protected SSE stream', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(page([], 1))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'Bearer token required' }), { status: 401 }));
+    vi.stubGlobal('fetch', fetcher);
+    const error = await new HttpViewerFeed(new RunsApi('http://api'), 'protected', 'live').subscribe(0, () => {}).catch(value => value);
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error.status).toBe(401);
+    expect(error.kind).toBe('authentication');
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
   it('preserves exact numeric payloads when a live stream resumes after pause', async () => {
     const row = {...commit(1), messages: [{id:'injected',schemaId:'input',source:'operator',kind:'event',at:commit(1).at,payload:{value:'EXACT_INTEGER'}}]};
