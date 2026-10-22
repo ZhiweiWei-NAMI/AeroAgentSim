@@ -4,7 +4,33 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { RecordsPanel } from './RecordsPanel';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { WorkbenchApi } from './api';
-afterEach(() => { cleanup(); vi.useRealTimers(); localStorage.clear(); });
+import type { ExperimentReport } from '../experiments/api';
+afterEach(() => { cleanup(); vi.useRealTimers(); localStorage.clear(); window.history.replaceState({}, '', '/'); });
+const experimentReport: ExperimentReport = {
+  id: 'exp-1',
+  contract: 'aeroagentsim.experiment/v1',
+  template_id: 'parcel-delivery',
+  template_title: 'Urban parcel delivery',
+  status: 'interrupted',
+  seeds: 2,
+  jobs: 1,
+  horizon_s: 300,
+  knobs: {},
+  vary: { allocator: ['nearest', 'auction'] },
+  total: 4,
+  completed: 1,
+  failed: 2,
+  error: 'experiment interrupted by a server restart',
+  runs: [
+    { config_id: 'config-0', seed: 0, run: '/runs/a', run_id: 'run-a', status: 'completed', error: null, kpis: { tasks_completed: 4 }, kpi_meta: { tasks_completed: { unit: 'count', label: 'Tasks completed' } } },
+    { config_id: 'config-0', seed: 1, run: null, run_id: null, status: 'faulted', error: 'network failed before the run started', kpis: {}, kpi_meta: {} },
+    { config_id: 'config-1', seed: 0, run: '/runs/c', run_id: 'run-c', status: 'interrupted', error: 'experiment interrupted by a server restart', kpis: {}, kpi_meta: {} },
+  ],
+  table: [
+    { config_id: 'config-0', knobs: { allocator: 'nearest' }, metrics: { tasks_completed: { mean: 4, std: null, n: 1, unit: 'count', label: 'Tasks completed', best: true } } },
+    { config_id: 'config-1', knobs: { allocator: 'auction' }, metrics: {} },
+  ],
+};
 it('limits comparison to four without silently replacing a selected run', async () => {
   const compare = vi.fn();
   const rows = Array.from({ length: 5 }, (_, i) => ({ id: `run-${i}`, status: 'stopped', scenario: 'food-delivery', studio_workspace: 'project' }));
@@ -57,4 +83,30 @@ it.each([
   const button=await screen.findByRole('button',{name:locale==='zh-CN'?'修改后再试':'Modify & retry'});
   await act(async()=>{fireEvent.click(button);});
   expect(derive).toHaveBeenCalledWith(source,expected);
+});
+
+it('reads a bookmarked experiment id from the URL and shows reported failed and interrupted cells', async () => {
+  window.history.replaceState({}, '', '/?records=1&experiment=exp-1');
+  const request = vi.fn(async (path: string) => {
+    if (path === '/v1/experiments/exp-1') return experimentReport;
+    throw Error(`unexpected request ${path}`);
+  });
+  render(<RecordsPanel api={{ runs: vi.fn().mockResolvedValue([]), request } as unknown as WorkbenchApi} refreshKey={0}
+    onOpen={vi.fn()} onCompare={vi.fn()} onDerive={vi.fn()} onClose={vi.fn()} />);
+  const results = await screen.findByTestId('experiment-results');
+  expect(within(results).getAllByText('Interrupted').length).toBeGreaterThan(0);
+  expect(within(results).getByText('Faulted')).toBeInTheDocument();
+  expect(within(results).getByText('unavailable')).toBeInTheDocument();
+  expect(request).toHaveBeenCalledWith('/v1/experiments/exp-1', expect.objectContaining({ signal: expect.anything() }));
+  expect(screen.getByTestId('wb-experiments-toggle')).toHaveAttribute('aria-expanded', 'true');
+});
+
+it('opens the experiment entry from Records without changing the run list', async () => {
+  const templates = vi.fn().mockResolvedValue([]);
+  render(<RecordsPanel api={{ runs: vi.fn().mockResolvedValue([]), templates } as unknown as WorkbenchApi} refreshKey={0}
+    onOpen={vi.fn()} onCompare={vi.fn()} onDerive={vi.fn()} onClose={vi.fn()} />);
+  fireEvent.click(await screen.findByTestId('wb-experiments-toggle'));
+  expect(await screen.findByTestId('experiment-panel')).toBeInTheDocument();
+  expect(await screen.findByText('No templates are available on this server.')).toBeInTheDocument();
+  expect(templates).toHaveBeenCalledTimes(1);
 });

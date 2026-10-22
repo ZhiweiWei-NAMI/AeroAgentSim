@@ -64,6 +64,45 @@ experiment metadata pinned. After a service restart, completed experiments
 remain available and unfinished coordinators are marked interrupted rather
 than silently resumed.
 
+## From the browser
+
+Open **Records** (the `R` shortcut in the Workbench) and choose **Experiments**.
+Select a template, then pick axes from its declared knobs: `choice` options are
+checkbox lists, `boolean` knobs offer both typed values, and `integer`/`number`
+knobs accept comma-separated values that are checked against their declared
+type and bounds before submission. Matched seeds are a separate field; a knob
+that points at `/run/seed` is shown disabled and cannot be selected as an axis.
+`jobs` bounds worker processes, and the horizon override is optional — leave it
+blank to use the template's own duration, shown next to the field. A knob that
+points at
+`/run/until_ns` cannot be varied while the horizon override is set.
+
+The preview multiplies the axis value counts and seeds. The browser refuses
+more than 24 runs per experiment and says so before submitting; that cap is a
+UI guard, not a server limit. Larger grids remain available through the CLI.
+Review the plan once, then confirm once. A rejected request (for example an
+invalid knob value) is reported with the server's error and no experiment is
+claimed. If the submission response is lost after the request was sent, the
+panel says `submission status unknown; check Records` and does not retry the
+POST automatically, because the server may already have accepted it.
+
+A successful POST returns after validation; the panel stores the returned id in
+the page URL as `?experiment=<id>` (with `records=1`), so the page can be
+bookmarked and reloaded. It follows that id with the existing
+`GET /v1/experiments/<id>` and polls while the server reports `created` or
+`running`. After a service restart, an unfinished experiment is reported as
+`interrupted` by the server; it is not resumed. There is no experiment-list,
+resume or cancel API, so the browser can only reopen an id it already knows.
+
+Each configuration shows every expected cell, including runs reported as failed
+or interrupted. Aggregate rows show exactly the server's `mean`, `std` and `n`;
+`null` appears as unavailable, and a single observed sample has no sample
+standard deviation (its `std` is unavailable). Failed runs are not counted as
+observations. A run cell links to replay and can be selected for the existing
+2–4 run comparison. The panel does not combine metrics into a score, does not
+rank configurations, and makes no general performance claim from a few seeds:
+read `n`, units and every reported metric before drawing a conclusion.
+
 ## Read the low-altitude results
 
 The parcel template reports released, assigned, completed and failed tasks;

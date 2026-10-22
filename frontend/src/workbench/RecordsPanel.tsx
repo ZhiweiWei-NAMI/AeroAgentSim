@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized } from '../i18n/translate';
 import { runStatusLabel } from '../newcomers/presentation';
+import { ExperimentPanel } from '../experiments/ExperimentPanel';
+import { experimentIdFromLocation, setExperimentQuery } from '../experiments/url';
 import { sameRunRecords, TERMINAL, type RunRecord, type WorkbenchApi } from './api';
 
 const tone = (status: string) => status === 'completed' ? 'ok' : status === 'stopped' ? 'warn' : TERMINAL.has(status) ? 'bad' : status === 'initialized' ? 'info' : 'live';
@@ -27,6 +29,27 @@ export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDer
   const runsRef = useRef<RunRecord[]>();
   const errorRef = useRef<string>();
   const [scope, setScope] = useState<'project' | 'all'>(projectId ? 'project' : 'all'), [chosen, setChosen] = useState<string[]>([]), [busy, setBusy] = useState<string>();
+  // The experiment id lives in the URL, so a reload reopens the same report.
+  const [experimentId, setExperimentId] = useState<string | undefined>(() => experimentIdFromLocation());
+  const [experimentOpen, setExperimentOpen] = useState<boolean>(() => experimentIdFromLocation() !== undefined);
+  const writingExperiment = useRef(false);
+  const chooseExperiment = (id: string | undefined) => {
+    writingExperiment.current = true;
+    setExperimentId(id);
+    setExperimentOpen(true);
+    try { setExperimentQuery(id); }
+    finally { writingExperiment.current = false; }
+  };
+  useEffect(() => {
+    const sync = () => {
+      if (writingExperiment.current) return;
+      const id = experimentIdFromLocation();
+      setExperimentId(id);
+      setExperimentOpen(id !== undefined);
+    };
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
   useEffect(() => {
     const abort = new AbortController();
     let loading = false;
@@ -59,6 +82,12 @@ export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDer
       <button className="wb-btn small primary" disabled={chosen.length < 2} onClick={() => onCompare(chosen)} data-testid="wb-compare">{L(`Compare ${chosen.length || ''}`, `对比 ${chosen.length || ''}`)}</button>
     </div>
     <div className="wb-panel-body">
+      <div style={{ display: 'flex', gap: 6, padding: '0 0 8px' }}>
+        <button className="wb-btn small" aria-expanded={experimentOpen} onClick={() => setExperimentOpen(value => !value)} data-testid="wb-experiments-toggle">
+          {experimentOpen ? L('Hide experiments', '收起实验') : L('Experiments', '实验')}
+        </button>
+      </div>
+      {experimentOpen && <ExperimentPanel api={api} experimentId={experimentId} onExperimentId={chooseExperiment} onOpen={onOpen} onCompare={onCompare} />}
       <p className="hint" aria-live="polite">{L(`Select 2–4 runs to compare (${chosen.length}/4 selected).`, `选择 2–4 次运行进行对比（已选 ${chosen.length}/4）。`)}</p>
       {!runs && !error && <div role="status">{L('Loading run records…', '正在加载运行记录…')}</div>}
       {error && <div className="wb-issues" role="alert">{error}</div>}
