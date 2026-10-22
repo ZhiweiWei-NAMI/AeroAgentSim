@@ -13,11 +13,14 @@ import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from datetime import date, datetime
 from importlib import import_module
 from importlib.metadata import entry_points
 from inspect import iscoroutinefunction
 from types import MappingProxyType
 from typing import Any, Protocol
+
+from aeroagentsim.extensions.discovery import discover
 
 PREPARATION_API_VERSION = 1
 ENTRY_POINT_GROUP = "aeroagentsim.preparers"
@@ -37,12 +40,53 @@ def _json_data(value: Any) -> None:
         raise ValueError("preparation data: expected finite JSON data")
 
 
-def document_digest(value: Any) -> str:
-    """SHA-256 of sorted, compact, finite UTF-8 JSON, without a terminal LF."""
-    _json_data(value)
-    data = json.dumps(
+def _canonical_json(value: Any) -> bytes:
+    return json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
     ).encode("utf-8")
+
+
+def _yaml_evidence(value: Any) -> Any:
+    """Tagged projection of SafeLoader values; never rewrite effective data.
+
+    Tag every node, not just special scalars, so authored mappings cannot imitate
+    evidence tags. Sort mappings/sets by encoded nodes, not Python value ordering.
+    """
+    if value is None or type(value) in (str, bool, int):
+        return [type(value).__name__, value]
+    if type(value) is float:
+        return ["float", value.hex()]
+    if isinstance(value, datetime):  # datetime is also a date.
+        return ["datetime", value.isoformat()]
+    if isinstance(value, date):
+        return ["date", value.isoformat()]
+    if isinstance(value, bytes):
+        return ["bytes", value.hex()]
+    if isinstance(value, dict):
+        rows = [[_yaml_evidence(key), _yaml_evidence(child)] for key, child in value.items()]
+        return ["dict", sorted(rows, key=_canonical_json)]
+    if isinstance(value, (set, frozenset)):
+        return [type(value).__name__, sorted(map(_yaml_evidence, value), key=_canonical_json)]
+    if isinstance(value, (list, tuple)):
+        return [type(value).__name__, [_yaml_evidence(child) for child in value]]
+    raise ValueError(f"preparation data: unsupported YAML value {type(value).__name__}")
+
+
+def document_digest(value: Any, *, legacy_yaml: bool = False) -> str:
+    """Hash canonical JSON, or tagged SafeLoader evidence for legacy v1 data.
+
+    JSON-compatible inputs retain their original digest. Non-JSON YAML uses a
+    domain-separated projection, preserving dates, timestamps, binary, sets and
+    pairs/ordered maps without imposing new admission rules on v1 documents.
+    """
+    try:
+        _json_data(value)
+    except ValueError:
+        if not legacy_yaml:
+            raise
+        data = b"aeroagentsim.yaml-evidence/v1\0" + _canonical_json(_yaml_evidence(value))
+    else:
+        data = _canonical_json(value)
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
@@ -80,8 +124,10 @@ class PreparedScenario:
             for name, digest in self.resource_manifest.items()
         ):
             raise ValueError("prepared resource manifest: expected named SHA-256 digests")
-        # Validation also rejects non-JSON objects and nonfinite output values.
-        document_digest(self.document)
+        # V1 retains SafeLoader value types; only v2 imposes JSON-only output.
+        document_digest(
+            self.document, legacy_yaml=self.document.get("format") == "aeroagentsim.scenario/v1"
+        )
         document_digest(self.contribution_selections)
         object.__setattr__(self, "document", copy.deepcopy(self.document))
         object.__setattr__(self, "contribution_selections", copy.deepcopy(self.contribution_selections))
@@ -159,42 +205,34 @@ BUILTINS = MappingProxyType({
 
 
 def discover_preparers() -> tuple[PreparerPlugin, ...]:
-    """Mirror metrics_api discovery until the shared discovery helper lands.
+    """Use shared preflight and admission, retaining preparer identity evidence.
 
-    Duplicate installed names fail BEFORE any load/factory. Traverse the sorted
-    builtin/installed union; an installed name replaces the entire builtin,
-    without fallback on errors. Merely discovering a preparer never calls it.
-    Keep these rules isolated here for the follow-up shared-helper migration.
+    Duplicate/malformed declarations fail before any load/factory. Traverse the
+    sorted union, replacing whole builtins without fallback. Never call prepare.
     """
-    installed = {}
-    for entry in entry_points(group=ENTRY_POINT_GROUP):
-        if entry.name in installed:
-            raise ValueError(f"Duplicate {ENTRY_POINT_GROUP} entry point name: {entry.name!r}")
-        installed[entry.name] = entry
+    def load_builtin(reference: str) -> Any:
+        module, attribute = reference.split(":", 1)
+        return getattr(import_module(module), attribute)
+
+    discovered = discover(
+        ENTRY_POINT_GROUP, BUILTINS,
+        expected_type=PreparerPlugin, api_version=PREPARATION_API_VERSION,
+        name_of=lambda plugin: plugin.name, factory_label="preparer",
+        builtin_loader=load_builtin, entries=entry_points(group=ENTRY_POINT_GROUP),
+    )
+    installed = {
+        item.name: item for item in discovered.contributions if item.source == "installed"
+    }
     plugins = []
-    for name in sorted(set(BUILTINS) | set(installed)):
-        entry = installed.get(name)
-        reference = BUILTINS[name] if entry is None else entry.value
-        if entry is None:
-            module, attribute = reference.split(":", 1)
-            value = getattr(import_module(module), attribute)
-            origin = "builtin preparer"
-        else:
-            value = entry.load()
-            origin = f"{ENTRY_POINT_GROUP} entry point"
-        if not isinstance(value, PreparerPlugin) and callable(value):
-            try:
-                value = value()
-            except TypeError as exc:
-                raise TypeError(f"{origin} {name!r}: zero-argument preparer factory failed: {exc}") from exc
-        if not isinstance(value, PreparerPlugin):
-            raise TypeError(f"{origin} {name!r}: expected a PreparerPlugin or a zero-argument factory")
-        if value.name != name:
-            raise ValueError(f"{origin} {name!r}: plugin name {value.name!r} does not match")
-        dist = getattr(entry, "dist", None)
+    for plugin in discovered.providers:
+        record = installed.get(plugin.name)
         plugins.append(replace(
-            value, entry_point=reference,
-            distribution=None if dist is None else (dist.name, dist.version),
+            plugin,
+            entry_point=BUILTINS[plugin.name] if record is None else record.entry_point,
+            distribution=(
+                None if record is None or record.distribution is None or record.version is None
+                else (record.distribution, record.version)
+            ),
         ))
     return tuple(plugins)
 

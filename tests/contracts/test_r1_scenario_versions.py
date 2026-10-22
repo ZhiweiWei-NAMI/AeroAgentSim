@@ -2,7 +2,7 @@
 
 The before/after oracle is the old loader's expansion prelude, frozen here and
 run through the unchanged generic compiler. It never calls the new preparation
-driver or compatibility adapter, and needs no generated golden-digest fixture.
+driver, compatibility adapter or result validation, and needs no golden-digest fixture.
 It checks preparation extraction, not an independent historical compiler build.
 All cases stop at compilation: no engine, provider or native service is started.
 """
@@ -13,7 +13,8 @@ import copy
 import hashlib
 import json
 from collections.abc import Mapping
-from dataclasses import fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,7 @@ import aeroagentsim.scenario.preparation as preparation_driver
 import aeroagentsim.scenarios.builtin as builtin_templates
 from aeroagentsim.authoring.templates import PreparedTemplate, TemplateRegistry
 from aeroagentsim.plugin_api import API_VERSION, ScenarioPlugin
-from aeroagentsim.preparation_api import PreparedScenario, ReadOnlyResources
+from aeroagentsim.preparation_api import ReadOnlyResources
 from aeroagentsim.scenario import Scenario, ScenarioError, load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader, _finite, obj, text
 from aeroagentsim.scenario.paths import source_path
@@ -67,13 +68,20 @@ def _isolate_installed_plugins(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(template_api, "demo_source", demo_source)
 
 
+@dataclass
+class _LegacyPreparedDocument:
+    # The historical loader had no PreparedScenario admission. Its frozen
+    # prelude must not share the new result class's validation restrictions.
+    document: dict[str, Any]
+
+
 def _frozen_v1_preparation(
     authored_document: dict[str, Any],
     final_seed: int | None = None,
     read_only_resources: ReadOnlyResources | None = None,
     *,
     base: Path | None = None,
-) -> PreparedScenario:
+) -> _LegacyPreparedDocument:
     """Old loader prelude, not a call through lowalt.preparation.prepare.
 
     Keep the historical trigger and temporary snapshot-path rewrite independent
@@ -141,13 +149,15 @@ def _frozen_v1_preparation(
             raise ScenarioError(
                 f"entities[{index}].vehicle_class: must agree with lowalt.vehicle_class"
             )
-    return PreparedScenario(document)
+    return _LegacyPreparedDocument(document)
 
 
 def _json_tree(value: Any) -> Any:
     """Encode frozen kernel dataclasses without asdict's mappingproxy deepcopy."""
     if value is None or type(value) in (bool, int, float, str):
         return value
+    if isinstance(value, (datetime, date)):
+        return {"$type": type(value).__name__, "iso": value.isoformat()}
     if is_dataclass(value) and not isinstance(value, type):
         return {
             "$type": type(value).__name__,
@@ -401,6 +411,54 @@ def test_task_extension_trigger_keeps_old_relative_snapshot_semantics(
     current = _assert_matches_legacy(document, path.parent, monkeypatch)
     assert current.document["registry"]["snapshot"] == "registry.snapshot.json"
     assert _asset_digests(path.parent) == before
+
+
+@pytest.mark.parametrize("source_kind", ("file", "mapping"))
+def test_v1_yaml_engine_date_matches_independent_legacy_admission(
+    source_kind: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document = _minimal_document()
+    document["engines"] = yaml.load(
+        "calendar:\n  plugin: calendar\n  config:\n    start_date: 2026-07-13\n",
+        Loader=UniqueLoader,
+    )
+    expected_date = date(2026, 7, 13)
+    assert type(document["engines"]["calendar"]["config"]["start_date"]) is date
+    monkeypatch.setattr(preparation_driver, "discover_preparers", _forbid_discovery)
+    source: Path | dict[str, Any]
+    if source_kind == "file":
+        source = tmp_path / "calendar.yaml"
+        source.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    else:
+        source = document
+    current = load_scenario(source, base=tmp_path)
+    with monkeypatch.context() as scoped:
+        scoped.setattr(preparation_driver, "prepare_scenario", _frozen_v1_preparation)
+        legacy = load_scenario(source, base=tmp_path)
+    assert _scenario_digests(current) == _scenario_digests(legacy)
+    assert current.document == document
+    assert current.engines["calendar"]["config"]["start_date"] == expected_date
+    assert type(current.engines["calendar"]["config"]["start_date"]) is date
+    assert current.preparation is not None
+    assert type(current.preparation.document["engines"]["calendar"]["config"]["start_date"]) is date
+    identity = current.preparation.contribution_selections[0]
+    assert identity["authored_document_digest"] == preparation_api.document_digest(
+        document, legacy_yaml=True,
+    )
+    assert load_scenario(source, base=tmp_path).preparation == current.preparation
+
+
+def test_v2_yaml_engine_date_is_rejected_before_discovery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document = _minimal_document(V2)
+    document["engines"] = yaml.load(
+        "calendar:\n  plugin: calendar\n  config:\n    start_date: 2026-07-13\n",
+        Loader=UniqueLoader,
+    )
+    monkeypatch.setattr(preparation_driver, "discover_preparers", _forbid_discovery)
+    with pytest.raises(ScenarioError, match="expected finite JSON data"):
+        load_scenario(document)
 
 
 def test_v1_never_discovers_preparers_or_adds_selection_keys(

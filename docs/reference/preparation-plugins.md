@@ -44,8 +44,13 @@ Unknown selector keys are rejected. Builtins are:
 A v1 document cannot contain `preparation`. It always uses the **fixed builtin**
 `lowalt-legacy/v1` adapter without installed-preparer discovery, even if an
 installed distribution replaces that discovery name. This preserves historical
-v1 admission rather than activating installed code from an old document. V2
-explicitly opts into discovery and its override rules.
+v1 admission rather than activating installed code from an old document. V1 also
+retains YAML SafeLoader value types in otherwise admitted fields: for example,
+`engines.calendar.config.start_date: 2026-07-13` stays a Python `datetime.date`,
+not a string. Preparation evidence does not impose JSON-only admission on v1.
+V2 explicitly opts into discovery and its override rules, and requires finite,
+JSON-compatible authored and prepared documents (quote YAML dates/timestamps to
+keep them strings).
 
 The generic loader owns registry/schema/binding/clock admission, not lowalt,
 city or vehicle-class policy dispatch. Selecting a preparer neither builds an
@@ -62,13 +67,24 @@ normal validation and ownership contracts.
 | `ReadOnlyResources` | `Mapping[str, bytes]`; the driver passes an immutable mapping snapshot with actual `bytes` values, not filesystem handles or permission to read arbitrary files. |
 | `PreparedScenario(document, contribution_selections=(), resource_manifest={})` | Frozen result envelope containing a detached document, a tuple of detached selection mappings and a detached digest mapping. Nested dictionaries are detached, not deeply immutable. This is not a compiled `Scenario`, registry or run session. |
 | `resource_manifest(resources)` | Return every supplied alias, sorted by name, mapped to `"sha256:" + sha256(actual_bytes).hexdigest()`. The returned result must match this manifest exactly. |
-| `document_digest(value)` | `sha256:` digest of sorted, compact, finite UTF-8 JSON with `ensure_ascii=False` and no terminal newline. Not a source-code digest. |
+| `document_digest(value, *, legacy_yaml=False)` | `sha256:` digest of sorted, compact, finite UTF-8 JSON with `ensure_ascii=False` and no terminal newline. With `legacy_yaml=True`, non-JSON SafeLoader values use tagged canonical evidence instead; JSON-compatible inputs keep the same digest. Not a source-code digest. |
 
 A preparer's document must preserve the admitted input `format`, the final
 `run.seed`, and, for v2, the entire explicit `preparation` selection. It cannot add
-unsupported top-level fields. Output and additional selections must be finite,
-JSON-compatible data. Generic compilation subsequently validates the executable
-scenario; successful preparation alone is not successful engine admission.
+unsupported top-level fields. V2 output and all additional selections must be
+finite, JSON-compatible data. V1 output preserves historical YAML value types and
+admission checks; the compatibility adapter does not JSON-normalize the document.
+Generic compilation subsequently validates the executable scenario; successful
+preparation alone is not successful engine admission.
+
+For v1 non-JSON evidence, the driver uses `document_digest(..., legacy_yaml=True)`.
+The projection tags every node, distinguishes dates/datetimes using ISO strings,
+encodes binary as hex, preserves sequence order and sorts mapping/set nodes by
+their canonical JSON bytes. It supports SafeLoader sets and pairs/ordered maps,
+including non-string keys within those values. The hashed bytes are
+`b"aeroagentsim.yaml-evidence/v1\0"` followed by compact UTF-8 JSON of that tagged
+tree. This domain separation prevents collisions with ordinary JSON documents;
+the projection is evidence only and never replaces authored or effective values.
 
 Additional `contribution_selections` are declarative evidence, not implicit plugin
 activation. Each selection requires nonempty `family` and `name`; duplicate
@@ -132,18 +148,22 @@ compatibility with a future version.
 
 `discover_preparers()` traverses the sorted builtin/installed union. An installed
 name replaces the **whole** same-name builtin descriptor; load/factory/version
-failures do not fall back to that builtin. Duplicate installed names fail before
-any entry-point load. Wrong exported types, mismatched entry-point/plugin names
-and factories that cannot be called without arguments also fail.
+failures do not fall back to that builtin. Duplicate installed names and malformed
+declaration names fail before **any** entry-point load, builtin import or factory
+call, including unrelated providers. Wrong exported types, unsupported API
+versions, mismatched entry-point/plugin names and factories that cannot be called
+without arguments also fail.
 
 Discovery loads exports/factories but does not call `prepare`. Ordinary plugin
 imports/factories must therefore avoid execution side effects too. Discovered
 descriptors retain the entry-point reference and, when available, distribution
 `(name, version)` identity. These are evidence, not additional activation.
 
-The current implementation isolates rules mirrored from metrics discovery in
-`preparation_api.py`. A shared discovery helper is not yet used; migration to it
-is planned, not an existing cross-family guarantee.
+The public `discover_preparers() -> tuple[PreparerPlugin, ...]` adapter delegates
+preflight and provider admission to `aeroagentsim.extensions.discovery.discover`,
+with the preparer descriptor type, API version, name accessor and lazy builtin
+loader. It adapts the shared contribution records back into each descriptor's
+entry-point/distribution evidence; the public function and return shape are unchanged.
 
 ## Resource bytes and manifests
 

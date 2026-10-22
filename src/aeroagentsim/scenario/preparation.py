@@ -100,7 +100,8 @@ def prepare_scenario(
             raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
         run = obj(document["run"], "run")
         seed = integer(run["seed"] if final_seed is None else final_seed, "run.seed")
-        authored_digest = document_digest(document)
+        legacy_yaml = format_id == FORMAT_V1
+        authored_digest = document_digest(document, legacy_yaml=legacy_yaml)
         run["seed"] = seed
         config: dict[str, Any] = {}
         references: dict[str, Any] = {}
@@ -136,9 +137,9 @@ def prepare_scenario(
         )
         manifest = resource_manifest(resources)
         working = copy.deepcopy(document)
-        input_digest = document_digest(working)
+        input_digest = document_digest(working, legacy_yaml=legacy_yaml)
         prepared = selected.prepare(working, seed, resources)
-        if document_digest(working) != input_digest:
+        if document_digest(working, legacy_yaml=legacy_yaml) != input_digest:
             raise ScenarioError("preparation: preparer must not mutate authored inputs")
         if not isinstance(prepared, PreparedScenario):
             raise ScenarioError("preparation: expected a PreparedScenario")
@@ -173,7 +174,7 @@ def prepare_scenario(
             "contribution_digest": document_digest({
                 "document": result, "contribution_selections": prepared.contribution_selections,
                 "resource_manifest": manifest,
-            }),
+            }, legacy_yaml=legacy_yaml),
         }
         selections = (identity, *prepared.contribution_selections)
         names: set[tuple[str, str]] = set()

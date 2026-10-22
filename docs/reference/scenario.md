@@ -47,6 +47,14 @@ booleans (`yes`/`no`/`on`/`off` are strings, `true`/`false` are booleans),
 rejects duplicate keys and non-string mapping keys, and rejects any
 non-finite numeric value anywhere in the document.
 
+V1 retains historical YAML value admission in otherwise loadable fields; it is
+**not JSON-only**. For example, `engines.calendar.config.start_date: 2026-07-13`
+loads as a Python `datetime.date` and remains that type in the prepared/effective
+document and engine config. Its preparation digest uses tagged canonical YAML
+evidence without rewriting values. V2 requires finite, JSON-compatible authored
+and prepared documents; quote dates/timestamps (for example, `"2026-07-13"`) to
+keep them strings. See [digest encoding](preparation-plugins.md#public-contract).
+
 ## Preparation and final seed
 
 `load_scenario(source, *, base=None, final_seed=None)` loads a new run or preview.
@@ -74,6 +82,12 @@ same API version and empty config. V1 instead uses the fixed builtin adapter,
 even if an installed entry point replaces that name for v2 discovery. Generic
 compilation does not dispatch by lowalt plugin names, city or vehicle class;
 pack-specific compatibility checks belong to the selected preparer.
+
+V2 preparer discovery uses the shared `aeroagentsim.extensions.discovery.discover`
+helper. Duplicate or malformed declarations are rejected before any provider is
+loaded or any factory is called. Installed names replace whole same-name builtins,
+without fallback; [discovery evidence and rules](preparation-plugins.md#discovery-and-overrides)
+remain separate from engine activation.
 
 [`TemplateRegistry.apply`](../../src/aeroagentsim/authoring/templates.py) validates
 a disposable preview but returns a `PreparedTemplate` whose `.document` remains

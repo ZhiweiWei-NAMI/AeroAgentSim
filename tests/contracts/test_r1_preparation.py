@@ -15,6 +15,7 @@ import subprocess
 import sys
 import urllib.request
 from dataclasses import FrozenInstanceError
+from datetime import date, datetime
 from multiprocessing.process import BaseProcess
 from pathlib import Path
 from types import SimpleNamespace
@@ -415,6 +416,50 @@ def test_declared_resources_are_snapshotted_read_only_and_hashed(
         preparation.prepare_scenario(authored, 0, supplied)
 
 
+@pytest.mark.parametrize("yaml_value,expected_type", [
+    ("2026-07-13", date),
+    ("2026-07-13T12:34:56.123456+02:00", datetime),
+    ("!!binary aGVsbG8=", bytes),
+    ("!!set {second: null, first: null}", set),
+    ("!!pairs [{first: 1}, {second: 2}]", list),
+    ("!!omap [{first: 1}, {second: 2}]", list),
+])
+def test_legacy_yaml_digest_accepts_safe_loader_values_without_rewriting(
+    yaml_value: str, expected_type: type,
+) -> None:
+    value = yaml.load(yaml_value, Loader=UniqueLoader)
+    assert type(value) is expected_type
+    document = {"format": "aeroagentsim.scenario/v1", "value": value}
+    before = copy.deepcopy(document)
+    prepared = PreparedScenario(document)
+    assert prepared.document == before
+    assert type(prepared.document["value"]) is expected_type
+    digest = document_digest(document, legacy_yaml=True)
+    assert digest == document_digest(copy.deepcopy(document), legacy_yaml=True)
+    assert document == before
+    if expected_type is not list:  # Pairs/ordered maps are already JSON-compatible.
+        with pytest.raises(ValueError, match="expected finite JSON data"):
+            document_digest(document)
+        with pytest.raises(ValueError, match="expected finite JSON data"):
+            PreparedScenario({**document, "format": "aeroagentsim.scenario/v2"})
+
+
+def test_legacy_yaml_digest_is_canonical_and_type_tagged() -> None:
+    first = {"date": date(2026, 7, 13), "members": {"second", "first"}}
+    reordered = {"members": {"first", "second"}, "date": date(2026, 7, 13)}
+    digest = document_digest(first, legacy_yaml=True)
+    assert digest == document_digest(reordered, legacy_yaml=True)
+    assert digest != document_digest({**first, "date": "2026-07-13"}, legacy_yaml=True)
+    assert digest != document_digest({**first, "date": ["date", "2026-07-13"]}, legacy_yaml=True)
+    assert digest != document_digest({**first, "date": datetime(2026, 7, 13)}, legacy_yaml=True)
+    # SafeLoader sets and pairs can contain non-string keys even though ordinary
+    # scenario mappings require strings. Evidence must not narrow their values.
+    assert document_digest({date(2026, 7, 13), b"hello", 3}, legacy_yaml=True)
+    assert document_digest({3: date(2026, 7, 13)}, legacy_yaml=True)
+    plain = {"nested": [None, True, 1, 1.5, "text"]}
+    assert document_digest(plain, legacy_yaml=True) == document_digest(plain)
+
+
 @pytest.mark.parametrize("version", [0, 2, True, "1", 1.0, None])
 def test_descriptor_rejects_unsupported_versions(version: Any) -> None:
     with pytest.raises(ValueError, match="version"):
@@ -472,6 +517,32 @@ def test_duplicate_installed_names_fail_before_any_load_or_builtin_factory(
     with pytest.raises(ValueError, match="Duplicate.*fleet"):
         discover_preparers()
     assert calls == []
+
+
+@pytest.mark.parametrize("name", ("Bad.Name", "", "MixedCase", "with space", "-leading"))
+def test_malformed_installed_name_fails_before_any_load_or_factory(
+    monkeypatch: pytest.MonkeyPatch, name: str,
+) -> None:
+    loads: list[str] = []
+    factories: list[str] = []
+    imports: list[str] = []
+
+    def factory() -> PreparerPlugin:
+        factories.append("factory")
+        return PreparerPlugin("0-first", fleet, "1")
+
+    def import_builtin(module: str) -> Any:
+        imports.append(module)
+        pytest.fail("malformed declarations must fail before builtin imports")
+
+    monkeypatch.setattr(preparation_api, "BUILTINS", {"a-builtin": "must.not.import:plugin"})
+    monkeypatch.setattr(preparation_api, "import_module", import_builtin)
+    install(monkeypatch, entry("0-first", factory, loads), entry(name, factory, loads))
+    with pytest.raises(ValueError, match="name must match"):
+        discover_preparers()
+    assert loads == []
+    assert factories == []
+    assert imports == []
 
 
 @pytest.mark.parametrize("loaded,error,match", [
