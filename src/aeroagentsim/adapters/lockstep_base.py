@@ -30,8 +30,27 @@ TIMEOUTS = {
     "reset": 180.0,
     "advance": 30.0,
     "command": 30.0,
+    "cancel": 10.0,
+    "capture": 10.0,
+    "payload": 10.0,
     "close": 20.0,
 }
+LEGACY_OPERATIONS = frozenset({"hello", "reset", "advance", "command", "close"})
+NATIVE_OPERATIONS = frozenset({"cancel", "capture", "payload"})
+NATIVE_FEATURES = frozenset(
+    {"rgbd_camera", "source_clock_estimates", "payload_contact_receipts", "observed_cancel_hold"}
+)
+
+
+def string_set(value: object, name: str) -> frozenset[str]:
+    """Validate advertised catalogs before membership checks (no coercion)."""
+    if (
+        not isinstance(value, list)
+        or any(type(item) is not str or not item for item in value)
+        or len(value) != len(set(value))
+    ):
+        raise KernelError("ADAPTER_CAPABILITY", f"invalid {name} catalog")
+    return frozenset(value)
 
 
 def obj(value: object) -> dict[str, Any]:
@@ -68,6 +87,8 @@ class JsonLinesClient:
         self.host, self.port, self.protocol = host, port, protocol
         self.timeouts = dict(TIMEOUTS)
         if timeouts is not None:
+            if not isinstance(timeouts, dict) or set(timeouts) - set(TIMEOUTS):
+                raise ValueError("timeouts require known operation keys")
             self.timeouts.update(timeouts)
         if any(
             type(v) not in (int, float) or not 0 < v < float("inf")
@@ -79,6 +100,16 @@ class JsonLinesClient:
         self.sequence = 0
         self.tainted = False
         self.buffer = bytearray()
+        # Framing stays v1/minor0. Native operations require a separately
+        # validated hello result; merely configuring a timeout never enables one.
+        self.operations = LEGACY_OPERATIONS
+
+    def admit_operations(self, operations: frozenset[str]) -> None:
+        if not LEGACY_OPERATIONS <= operations or operations - (
+            LEGACY_OPERATIONS | NATIVE_OPERATIONS
+        ):
+            raise KernelError("ADAPTER_CAPABILITY", "invalid admitted operations")
+        self.operations = operations
 
     def request(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
         if self.tainted:
@@ -86,6 +117,10 @@ class JsonLinesClient:
                 "ADAPTER_TAINTED",
                 "stateful request cannot be retried",
                 operation=operation,
+            )
+        if operation not in self.operations:
+            raise KernelError(
+                "ADAPTER_CAPABILITY", "operation not admitted", operation=operation
             )
         try:
             timeout = self.timeouts[operation]
@@ -183,6 +218,9 @@ class LockstepEngine(SimpleEngine):
     quantum_key: str
     actions: tuple[str, ...]
     version = "e1/1"
+    hello_minors = (0,)
+    required_operations = LEGACY_OPERATIONS
+    required_features: frozenset[str] = frozenset()
 
     def __init__(self, build: EngineBuild, partition: Partition) -> None:
         super().__init__(partition)
@@ -198,7 +236,10 @@ class LockstepEngine(SimpleEngine):
         self.pending: dict[str, Command[dict[str, Any]]] = {}
         self.statuses: dict[str, str] = {}
         self.pending_times: dict[str, int] = {}
+        self.cancel_times: dict[str, int] = {}
         self.capabilities: dict[str, Any] = {}
+        self.admitted_operations: frozenset[str] = frozenset()
+        self.hello_minor: int | None = None
         self.command_sequence = 0
         self.ready = False
         self.confirmed_ns = 0
@@ -227,18 +268,28 @@ class LockstepEngine(SimpleEngine):
                 partition=self.partition.id,
             ) from error
 
+    def request(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Reject unnegotiated operations before touching the transport."""
+        if operation != "hello" and operation not in self.admitted_operations:
+            raise KernelError(
+                "ADAPTER_CAPABILITY", "operation not admitted", operation=operation
+            )
+        return self.client.request(operation, payload)
+
     def hello(self) -> None:
-        response = self.client.request("hello", {})
+        response = self.request("hello", {})
         if (
-            response["protocol"] != self.protocol
+            set(response) != {"protocol", "major", "minor", "capabilities"}
+            or response["protocol"] != self.protocol
             or type(response["major"]) is not int
             or response["major"] != 1
             or type(response["minor"]) is not int
-            or response["minor"] != 0
+            or response["minor"] not in self.hello_minors
         ):
             raise KernelError("ADAPTER_CAPABILITY", "hello version mismatch")
         caps = obj(response["capabilities"])
-        self.capabilities = caps
+        if not {"timing", "exact_stop", "hold", self.quantum_key, "actions", "max_frame_bytes"} <= set(caps):
+            raise KernelError("ADAPTER_CAPABILITY", "incomplete hello capabilities")
         if (
             caps["timing"] != "lockstep"
             or caps["exact_stop"] is not True
@@ -247,20 +298,40 @@ class LockstepEngine(SimpleEngine):
             raise KernelError(
                 "ADAPTER_CAPABILITY", "exact stop and certified hold required"
             )
+        minor = response["minor"]
+        if minor == 1 and not {"operations", "features"} <= set(caps):
+            raise KernelError("ADAPTER_CAPABILITY", "native catalogs required")
+        operations = string_set(caps["operations"], "operation") if "operations" in caps else LEGACY_OPERATIONS
+        features = string_set(caps["features"], "feature") if "features" in caps else frozenset()
+        if operations - (LEGACY_OPERATIONS | NATIVE_OPERATIONS) or features - NATIVE_FEATURES:
+            raise KernelError("ADAPTER_CAPABILITY", "unknown native capability")
+        if (
+            not self.required_operations <= operations
+            or not self.required_features <= features
+            or (minor == 0 and (self.required_operations - LEGACY_OPERATIONS or self.required_features))
+        ):
+            raise KernelError("ADAPTER_CAPABILITY", "required native capabilities unavailable")
         quantum = integer(caps[self.quantum_key], "native quantum", 1)
         step = self.partition.timing.step_ns
         if step is None or step % quantum:
             raise KernelError(
                 "ADAPTER_BOUNDARY", "communication step not native-aligned"
             )
-        if not isinstance(caps["actions"], list) or not set(self.actions) <= set(
-            caps["actions"]
-        ):
+        if not set(self.actions) <= string_set(caps["actions"], "action"):
             raise KernelError("ADAPTER_CAPABILITY", "required actions unavailable")
         max_frame = integer(caps["max_frame_bytes"], "frame bytes", 1)
         self.client.budget = ResourceBudget(
             frame_bytes=min(self.client.budget.frame_bytes, max_frame)
         )
+        self.capabilities = caps
+        self.check_capabilities()
+        self.hello_minor = minor
+        # Enable only the scenario's opted-in operations, not all server extras.
+        self.admitted_operations = self.required_operations
+        self.client.admit_operations(self.admitted_operations)
+
+    def check_capabilities(self) -> None:
+        """Validate backend catalogs before any operation is admitted."""
 
     def reset_payload(self) -> dict[str, Any]:
         assert self.context is not None
@@ -275,7 +346,7 @@ class LockstepEngine(SimpleEngine):
     def initialize(self, view: StateView) -> tuple[object, ...]:
         def bootstrap() -> tuple[object, ...]:
             self.hello()
-            result = self.client.request("reset", self.reset_payload())
+            result = self.request("reset", self.reset_payload())
             if integer(result["reached_sim_ns"], "reset frontier") != 0:
                 raise KernelError("ADAPTER_TIME", "reset must confirm zero frontier")
             self.check_reset(result)
@@ -295,7 +366,7 @@ class LockstepEngine(SimpleEngine):
 
     def advance_native(self, ctx: EngineContext) -> dict[str, Any]:
         """Reach the communication boundary using the backend's native stepping."""
-        return self.client.request("advance", self.advance_payload(ctx))
+        return self.request("advance", self.advance_payload(ctx))
 
     def project(
         self, ctx: EngineContext, result: dict[str, Any], *, bootstrap: bool
@@ -379,12 +450,19 @@ class LockstepEngine(SimpleEngine):
         def apply() -> tuple[object, ...]:
             ctx = EngineContext(view, inbox, dirty, self.commands)
             for delivery in inbox:
+                if delivery.message.schema_id not in self.partition.commands:
+                    raise KernelError("ADAPTER_CAPABILITY", "command not enabled")
+                if delivery.message.kind == "cancel":
+                    self.on_cancel(ctx, delivery)
+                    continue
                 if delivery.message.kind != "command":
                     raise KernelError("ADAPTER_COMMAND", "unsupported input kind")
                 command = ctx.remember(delivery, self.decode_command)
                 self.command_sequence += 1
                 backend_id = f"c{self.command_sequence}"
-                result = self.client.request(
+                if self.native_command(ctx, command, backend_id):
+                    continue
+                result = self.request(
                     "command", self.command_payload(command, backend_id)
                 )
                 status = result["status"]
@@ -410,6 +488,19 @@ class LockstepEngine(SimpleEngine):
 
         return self.guarded("command", apply)
 
+    def native_command(
+        self, ctx: EngineContext, command: Command[dict[str, Any]], backend_id: str
+    ) -> bool:
+        """Handle optional recorded RPC commands; ordinary commands return False."""
+        return False
+
+    def on_cancel(self, ctx: EngineContext, delivery: Delivery) -> None:
+        raise KernelError("ADAPTER_CAPABILITY", "backend cancellation not enabled")
+
+    @staticmethod
+    def action_name(command: Command[dict[str, Any]]) -> str:
+        return command.delivery.message.schema_id.rsplit(".", 1)[1].removesuffix("_cancel_v1")
+
     def check_accept(
         self, result: dict[str, Any], backend_id: str, command: Command[dict[str, Any]]
     ) -> None:
@@ -432,7 +523,7 @@ class LockstepEngine(SimpleEngine):
             command = self.pending[backend_id]
             if integer(update["sim_ns"], "command observation") > ctx.now.ns:
                 raise KernelError("ADAPTER_TIME", "future command observation")
-            action = command.delivery.message.schema_id.rsplit(".", 1)[1]
+            action = self.action_name(command)
             expected_action = (
                 "goto_location"
                 if self.backend == "px4_gazebo" and action == "goto"
@@ -459,9 +550,21 @@ class LockstepEngine(SimpleEngine):
             if status in ("running", "executing") and previous == "accepted":
                 ctx.execute(command)
                 self.statuses[backend_id] = "executing"
+            elif status in ("running", "executing", "cancel_requested") and previous == "canceling":
+                # A queued native running notification cannot undo cancellation.
+                if status == "cancel_requested" and integer(update["sim_ns"], "cancel request observation") < self.cancel_times[backend_id]:
+                    raise KernelError("ADAPTER_TIME", "cancel request predates admission")
+            elif status == "canceled" and previous == "canceling":
+                if integer(update["sim_ns"], "cancellation observation") < self.cancel_times[backend_id]:
+                    raise KernelError("ADAPTER_TIME", "cancellation predates admission")
+                ctx.canceled(command)
+                del self.pending[backend_id]
+                del self.statuses[backend_id]
+                del self.pending_times[backend_id]
+                del self.cancel_times[backend_id]
             elif status in ("succeeded", "failed"):
                 if status == "succeeded" and previous != "executing":
-                    raise KernelError("ADAPTER_COMMAND", "completion before execution")
+                    raise KernelError("ADAPTER_COMMAND", "completion before execution or during cancellation")
                 result = {**update, "available_ns": ctx.now.ns}
                 self.validate_result(command, result)
                 if status == "succeeded":
@@ -471,17 +574,20 @@ class LockstepEngine(SimpleEngine):
                 del self.pending[backend_id]
                 del self.statuses[backend_id]
                 del self.pending_times[backend_id]
+                self.cancel_times.pop(backend_id, None)
             else:
                 raise KernelError(
                     "ADAPTER_COMMAND", "invalid backend action transition"
                 )
+            if backend_id in self.pending:
+                self.pending_times[backend_id] = integer(update["sim_ns"], "command time")
 
     def close(self) -> None:
         if self.closed:
             return
         try:
             if self.ready and not self.client.tainted:
-                result = self.client.request("close", {})
+                result = self.request("close", {})
                 if result != {"closed": True}:
                     raise KernelError("ADAPTER_CLOSE", "native cleanup not confirmed")
         finally:
