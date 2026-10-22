@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageState } from '../console/PageState';
 import { TemplateApi, type AlgorithmDescriptor, type AlgorithmSlot, type ComparisonRun, type KnobValue, type ScenarioTemplate, type TemplateKnob } from './api';
+import { comparisonRefreshPolicy, COMPARISON_REFRESH_MS, finalCursors, readComparison, resolveMetricDirection, type ComparisonRead, type ComparisonRunRead, type ComparisonConfiguration, type RunResultState } from './comparison-read';
 import { metricHelp, metricLabel, metricUnit, metricValueText } from './metric-help';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized, translate } from '../i18n/translate';
@@ -17,30 +18,40 @@ export interface CompareRunsProps {
   onBack?: () => void;
 }
 
-interface ConfigurationDifference { path: string; values: Record<string, unknown>; present: Record<string, boolean> }
-interface RecordedEnd { at_ns: string; commit_index: number; status: string }
-interface ComparisonConfiguration { alignment: 'recorded_run_end'; recorded_ends: Record<string, RecordedEnd>; config_diff: ConfigurationDifference[] }
-export function comparisonConfiguration(value: unknown, ids?: string[]): ComparisonConfiguration {
-  const data = value as Partial<ComparisonConfiguration> | null;
-  if (!data || data.alignment !== 'recorded_run_end' || !data.recorded_ends || !Object.values(data.recorded_ends).every(end =>
-    end && typeof end.at_ns === 'string' && /^\d+$/.test(end.at_ns) && Number.isSafeInteger(end.commit_index) && end.commit_index >= 1 && typeof end.status === 'string') ||
-    (ids && !ids.every(id => Object.prototype.hasOwnProperty.call(data.recorded_ends, id))) ||
-    !Array.isArray(data.config_diff) || !data.config_diff.every(row =>
-    row && typeof row.path === 'string' && row.values && typeof row.values === 'object' && !Array.isArray(row.values) &&
-    row.present && typeof row.present === 'object' && !Array.isArray(row.present) &&
-    Object.entries(row.present).every(([id, present]) => typeof present === 'boolean' && (present ? Object.prototype.hasOwnProperty.call(row.values, id) : !Object.prototype.hasOwnProperty.call(row.values, id))) &&
-    (!ids || ids.every(id => Object.prototype.hasOwnProperty.call(row.present, id))))) {
-    throw Error('Pinned configuration comparison is unavailable or malformed.');
-  }
-  return data as ComparisonConfiguration;
+// Kept as a named export for callers/tests that used the original helper.
+export { comparisonConfiguration } from './comparison-read';
+
+function resultStateLabel(state: RunResultState, locale: string): string {
+  const zh = locale === 'zh-CN';
+  return state === 'final' ? (zh ? '已最终' : 'Final')
+    : state === 'provisional' ? (zh ? '暂定' : 'Provisional')
+    : (zh ? '最终性未知' : 'Finality unknown');
+}
+
+function resultStateTitle(state: RunResultState, locale: string): string {
+  const zh = locale === 'zh-CN';
+  return state === 'final'
+    ? (zh ? '结果已最终确定，并与此次运行的记录终点一致。' : 'These results are final and match this run’s recorded end.')
+    : state === 'provisional'
+      ? (zh ? '结果仍在推进或汇总中，当前数值可能变化。' : 'Results are still advancing or aggregating; these values may change.')
+      : (zh ? '服务返回的最终性或游标证据不一致，不能确认这些结果已最终。' : 'The service’s finality or cursor evidence is inconsistent; these results are not confirmed final.');
+}
+
+/** Explicit finality badge; a cursor is shown only when the service supplied one. */
+function StateBadge({ entry, locale, showCursor = true, testId }: { entry: ComparisonRunRead; locale: string; showCursor?: boolean; testId?: string }) {
+  const zh = locale === 'zh-CN';
+  return <span className={`newc-compare-state is-${entry.state}`} data-testid={testId} title={resultStateTitle(entry.state, locale)}>
+    {resultStateLabel(entry.state, locale)}
+    {showCursor && entry.cursor !== undefined && <span className="newc-compare-state-cursor"> · {zh ? `游标 ${entry.cursor}` : `cursor ${entry.cursor}`}</span>}
+  </span>;
 }
 
 /**
- * Lead with run identity and recorded end. Settings, KPI values and changes
- * appear only in the detailed sections below.
+ * Lead with run identity, finality and recorded end. Settings, KPI values and
+ * changes appear only in the detailed sections below.
  */
-function SummaryTable({ runs, configuration, configurationError, templates, locale }: {
-  runs: ComparisonRun[]; configuration?: ComparisonConfiguration; configurationError?: string;
+function SummaryTable({ runs, entries, configuration, configurationError, templates, locale }: {
+  runs: ComparisonRun[]; entries: Map<string, ComparisonRunRead>; configuration?: ComparisonConfiguration; configurationError?: string;
   templates: Map<string, ScenarioTemplate>; locale: string;
 }) {
   const { t } = useI18n();
@@ -49,7 +60,7 @@ function SummaryTable({ runs, configuration, configurationError, templates, loca
   return <section className="newc-compare-summary" data-testid="comparison-summary" aria-label={zh ? '对比总览' : 'Comparison summary'}>
     <div style={{ maxHeight: 420, overflow: 'auto' }}>
       <table className="newc-compare-table newc-summary-table">
-        <caption>{zh ? '先看这里：所选运行的场景模板与记录终点' : 'Start here: the selected runs’ scenario templates and recorded ends'}</caption>
+        <caption>{zh ? '先看这里：所选运行的场景模板、结果状态与记录终点' : 'Start here: the selected runs’ scenario templates, result state and recorded ends'}</caption>
         <thead><tr>
           <th scope="col" style={{ width: '32%' }}>{zh ? '项目' : 'Item'}</th>
           {runs.map((run, index) => <th key={run.id} scope="col" title={run.id}>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || humanize(run.id) })}</th>)}
@@ -71,6 +82,13 @@ function SummaryTable({ runs, configuration, configurationError, templates, loca
                 : <span className="newc-config-absent">{zh ? '读取中…' : 'Loading…'}</span>}</td>;
             })}
           </tr>
+          <tr>
+            <th scope="row">{zh ? '结果状态' : 'Result state'}</th>
+            {runs.map(run => {
+              const entry = entries.get(run.id);
+              return <td key={run.id}>{entry ? <StateBadge entry={entry} locale={locale} testId={`comparison-state-${run.id}`} /> : <span className="newc-config-absent">{zh ? '读取中…' : 'Loading…'}</span>}</td>;
+            })}
+          </tr>
         </tbody>
       </table>
     </div>
@@ -89,6 +107,29 @@ function MixedNote({ runs }: { runs: ComparisonRun[] }) {
       ? '所选运行来自不同场景模板：各模板的指标定义可能不完全可比，缺失值显示为 “—”，绝不按最优值处理。原始数值原样保留。'
       : 'These runs come from different scenario templates: metric definitions may not be directly comparable. Missing values show “—” and are never marked best. Exact raw values are preserved.'}</p>}
   </div>;
+}
+
+/** States the refresh policy plainly: live refresh, frozen cursor, or no claim. */
+function RefreshNote({ read, locale }: { read: ComparisonRead; locale: string }) {
+  const zh = locale === 'zh-CN';
+  const policy = comparisonRefreshPolicy(read);
+  if (policy.active) {
+    const seconds = Math.max(1, Math.round((policy.intervalMs ?? COMPARISON_REFRESH_MS) / 1000));
+    return <p className="newc-compare-refresh is-live" data-testid="comparison-refresh" role="status" aria-live="polite">
+      {zh ? `有运行尚未最终确定，正在每 ${seconds} 秒刷新。` : `Some runs are provisional; refreshing every ${seconds} seconds.`}
+    </p>;
+  }
+  if (policy.reason === 'final') {
+    const cursors = finalCursors(read);
+    const joined = cursors.join(zh ? '、' : ', ');
+    return <p className="newc-compare-refresh is-frozen" data-testid="comparison-refresh" role="status">
+      {zh ? `全部结果已最终确定；已冻结于游标 ${joined}。`
+        : `All results are final; frozen as of ${cursors.length === 1 ? 'cursor' : 'cursors'} ${joined}.`}
+    </p>;
+  }
+  return <p className="newc-compare-refresh is-unknown" data-testid="comparison-refresh" role="status">
+    {zh ? '无法确认全部结果是否已最终，未自动刷新。' : 'Finality could not be confirmed for every run; not refreshing automatically.'}
+  </p>;
 }
 
 /** Plain labels for known metric directions; anything unknown is treated as neutral. */
@@ -140,14 +181,16 @@ interface KpiRow {
   label_zh?: string;
   unit: string;
   direction: 'min' | 'max' | 'neutral';
+  /** True only when every run is final and the metric direction is defined/consistent. */
+  rankable: boolean;
   values: (number | null)[];
   best?: number | null;
 }
 
-/** Change from the previous run, judged by the metric's known direction. */
+/** Change from the previous run, judged only when ranking is actually allowed. */
 function kpiDelta(row: KpiRow, index: number) {
   const before = row.values[index - 1], after = row.values[index];
-  if (index === 0 || row.direction === 'neutral' || before === null || after === null || !Number.isFinite(before) || !Number.isFinite(after)) return undefined;
+  if (!row.rankable || index === 0 || row.direction === 'neutral' || before === null || after === null || !Number.isFinite(before) || !Number.isFinite(after)) return undefined;
   const span = after - before;
   if (!Number.isFinite(span) || span === 0) return undefined;
   const better = row.direction === 'min' ? span < 0 : span > 0;
@@ -155,21 +198,23 @@ function kpiDelta(row: KpiRow, index: number) {
     className: better ? ' is-ok' : ' is-warn' };
 }
 
-/** Rows sorted best-first; best values are highlighted per direction, never by raw max alone. */
-function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
+/** Rows sorted best-first; best values need finality plus one agreed direction. */
+function kpiRows(runs: ComparisonRun[], order: string[] = [], final: boolean): KpiRow[] {
   const ids: string[] = [];
   order.forEach(id => { if (!ids.includes(id)) ids.push(id); });
   runs.forEach(run => Object.keys(run.kpis ?? {}).forEach(id => { if (!ids.includes(id)) ids.push(id); }));
   const rows = ids.map(id => {
     const values = runs.map(run => run.kpis[id]?.value ?? null);
     const known = values.filter((value): value is number => value !== null && Number.isFinite(value));
-    const direction = runs.map(run => run.kpis[id]?.direction).find(direction => direction !== undefined) ?? DIRECTIONS[id] ?? 'neutral';
-    const best = known.length && direction !== 'neutral'
+    const declared = resolveMetricDirection(runs, id, DIRECTIONS);
+    const direction = declared.direction;
+    const rankable = final && declared.defined && declared.consistent && direction !== 'neutral';
+    const best = rankable && known.length
       ? (direction === 'min' ? Math.min(...known) : Math.max(...known))
       : undefined;
     return { id, label: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label ?? humanize(id),
       label_zh: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label_zh,
-      unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit || metricUnit(id) || '', direction, values, best };
+      unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit || metricUnit(id) || '', direction, rankable, values, best };
   });
   const rank = (id: string) => {
     const index = order.indexOf(id);
@@ -227,19 +272,27 @@ function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTempl
   }));
 }
 
-function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows: KpiRow[]; index: number; more: KpiRow[]; template?: ScenarioTemplate }) {
+function Column({ run, entry, final, rows, index, more, template }: {
+  run: ComparisonRun; entry?: ComparisonRunRead; final: boolean;
+  rows: KpiRow[]; index: number; more: KpiRow[]; template?: ScenarioTemplate;
+}) {
   const { t, locale } = useI18n();
   const label = (row: KpiRow) => metricLabel(row.id, row.label, locale, row.label_zh);
   return (
     <section className="newc-compare-col">
       <h3>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || humanize(run.id) })}</h3>
+      {entry && <StateBadge entry={entry} locale={locale} showCursor={false} />}
       {run.template_id && <p className="newc-compare-template">{locale === 'zh-CN' && template ? localized(template, 'title', locale) : humanize(run.template_id)}</p>}
       <table className="newc-compare-table">
-        <caption>{t('Results · preferred value highlighted')}</caption>
+        <caption>{!final
+          ? locale === 'zh-CN' ? '结果 · 全部运行最终确定前不评为最优' : 'Results · not ranked until every run is final'
+          : [...rows, ...more].some(row => row.best !== undefined)
+            ? t('Results · preferred value highlighted')
+            : locale === 'zh-CN' ? '结果 · 无可按一致方向排名的测量值' : 'Results · no measurements with an agreed ranking direction'}</caption>
         <tbody>
           {rows.map(row => {
             const value = row.values.length ? row.values[index] : null;
-            const isBest = row.best !== undefined && value !== null && value === row.best;
+            const isBest = row.rankable && row.best !== undefined && value !== null && value === row.best;
             const change = kpiDelta(row, index);
             return (
               <tr key={row.id} className={isBest ? 'is-best' : undefined}>
@@ -266,7 +319,7 @@ function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows
             <tbody>
               {more.map(row => {
                 const value = row.values.length ? row.values[index] : null;
-                const isBest = row.best !== undefined && value !== null && value === row.best;
+                const isBest = row.rankable && row.best !== undefined && value !== null && value === row.best;
                 return (
                   <tr key={row.id} className={isBest ? 'is-best' : undefined}>
                     <th scope="row">{label(row)}{metricHelp(row.id, locale)&&<span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>}</th>
@@ -297,48 +350,63 @@ function Bar({ value, row }: { value: number | null; row: KpiRow }) {
 
 /**
  * Side-by-side comparison fetched live from the API (no silent mocks).
- * Each run gets a column; the KPI table highlights the best value per metric
- * respecting its known direction, and differing knobs/algorithm choices get
- * their own rows. Template catalog metadata (knob labels, declared KPI order)
- * is fetched separately and best-effort: if the catalog is unavailable the
- * comparison still renders with machine ids and generic ordering.
+ * One response supplies results, recorded ends and pinned configuration;
+ * provisional runs are re-read on an interval. Best values are highlighted
+ * only when every run is final and metrics agree on a direction, while
+ * differing knobs/algorithm choices get their own rows. Template catalog
+ * metadata (knob labels, declared KPI order) is fetched separately and
+ * best-effort: if the catalog is unavailable the comparison still renders
+ * with machine ids and generic ordering.
  */
 export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
   const { t, locale } = useI18n();
   const [algorithms, setAlgorithms] = useState<AlgorithmDescriptor[]>([]);
-  const [runs, setRuns] = useState<ComparisonRun[]>();
+  const [read, setRead] = useState<ComparisonRead>();
   const [templates, setTemplates] = useState<Map<string, ScenarioTemplate>>(() => new Map());
   const [catalogNote, setCatalogNote] = useState<string>();
   const [error, setError] = useState<string>();
+  const [refreshNote, setRefreshNote] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
-  const [configuration, setConfiguration] = useState<ComparisonConfiguration>();
-  const [configurationError, setConfigurationError] = useState<string>();
+  const idsKey = ids.join(',');
 
   useEffect(() => {
-    setConfiguration(undefined); setConfigurationError(undefined);
-    if (ids.length < 2 || ids.length > 4) return;
-    const control = new AbortController();
-    // The catalog decoder retains KPI/settings columns. Fetch pinned configuration
-    // metadata without recomputing the KPIs for a second time.
-    void Promise.resolve().then(() => api.request<unknown>(`/v1/runs/compare?ids=${ids.map(encodeURIComponent).join(',')}&include_kpis=false`, undefined, control.signal))
-      .then(value => comparisonConfiguration(value, ids)).then(value => { if (!control.signal.aborted) setConfiguration(value); })
-      .catch(problem => { if (!control.signal.aborted) setConfigurationError(String(problem)); });
-    return () => control.abort();
-  }, [api, ids.join(','), attempt]);
-
-  useEffect(() => {
+    setRead(undefined); setError(undefined); setRefreshNote(undefined);
     if (ids.length < 2 || ids.length > 4) {
-      setRuns(undefined); setError('Pick two to four runs to compare.'); setLoading(false);
+      setError('Pick two to four runs to compare.'); setLoading(false);
       return;
     }
     const control = new AbortController();
-    setLoading(true); setError(undefined);
-    api.compare(ids, control.signal)
-      .then(comparison => { if (!control.signal.aborted) { setRuns(comparison.runs); setLoading(false); } })
-      .catch(problem => { if (!control.signal.aborted) { setError(String(problem)); setLoading(false); } });
-    return () => control.abort();
-  }, [api, ids.join(','), attempt]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
+    let haveData = false;
+    setLoading(true);
+    // One response carries results, recorded ends and pinned configuration
+    // together. Re-read it only while at least one run is provisional.
+    const load = async () => {
+      try {
+        const value = await api.request<unknown>(`/v1/runs/compare?ids=${ids.map(encodeURIComponent).join(',')}`, undefined, control.signal);
+        if (disposed || control.signal.aborted) return;
+        const next = readComparison(value, ids);
+        haveData = true;
+        setRead(next); setError(undefined); setRefreshNote(undefined); setLoading(false);
+        const policy = comparisonRefreshPolicy(next);
+        if (policy.active) timer = setTimeout(() => { void load(); }, policy.intervalMs ?? COMPARISON_REFRESH_MS);
+      } catch (problem) {
+        if (disposed || control.signal.aborted) return;
+        setLoading(false);
+        if (!haveData) setError(String(problem));
+        else {
+          // Keep the last coherent frame; report the refresh failure instead of
+          // replacing results the user is already reading.
+          setRefreshNote(String(problem));
+          timer = setTimeout(() => { void load(); }, COMPARISON_REFRESH_MS);
+        }
+      }
+    };
+    void load();
+    return () => { disposed = true; control.abort(); if (timer) clearTimeout(timer); };
+  }, [api, idsKey, attempt]);
 
   // Best-effort catalog metadata: knob labels / pointers and template-declared
   // KPI ordering. Failures are surfaced as a small note, never as a dead end —
@@ -370,6 +438,11 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
   }, [api, locale, ids.join(','), attempt]);
 
   const retry = useCallback(() => setAttempt(attempt => attempt + 1), []);
+  const runs = useMemo(() => read?.runs.map(entry => entry.run), [read]);
+  const entries = useMemo(() => new Map<string, ComparisonRunRead>((read?.runs ?? []).map(entry => [entry.run.id, entry] as const)), [read]);
+  const configuration = read?.configuration;
+  const configurationError = read?.configurationError;
+  const allFinal = !!read && read.runs.length > 0 && read.runs.every(entry => entry.state === 'final');
   const declaredOrder = useMemo(() => {
     const order: string[] = [];
     runs?.forEach(run => {
@@ -378,7 +451,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
     });
     return order;
   }, [runs, templates]);
-  const rows = useMemo(() => (runs ? kpiRows(runs, declaredOrder) : []), [runs, declaredOrder]);
+  const rows = useMemo(() => (runs ? kpiRows(runs, declaredOrder, allFinal) : []), [runs, declaredOrder, allFinal]);
   const primary = useMemo(() => rows.filter(row => declaredOrder.length?declaredOrder.includes(row.id):row.values.some(value=>value!==null&&value!==0)), [rows, declaredOrder]);
   const more = useMemo(() => rows.filter(row=>!primary.includes(row)), [rows, primary]);
   const columns = useMemo(() => (runs ? differences(runs, templates, locale, algorithms) : []), [runs, templates, locale, algorithms]);
@@ -405,8 +478,10 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
         {onBack && <button type="button" className="newc-button" onClick={onBack}>{t('Go back')}</button>}
       </header>
       <MixedNote runs={runs} />
+      {read && <RefreshNote read={read} locale={locale} />}
+      {refreshNote && <p className="newc-catalog-note" role="status">{locale === 'zh-CN' ? '最新一次刷新失败，仍显示上一次一致的结果：' : 'The latest refresh failed; showing the last coherent results: '}{refreshNote}</p>}
       {catalogNote && <p className="newc-catalog-note" role="note">{t('Metric names and settings come from machine ids — template details are unavailable ({error}).', { error: catalogNote })}</p>}
-      <SummaryTable runs={runs} configuration={configuration} configurationError={configurationError} templates={templates} locale={locale} />
+      <SummaryTable runs={runs} entries={entries} configuration={configuration} configurationError={configurationError} templates={templates} locale={locale} />
       <section className="newc-compare-section" data-testid="comparison-configuration">
         <h4>{locale === 'zh-CN' ? '固定配置差异' : 'Pinned configuration differences'}</h4>
         {configurationError ? <p role="status">{locale === 'zh-CN' ? '无法读取固定配置差异：' : 'Could not read pinned configuration differences: '}{configurationError}</p>
@@ -450,7 +525,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
       )}
       <div className={`newc-compare-grid n-${runs.length}`}>
         {runs.map((run, index) => (
-          <Column key={run.id} run={run} rows={primary} more={more} index={index} template={run.template_id ? templates.get(run.template_id) : undefined} />
+          <Column key={run.id} run={run} entry={entries.get(run.id)} final={allFinal} rows={primary} more={more} index={index} template={run.template_id ? templates.get(run.template_id) : undefined} />
         ))}
       </div>
     </div>
