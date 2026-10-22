@@ -4,39 +4,69 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator, KeysView, Mapping
-from dataclasses import asdict
+from copy import deepcopy
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
-from aerokernel.messages import Emit
 from aerokernel.operations import AssertEdge, FactWrite, RetractFact
 from aerokernel.registry import MemoryRegistry
 from aerokernel.values import thaw
 
 from aeroagentsim.metrics_api import (
     MetricAccumulator,
+    MetricDescriptor,
     MetricPlugin,
     discover_metric_plugins,
 )
 # Historical re-export only; definitions and arithmetic remain pack-owned.
 from aeroagentsim.packs.lowalt.metrics import RESCUE_METRICS as RESCUE_METRICS
-from aeroagentsim.runs import RecordedMessage
+from aeroagentsim.runs import RecordedMessage, iter_record_messages
+
+
+# Presentation compatibility, not discovery order. Keep the original main KPI
+# slots even when an installed provider replaces their implementation.
+_LEGACY_KPI_ORDER = (
+    "tasks_created", "tasks_assigned", "tasks_completed", "tasks_failed",
+    "completion_rate", "mean_task_latency_s", "p95_task_latency_s",
+    "medical_mean_task_latency_s", "medical_p95_task_latency_s", "on_time_rate",
+    "energy_used_kj", "distance_flown_km", "spraying_distance_m", "battery_swaps",
+    "inspection_observations", "patrol_visits", "separation_conflicts",
+    "geofence_violations", "weather_holds", "accident_reported", "award_committed",
+    "captures_stored", "uploads_accepted", "incidents_occurred", "incidents_noticed",
+    "incidents_photographed", "incident_response_s", "handoffs_completed",
+    "rescue_success", "rescue_time_to_confirmation_s", "rescue_time_to_delivery_s",
+    "rescue_plans", "rescue_bids", "rescue_candidates", "rescue_radio_packets",
+    "rescue_radio_delivered", "rescue_radio_bytes", "rescue_bus_messages",
+    "rescue_bus_bytes", "rescue_model_calls",
+)
+
+
+def _ordered_descriptors(plugins: tuple[MetricPlugin, ...]) -> dict[str, MetricDescriptor]:
+    descriptors: dict[str, MetricDescriptor] = {}
+    owners: dict[str, str] = {}
+    for plugin in plugins:
+        for reducer in plugin.reducers:
+            for descriptor in reducer.descriptors:
+                if descriptor.id in descriptors:
+                    raise ValueError(f"Duplicate metric id: {descriptor.id!r}")
+                descriptors[descriptor.id] = descriptor
+                owners[descriptor.id] = plugin.name
+    legacy = [name for name in _LEGACY_KPI_ORDER if name in descriptors]
+    additional = sorted(descriptors.keys() - set(legacy), key=lambda name: (owners[name], name))
+    return {name: descriptors[name] for name in (*legacy, *additional)}
 
 
 class _MetricCatalogue(Mapping[str, tuple[str, str]]):
     """Legacy metadata view, including external metrics with no measured samples."""
 
     def _snapshot(self) -> dict[str, tuple[str, str]]:
-        result = {}
-        for plugin in discover_metric_plugins():
-            for reducer in plugin.reducers:
-                for descriptor in reducer.descriptors:
-                    if descriptor.id in result:
-                        raise ValueError(f"Duplicate metric id: {descriptor.id!r}")
-                    result[descriptor.id] = (descriptor.unit, descriptor.label)
-        return result
+        return {
+            name: (descriptor.unit, descriptor.label)
+            for name, descriptor in _ordered_descriptors(discover_metric_plugins()).items()
+        }
 
     def __getitem__(self, key: str) -> tuple[str, str]:
         return self._snapshot()[key]
@@ -66,7 +96,8 @@ class KPIProjector:
                               for kind, field in self.position_bindings.items()]
         self._types: dict[str, list[str]] = {}
         self._metrics = MetricAccumulator(plugins)
-        self.descriptors = self._metrics.descriptors
+        self.descriptors = MappingProxyType(_ordered_descriptors(self._metrics.plugins))
+        self._message_context: dict[str, Any] | None = None
 
     def __getattr__(self, name: str) -> Any:
         # Read-only compatibility for the old internal projector attributes.
@@ -82,15 +113,24 @@ class KPIProjector:
 
     @classmethod
     def from_directory(cls, path: Path) -> KPIProjector:
+        from .storage import RunStorage
+
         registry = MemoryRegistry.from_data(json.loads((path / "runtime.registry.json").read_text()))
         scenario = json.loads((path / "scenario.json").read_text())
-        return cls(registry, scenario.get("presentation", []))
+        projector = cls(registry, scenario.get("presentation", []))
+        storage = RunStorage(path)
+        storage.refresh_committed()
+        if storage.entries:
+            for header in storage.records(0, 1):
+                projector.consume(header)
+        return projector
 
     def cursor(self) -> dict[str, Any]:
-        return self._metrics.cursor()
+        return {**self._metrics.cursor(), "message_context": deepcopy(self._message_context)}
 
     def restore_cursor(self, cursor: dict[str, Any]) -> None:
         self._metrics.restore_cursor(cursor)
+        self._message_context = deepcopy(cursor.get("message_context"))
 
     @classmethod
     def from_cursor(
@@ -118,39 +158,36 @@ class KPIProjector:
             self._metrics.consume(raw_record)
             return self.snapshot()
         record = expand_record(raw_record)
-        destinations = {
-            (row["message"], row["recipient"])
-            for row in record.get("items", [])
-            if row.get("kind") == "enqueue"
-            and isinstance(row.get("message"), str)
-            and isinstance(row.get("recipient"), str)
+        if record.get("type") == "header":
+            manifest = record.get("manifest", {})
+            self._message_context = {
+                "partitions": [row["fields"]["id"] for row in record.get("partitions", [])],
+                "ingress_source": manifest.get("ingress_source"),
+                "control_source": manifest.get("control_source"),
+            }
+        context = self._message_context
+        if context is None:
+            # Bare historical diagnostic frames have no pinned header. Retain
+            # their direct-event routing using only recorded enqueue recipients.
+            context = {"partitions": [
+                row["recipient"] for row in record.get("items", [])
+                if row.get("kind") == "enqueue" and isinstance(row.get("recipient"), str)
+            ]}
+        originals = {
+            message.cursor[1]: message
+            for message in iter_record_messages(
+                record, partitions=frozenset(context["partitions"]),
+                ingress_source=context.get("ingress_source"),
+                control_source=context.get("control_source"),
+            )
         }
         for ordinal, item in enumerate(record.get("items", [])):
+            if ordinal in originals:
+                self._metrics.consume(originals[ordinal])
             if "proposal" not in item:
                 continue
             op = decode_record(item["proposal"])
             cursor = (record["index"], ordinal)
-            if isinstance(op, Emit) and "message" in item:
-                message = decode_record(item["message"])
-                if message.id in self._metrics.messages:
-                    continue
-                payload = thaw(message.payload)
-                route = op.target_or_topic
-                direct = op.kind in {"command", "cancel"} or (message.id, route) in destinations
-                self._metrics.consume(RecordedMessage(
-                    cursor=cursor, message_id=message.id, kind=op.kind,
-                    schema_id=message.schema_id, route=route,
-                    topic=route if op.kind == "event" and not direct else None,
-                    target=route if direct else None,
-                    source_kind=message.source_kind, source=message.source,
-                    origin=asdict(message.origin) if message.origin is not None else None,
-                    at_ns=message.at.ns, microstep=message.at.microstep,
-                    available_ns=message.available.ns,
-                    available_microstep=message.available.microstep,
-                    payload=payload, sequence=message.sequence,
-                    source_stamp=asdict(message.source_stamp) if message.source_stamp is not None else None,
-                ))
-                continue
             if isinstance(op, (FactWrite, RetractFact)):
                 ref, field = op.key
                 payload = {"entity": ref.to_data(), "field_id": field}

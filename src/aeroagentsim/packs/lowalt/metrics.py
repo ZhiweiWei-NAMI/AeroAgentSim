@@ -57,13 +57,14 @@ _RESCUE_AGGREGATION = {
     "rescue_radio_packets": "Count distinct rescue packet IDs sent.",
     "rescue_radio_delivered": "Count distinct rescue packet IDs delivered.",
     "rescue_radio_bytes": "Sum sizes of distinct rescue packet IDs sent.",
-    "rescue_bus_messages": "Count all rescue.* messages, including commands.",
+    "rescue_bus_messages": "Count partition-emitted rescue.* messages, including commands.",
     "rescue_bus_bytes": "Sum UTF-8 byte lengths of rescue.* data_json strings.",
     "rescue_model_calls": "Count model_call graph records whose decision_id starts rescue_.",
 }
 
 
 class RescueReducer(LegacyReducer):
+    version = "2"
     state_type = RescueState
     input_schemas = ("rescue.", "adapters.ns3.send", "adapters.ns3.delivery", "aas.langgraph.record")
     descriptors = tuple(
@@ -74,7 +75,14 @@ class RescueReducer(LegacyReducer):
         ) for name, (unit, label) in RESCUE_METRICS.items()
     )
 
+    def __init__(self, *, configured_report: bool = False) -> None:
+        self._configured_report = configured_report
+
     def consume(self, state: RescueState, message: RecordedMessage) -> None:
+        # The legacy service/report population is partition emissions, including
+        # commands. Ingress is valid host evidence, but not this builtin's traffic.
+        if message.source_kind != "partition":
+            return
         schema, payload, at_ns = message.schema_id, message.payload, message.at_ns
         values = state.rescue_values
         if schema is None:
@@ -122,7 +130,12 @@ class RescueReducer(LegacyReducer):
             values["rescue_model_calls"] += 1
 
     def snapshot(self, state: RescueState) -> dict[str, Any]:
-        return {name: value if state.rescue_seen else None for name, value in state.rescue_values.items()}
+        # Only this shipped reducer owns the historical configured-empty zeros.
+        # Installed replacements keep their own missing-data policy unchanged.
+        return {
+            name: value if state.rescue_seen or self._configured_report else None
+            for name, value in state.rescue_values.items()
+        }
 
 
 class LowaltState(LegacyState):
@@ -140,6 +153,7 @@ class LowaltState(LegacyState):
 
 
 class LowaltReducer(LegacyReducer):
+    version = "2"
     state_type = LowaltState
     input_schemas = ("lowalt.",)
     descriptors = tuple(
@@ -159,7 +173,8 @@ class LowaltReducer(LegacyReducer):
     )
 
     def consume(self, state: LowaltState, message: RecordedMessage) -> None:
-        if message.kind != "event":
+        # Main's population was partition emissions, not ingress admissions.
+        if message.source_kind != "partition" or message.kind != "event":
             return
         schema, payload, at_ns = message.schema_id, message.payload, message.at_ns
         if schema == "lowalt.incident.occurred":

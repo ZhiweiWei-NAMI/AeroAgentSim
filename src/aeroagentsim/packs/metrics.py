@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Any, cast
 
 from aerokernel import Kernel, replay
+from aerokernel.codec import decode_record
 from aerokernel.values import thaw
 
+from aeroagentsim.runs import iter_record_messages
 from aeroagentsim.services.projector import project
 
 from .geometry import Polygon, area, clip, contains, union_area
@@ -28,8 +30,15 @@ def compute(kernel: Kernel) -> dict[str, Any]:
         raise ValueError("metrics require a scenario pinned in the journal header")
     config = cast(dict[str, Any], configuration)
     engines = config["scenario"]["engines"]
-    commits = [project(r) for r in kernel.records]
-    end = max((int(c["at"]["ns"]) for c in commits), default=0)
+    records = kernel.records
+    end = max((decode_record(record["instant"]).ns for record in records), default=0)
+    # Only the historical logistics/inspection sections use viewer rows. Reducers
+    # must never receive their presentation-tagged payloads or console aliases.
+    commits = (
+        [project(record) for record in records]
+        if any(engine["plugin"] in {"logistics", "inspection"} for engine in engines.values())
+        else []
+    )
     # Each committed message is counted once, independent of topic fan-out.
     events = {
         m["id"]: m for c in commits for m in c["messages"] if m["kind"] == "event"
@@ -145,36 +154,33 @@ def compute(kernel: Kernel) -> dict[str, Any]:
             MetricPlugin,
             discover_metric_plugins,
         )
-        from aeroagentsim.runs import RecordedMessage
-
-        from .lowalt.metrics import RESCUE_METRICS
+        from .lowalt.metrics import RESCUE_METRICS, RescueReducer
 
         # This historical report exposes flat rescue scalars, but uses the same
         # public reducer contract/discovery as the service instead of importing a
         # private service accumulator. Keep whole reducer ownership intact.
         plugins = tuple(
             MetricPlugin(plugin.name, tuple(
-                reducer for reducer in plugin.reducers
+                RescueReducer(configured_report=True) if type(reducer) is RescueReducer else reducer
+                for reducer in plugin.reducers
                 if any(item.id in RESCUE_METRICS for item in reducer.descriptors)
             ), api_version=plugin.api_version)
             for plugin in discover_metric_plugins()
         )
         accumulator = MetricAccumulator(plugins)
-        messages = {m["id"]: m for commit in commits for m in commit["messages"]}
-        for ordinal, message in enumerate(messages.values()):
-            accumulator.consume(RecordedMessage(
-                cursor=(0, ordinal), message_id=message["id"], kind=message["kind"],
-                schema_id=message["schemaId"], source=message["source"],
-                at_ns=int(message["at"]["ns"]), payload=message["payload"],
+        header = getattr(kernel, "header", {})
+        manifest = header.get("manifest", {})
+        partitions = frozenset(row["fields"]["id"] for row in header.get("partitions", []))
+        for record in records:
+            accumulator.feed(iter_record_messages(
+                record, partitions=partitions,
+                ingress_source=manifest.get("ingress_source"),
+                control_source=manifest.get("control_source"),
             ))
         values = accumulator.snapshot()
-        for name, (unit, _) in RESCUE_METRICS.items():
-            if name not in values:
-                continue  # A whole-provider replacement may omit legacy IDs.
-            # Legacy configured-pack reports exposed empty counters as zero;
-            # the KPI feed deliberately keeps entirely absent rescue evidence None.
-            value = values[name]
-            result[name] = 0 if value is None and unit in {"count", "B"} else value
+        for name in RESCUE_METRICS:
+            if name in values:  # A whole-provider replacement may omit legacy IDs.
+                result[name] = values[name]
     return result
 
 

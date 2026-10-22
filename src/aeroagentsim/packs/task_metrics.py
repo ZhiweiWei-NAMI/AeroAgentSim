@@ -47,6 +47,7 @@ class TaskState(LegacyState):
 
 
 class TaskReducer(LegacyReducer):
+    version = "2"
     state_type = TaskState
     input_schemas = ("lowalt.task.", "traffic.", "aeroagentsim.metrics.edge/v1")
     descriptors = tuple(
@@ -66,6 +67,9 @@ class TaskReducer(LegacyReducer):
     )
 
     def consume(self, state: TaskState, message: RecordedMessage) -> None:
+        # Keep main's emitted-message population plus host-only relation evidence.
+        if message.kind != "evidence" and message.source_kind != "partition":
+            return
         lowalt_task(state, message)
         traffic_task(state, message)
 

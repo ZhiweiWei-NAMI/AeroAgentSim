@@ -103,6 +103,10 @@ names override same-name builtins. Duplicate installed names fail **before any
 entry-point load**; wrong exported types, non-zero-argument factories and mismatched
 entry-point/plugin names fail rather than falling back to a builtin. Duplicate
 plugin names or metric IDs in an accumulator's explicit selection also fail.
+Discovery order is **not KPI presentation order**: the service output and metadata
+catalogue retain main's original 40-ID order (including IDs supplied by replacement
+providers). Additional IDs follow, sorted by `(plugin.name, descriptor.id)`;
+replacement providers may omit historical IDs without the host recreating them.
 
 `MetricAccumulator()` discovers contributions. `MetricAccumulator(plugins=(...))`
 uses that explicit selection instead; `plugins=()` selects none. Different
@@ -153,8 +157,21 @@ fact or relation evidence needed by some service KPIs.
 ### Host evidence adapter: facts, retractions and edges
 
 The [service KPI adapter](../../src/aeroagentsim/services/kpis.py) retains raw
-committed-operation support. It sends original `Emit` messages to the same
-accumulator, ignores delivery-only copies, and separately adapts these operations:
+committed-operation support. It uses the run reader's shared
+`aeroagentsim.runs.iter_record_messages` extraction for original emissions,
+`reservation`/`offline_request` admissions and `ingress_publish` publications (and
+recorded cancellations), not viewer message rows. Pinned header partition and
+ingress/control-source metadata is retained across checkpoints. Same-record
+explicit envelopes take precedence; later publication never enriches an earlier
+admission. Delivery copies and console aliases are excluded.
+
+Raw-record integrations can call `iter_record_messages(record,
+partitions=frozenset(pinned_partition_ids), ingress_source=pinned_ingress_source,
+control_source=pinned_control_source)` on decoded journal records. This helper
+also expands compact fact rows; it does not read a journal, enforce ACK bounds,
+deduplicate across records or perform replay-integrity verification. Feed its
+results to an accumulator in journal order. The service feed index still owns the
+ACK bound and interleaves originals with these host-only operations in item order:
 
 | Host evidence schema | Minimal detached payload |
 | --- | --- |
@@ -244,6 +261,12 @@ The shipped discovery names are:
 | [`tasks`](../../src/aeroagentsim/packs/task_metrics.py) | Shared task lifecycle counts, completion rate, pooled mean/p95 latencies and the medical subset. |
 | [`traffic_accident`](../../src/aeroagentsim/packs/traffic_accident/metrics.py) | Traffic report, award, stored capture and accepted upload event counts. |
 
+Builtin message populations explicitly remain **partition emissions**, as on main;
+newly visible ingress admissions/publications do not change their historical
+counts. This restriction belongs to the builtin reducers, not the host or schema
+dispatcher. Installed reducers may count ingress evidence. Physical/relation
+reducers also accept the host-only evidence described above.
+
 `tasks` owns the common task IDs once. Lowalt and traffic evidence contributes to a
 single namespaced population: ratios use pooled counts, mean uses pooled
 first-completion samples, and p95 linearly interpolates at `(n-1)*0.95` over the
@@ -256,7 +279,8 @@ Rescue's historical scalars deliberately retain **last-writer** meanings:
 multi-incident success rate. Measured confirmation/delivery intervals can be
 replaced by later outcomes, including explicit `None`. Radio packet IDs and
 outcome incident IDs have their own deduplication rules. Bus bytes count original
-`data_json` UTF-8 bytes, not reserialized JSON; bus counts include rescue commands.
+`data_json` UTF-8 bytes, not reserialized JSON; bus counts include partition-emitted
+rescue commands.
 
 Missing evidence stays distinguishable from observed zero. Task/population event
 counts retain historical empty-zero semantics; energy/distance start `None` and
@@ -288,9 +312,14 @@ The [CLI routing](../../src/aeroagentsim/services/kpis.py) is intentionally expl
 The old report is not an alias for the new service shape. Its logistics rate uses
 on-time deliveries divided by **released orders**; the service rate uses deliveries
 with a committed deadline. Its inspection section retains polygon coverage and
-acquisition/revisit statistics. Configured rescue report counters retain zero when
-no rescue evidence exists, unlike the wholly unmeasured service rescue rows. Do not
-merge these shapes or denominators under the guise of plugin extraction.
+acquisition/revisit statistics. Report reducers consume canonical original envelopes
+decoded from `kernel.records`, preserving cursors, provenance, routing, timing and
+Python integer payloads; viewer projection is used only by the historical
+logistics/inspection sections. Only the **shipped rescue reducer's compatibility
+mode** retains configured-empty report counter zeros, unlike its wholly unmeasured
+service rows. Installed replacements returning `None` stay `None`, including
+`count` and `B` metrics. Do not merge these shapes, missing-data policies or
+denominators under the guise of plugin extraction.
 
 See [plugin contracts](plugin-contracts.md) for other extension families. Metric
 plugins grant no runtime write authority, and no service/index/pack-private object

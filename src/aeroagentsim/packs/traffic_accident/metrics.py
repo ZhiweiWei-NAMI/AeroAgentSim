@@ -24,6 +24,7 @@ class TrafficState(LegacyState):
 
 
 class TrafficReducer(LegacyReducer):
+    version = "2"
     state_type = TrafficState
     input_schemas = ("traffic.",)
     descriptors = tuple(
@@ -37,7 +38,8 @@ class TrafficReducer(LegacyReducer):
     )
 
     def consume(self, state: TrafficState, message: RecordedMessage) -> None:
-        if message.kind != "event":
+        # Main's population was partition emissions, not ingress admissions.
+        if message.source_kind != "partition" or message.kind != "event":
             return
         metric = {
             "traffic.report.sent": "accident_reported",

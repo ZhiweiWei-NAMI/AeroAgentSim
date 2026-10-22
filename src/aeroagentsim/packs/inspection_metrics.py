@@ -17,6 +17,7 @@ class InspectionState(LegacyState):
 
 
 class InspectionReducer(LegacyReducer):
+    version = "2"
     state_type = InspectionState
     input_schemas = ("lowalt.task.created", "lowalt.energy.swap_", "lowalt.inspection.observed", "lowalt.patrol.visited")
     descriptors = tuple(
@@ -29,7 +30,8 @@ class InspectionReducer(LegacyReducer):
     )
 
     def consume(self, state: InspectionState, message: RecordedMessage) -> None:
-        if message.kind != "event":
+        # Main's population was partition emissions, not ingress admissions.
+        if message.source_kind != "partition" or message.kind != "event":
             return
         schema, payload = message.schema_id, message.payload
         if schema == "lowalt.task.created":

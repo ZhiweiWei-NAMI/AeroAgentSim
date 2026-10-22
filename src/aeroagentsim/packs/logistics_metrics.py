@@ -21,6 +21,7 @@ class DeliveryState(LegacyState):
 
 
 class DeliveryReducer(LegacyReducer):
+    version = "2"
     state_type = DeliveryState
     input_schemas = ("packs.logistics.transition", "lowalt.food.delivered")
     descriptors = (
@@ -28,7 +29,8 @@ class DeliveryReducer(LegacyReducer):
     )
 
     def consume(self, state: DeliveryState, message: RecordedMessage) -> None:
-        if message.kind != "event":
+        # Main's population was partition emissions, not ingress admissions.
+        if message.source_kind != "partition" or message.kind != "event":
             return
         payload, at_ns = message.payload, message.at_ns
         if message.schema_id == "lowalt.food.delivered":

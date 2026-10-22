@@ -8,16 +8,20 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, asdict, replace
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from aerokernel.binding import BindingManifest
 from aerokernel.codec import encode
-from aerokernel.messages import Emit, Message
-from aerokernel.registry import MemoryRegistry
-from aerokernel.time import Instant
-from aerokernel.values import freeze
+from aerokernel.engine import Partition
+from aerokernel.ids import ItemRef
+from aerokernel.messages import CommandRequest, Emit, Message
+from aerokernel.registry import MemoryRegistry, MessageDescriptor
+from aerokernel.time import Instant, Stamp
+from aerokernel.values import ResourceBudget, canonical_json, freeze
 
 import aeroagentsim.metrics_api as metrics_api
 from aeroagentsim.metrics_api import (
@@ -27,8 +31,8 @@ from aeroagentsim.metrics_api import (
     MetricPlugin,
     discover_metric_plugins,
 )
-from aeroagentsim.runs import RecordedMessage
-from aeroagentsim.services.kpis import KPIProjector
+from aeroagentsim.runs import RecordedMessage, open_run
+from aeroagentsim.services.kpis import METRICS, KPIProjector, project_run
 
 SCHEMA = "external.samples.observed"
 TOTAL = MetricDescriptor(
@@ -50,6 +54,60 @@ ORDER = replace(
 )
 
 
+COMMAND_SCHEMA = "external.commands.submit"
+COMMAND_COUNT = replace(
+    TOTAL, id="external.commands", label="Admitted external commands",
+    aggregation="Count canonical command admissions/publications once per message ID.",
+    missing_data_policy="None until an external command is recorded.",
+)
+
+
+# Frozen from f692c72f:src/aeroagentsim/services/kpis.py, not from the new
+# catalogue/discovery code: mapping equality alone cannot catch order regressions.
+BASELINE_KPI_IDS = (
+    "tasks_created",
+    "tasks_assigned",
+    "tasks_completed",
+    "tasks_failed",
+    "completion_rate",
+    "mean_task_latency_s",
+    "p95_task_latency_s",
+    "medical_mean_task_latency_s",
+    "medical_p95_task_latency_s",
+    "on_time_rate",
+    "energy_used_kj",
+    "distance_flown_km",
+    "spraying_distance_m",
+    "battery_swaps",
+    "inspection_observations",
+    "patrol_visits",
+    "separation_conflicts",
+    "geofence_violations",
+    "weather_holds",
+    "accident_reported",
+    "award_committed",
+    "captures_stored",
+    "uploads_accepted",
+    "incidents_occurred",
+    "incidents_noticed",
+    "incidents_photographed",
+    "incident_response_s",
+    "handoffs_completed",
+    "rescue_success",
+    "rescue_time_to_confirmation_s",
+    "rescue_time_to_delivery_s",
+    "rescue_plans",
+    "rescue_bids",
+    "rescue_candidates",
+    "rescue_radio_packets",
+    "rescue_radio_delivered",
+    "rescue_radio_bytes",
+    "rescue_bus_messages",
+    "rescue_bus_bytes",
+    "rescue_model_calls",
+)
+
+
 class SumReducer:
     """A third-party reducer using only the documented three required methods."""
 
@@ -66,6 +124,18 @@ class SumReducer:
 
     def snapshot(self, state: list[int | float]) -> dict[str, Any]:
         return {TOTAL.id: sum(state) if state else None}
+
+
+class CommandCountReducer(SumReducer):
+    descriptors = (COMMAND_COUNT,)
+    input_schemas = ("external.commands.",)
+
+    def consume(self, state: list[int | float], message: RecordedMessage) -> None:
+        if message.kind == "command":
+            state.append(1)
+
+    def snapshot(self, state: list[int | float]) -> dict[str, Any]:
+        return {COMMAND_COUNT.id: len(state) if state else None}
 
 
 class OrderReducer(SumReducer):
@@ -143,6 +213,8 @@ def emitted(message: RecordedMessage, item_kind: str | None = "operation") -> di
         Instant(message.available_ns, message.available_microstep),
         freeze(message.payload),
         (),
+        source_stamp=Stamp(**message.source_stamp) if message.source_stamp is not None else None,
+        origin=ItemRef(**message.origin) if message.origin is not None else None,
     )
     item = {
         "partition": message.source,
@@ -158,6 +230,57 @@ def frame(index: int, items: list[dict[str, Any]], at_ns: int = 110) -> dict[str
     return {"kind": "commit", "index": index, "instant": encode(Instant(at_ns)), "items": items}
 
 
+def admission(message: RecordedMessage, kind: str = "reservation") -> dict[str, Any]:
+    return {
+        "kind": kind, "message_id": message.message_id,
+        "request": encode(CommandRequest(
+            message.schema_id, message.target, Instant(message.at_ns, message.microstep), message.payload,
+        )),
+        "origin": encode(ItemRef(*message.cursor)),
+        "sequence": message.sequence,
+        "source_stamp": encode(Stamp(**message.source_stamp)) if message.source_stamp is not None else None,
+    }
+
+
+def write_reader_run(
+    directory: Path, registry: MemoryRegistry, records: list[dict[str, Any]], *, cut_index: int,
+) -> dict[str, Any]:
+    """Write synthetic recorded evidence/ACKs, without executing a kernel or engines."""
+    scenario = {"id": "metrics-reader", "registry": {}, "engines": {}}
+    header = {
+        "type": "header", "format": "aerokernel.journal", "major": 1, "minor": 2,
+        "index": 0, "instant": encode(Instant(0)), "time_origin_ns": 0,
+        "run_id": "metrics-reader", "epoch": "0", "registry": registry.to_data(),
+        "registry_digest": registry.digest,
+        "manifest": BindingManifest(
+            "metrics-reader", "0", ingress_source="external-host", control_source="external-control",
+        ).to_data(),
+        "partitions": [encode(Partition("consumer", "consumer"))],
+        "mappings": [], "budget": asdict(ResourceBudget()), "max_microsteps": 1024,
+        "durability": "memory", "root_seed": 0, "configuration": {"scenario": scenario},
+        "ingress_policy": None, "engine_profiles": {},
+        "serializer": {"encoder": "stdlib-json/v1"}, "rng": {},
+        "resolved_bindings": [], "engine_versions": {},
+    }
+    frames = [header, *({"type": "transaction", **record} for record in records)]
+    lines = [canonical_json(record) for record in frames]
+    (directory / "journal.jsonl").write_bytes(b"".join(lines))
+    offset, index = 0, []
+    for record, line in zip(frames, lines, strict=True):
+        index.append({"index": record["index"], "offset": offset, "length": len(line)})
+        offset += len(line)
+    (directory / "index.json").write_text(json.dumps(index))
+    (directory / "committed-prefix.json").write_text(json.dumps({
+        "index": cut_index, "bytes": sum(len(line) for line in lines[:cut_index + 1]),
+    }))
+    (directory / "scenario.json").write_text(json.dumps(scenario))
+    (directory / "runtime.registry.json").write_text(json.dumps(registry.to_data()))
+    (directory / "manifest.json").write_text(json.dumps({
+        "id": directory.name, "kernel_run_id": "metrics-reader", "epoch": "0", "status": "running",
+    }))
+    return header
+
+
 def entry_points(monkeypatch: pytest.MonkeyPatch, *entries: Any) -> None:
     def query(*, group: str) -> tuple[Any, ...]:
         assert group == "aeroagentsim.metrics"
@@ -169,6 +292,45 @@ def entry_points(monkeypatch: pytest.MonkeyPatch, *entries: Any) -> None:
 @pytest.fixture(autouse=True)
 def isolate_installed_contributions(monkeypatch: pytest.MonkeyPatch) -> None:
     entry_points(monkeypatch)
+
+
+def test_builtin_kpi_and_catalogue_keys_keep_main_order() -> None:
+    projector = KPIProjector(MemoryRegistry(()))
+    assert tuple(projector.snapshot()) == BASELINE_KPI_IDS
+    assert tuple(projector.descriptors) == BASELINE_KPI_IDS
+    assert tuple(METRICS) == tuple(METRICS.keys()) == BASELINE_KPI_IDS
+    # Also pin main's empty-population/unknown distinction independently of units.
+    empty_counts = {
+        "tasks_created", "tasks_assigned", "tasks_completed", "tasks_failed",
+        "separation_conflicts", "geofence_violations", "weather_holds",
+        "accident_reported", "award_committed", "captures_stored", "uploads_accepted",
+        "incidents_occurred", "incidents_noticed", "incidents_photographed", "handoffs_completed",
+    }
+    assert {name: row["value"] for name, row in projector.snapshot().items()} == {
+        name: 0 if name in empty_counts else None for name in BASELINE_KPI_IDS
+    }
+
+
+def test_additional_kpis_sort_by_plugin_then_id_not_discovery_or_descriptor_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ExtraReducer(SumReducer):
+        def __init__(self, *ids: str) -> None:
+            self.descriptors = tuple(replace(TOTAL, id=name) for name in ids)
+
+        def snapshot(self, state: Any) -> dict[str, Any]:
+            return {item.id: None for item in self.descriptors}
+
+    alpha = MetricPlugin("alpha", (ExtraReducer("z.extra", "m.extra"),))
+    zulu = MetricPlugin("zulu", (ExtraReducer("a.extra"),))
+    entry_points(monkeypatch, SimpleNamespace(name="zulu", load=lambda: zulu),
+                 SimpleNamespace(name="alpha", load=lambda: alpha))
+    selected = discover_metric_plugins()
+    expected = (*BASELINE_KPI_IDS, "m.extra", "z.extra", "a.extra")
+    for selection in (selected, tuple(reversed(selected))):
+        projector = KPIProjector(MemoryRegistry(()), plugins=selection)
+        assert tuple(projector.snapshot()) == tuple(projector.descriptors) == expected
+    assert tuple(METRICS) == tuple(METRICS.keys()) == expected
 
 
 def test_public_version_descriptors_and_plugin_are_frozen() -> None:
@@ -528,6 +690,115 @@ def test_installed_custom_schema_enters_default_kpi_host(monkeypatch: pytest.Mon
     assert METRICS[TOTAL.id] == (TOTAL.unit, TOTAL.label)
 
 
+@pytest.mark.parametrize("admission_kind,same_record_publication", [
+    ("reservation", False), ("offline_request", False),
+    ("reservation", True), ("offline_request", True), (None, True),
+])
+def test_installed_command_reducer_matches_reader_and_ack_bounded_service_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    admission_kind: str | None, same_record_publication: bool,
+) -> None:
+    contribution = plugin(reducer=CommandCountReducer())
+    monkeypatch.setattr(metrics_api, "BUILTINS", {})
+    entry_points(monkeypatch, SimpleNamespace(name="external", load=lambda: contribution))
+    registry = MemoryRegistry((), messages=(MessageDescriptor(
+        COMMAND_SCHEMA, "command", {"type": "record", "members": {"value": {"type": "integer"}},
+                                    "required": ["value"], "extra": False},
+    ),))
+    stamp = Stamp("external-clock", 17, 2, "external-map")
+    message = replace(
+        recorded("external-command", 2**63 + 7, schema=COMMAND_SCHEMA, kind="command", cursor=(1, 0)),
+        route="consumer", target="consumer", source_kind="ingress", source="external-host",
+        origin=asdict(ItemRef(1, 0)), source_stamp=asdict(stamp),
+    )
+    published = {"kind": "ingress_publish", "message": emitted(message)["message"]}
+    enqueue = {"kind": "enqueue", "message": message.message_id, "recipient": "consumer"}
+    first_items = [admission(message, admission_kind)] if admission_kind is not None else []
+    if same_record_publication:
+        first_items.extend([published, enqueue])
+    records = [
+        frame(1, first_items),
+        frame(2, [published, enqueue, {"kind": "delivery", "message": published["message"]}]),
+        frame(3, [admission(replace(message, message_id="unacknowledged", cursor=(3, 0)))]),
+    ]
+    write_reader_run(tmp_path, registry, records, cut_index=1)
+    with open_run(tmp_path) as run:
+        first = run.snapshot()
+        originals = list(first.iter_messages())
+        assert len(originals) == 1
+        original = originals[0]
+        assert original.cursor == (1, 1 if same_record_publication and admission_kind is not None else 0)
+        assert original.available_ns == (message.available_ns if same_record_publication else None)
+        assert original.origin == message.origin and original.source_stamp == asdict(stamp)
+        assert original.source == "external-host" and type(original.payload["value"]) is int
+        accumulator = MetricAccumulator((contribution,))
+        accumulator.feed(originals)
+        expected = accumulator.snapshot()[COMMAND_COUNT.id]
+        assert expected == 1
+        assert project_run(tmp_path, include_series=False)["final"][COMMAND_COUNT.id]["value"] == expected
+
+        # index.json already covers record 3. Only the explicit ACK may advance
+        # either reader or live/service results, and publication cannot enrich
+        # or count an earlier admission again after checkpoint restoration.
+        index = json.loads((tmp_path / "index.json").read_text())
+        (tmp_path / "committed-prefix.json").write_text(json.dumps({
+            "index": 2, "bytes": index[2]["offset"] + index[2]["length"],
+        }))
+        later = run.snapshot()
+        assert list(later.iter_messages()) == originals
+        assert list(later.iter_messages(start=2)) == []
+        service = project_run(tmp_path)
+        assert service["final"][COMMAND_COUNT.id]["value"] == expected
+        assert [row["commitIndex"] for row in service["series"]] == [1, 2]
+        direct = KPIProjector.from_directory(tmp_path)
+        direct.consume(records[0])
+        resumed = KPIProjector.from_cursor(registry, json.loads(json.dumps(direct.cursor())))
+        resumed.consume(records[1])
+        assert resumed.snapshot()[COMMAND_COUNT.id]["value"] == expected
+        assert resumed.cursor()["reducers"][0]["messages"] == accumulator.cursor()["reducers"][0]["messages"]
+
+
+def test_host_interleaves_admissions_emissions_and_physical_evidence_in_item_order() -> None:
+    from aerokernel.ids import EntityRef
+    from aerokernel.operations import AssertEdge, FactWrite, RetractFact
+    from aerokernel.registry import FieldDescriptor, TypeDescriptor
+    from aerokernel.relations import Edge
+    from aerokernel.time import Interval
+
+    class EvidenceOrderReducer(OrderReducer):
+        input_schemas = ("external.", "aeroagentsim.metrics.")
+
+        def consume(self, state: list[int | float], message: RecordedMessage) -> None:
+            state.append(
+                4 if message.schema_id == "aeroagentsim.metrics.edge/v1" else
+                6 if message.schema_id == "aeroagentsim.metrics.retract/v1" else message.payload["value"]
+            )
+
+    registry = MemoryRegistry((TypeDescriptor("Sample"),), (
+        FieldDescriptor("value", "Sample", {"type": "integer"}),
+    ))
+    ref = EntityRef("metrics-reader", "0", "sample", 0, "Sample")
+    at, stamp = Instant(10), Stamp("canonical", 10, 1, "canonical")
+    valid = Interval(at, None)
+    edge_op = AssertEdge("edge", "sample-link", ref, ref, valid, stamp)
+    edge = Edge("edge", "sample-link", ref, ref, valid, stamp, at, "producer", ItemRef(1, 3))
+    command = replace(recorded("admitted", 1, schema=COMMAND_SCHEMA, kind="command"),
+                      route="consumer", target="consumer", source_kind="ingress")
+    projector = KPIProjector(registry, plugins=(plugin(reducer=EvidenceOrderReducer()),))
+    projector.consume(frame(1, [
+        admission(command),
+        {"proposal": encode(FactWrite((ref, "value"), 2, stamp, valid))},
+        emitted(recorded("emitted", 3)),
+        {"proposal": encode(edge_op), "edge": encode(edge)},
+        admission(replace(command, message_id="offline", payload={"value": 5}, cursor=(1, 4)), "offline_request"),
+        {"proposal": encode(RetractFact((ref, "value"), valid, "unavailable"))},
+    ]))
+    assert projector.snapshot()[ORDER.id]["value"] == 123456
+    history = projector.cursor()["reducers"][0]["messages"]
+    assert [row["cursor"] for row in history] == [[1, ordinal] for ordinal in range(6)]
+    assert [row["kind"] for row in history] == ["command", "evidence", "event", "evidence", "command", "evidence"]
+
+
 def test_direct_event_target_is_not_mislabelled_as_a_topic() -> None:
     class TargetReducer(SumReducer):
         def consume(self, state: list[int | float], message: RecordedMessage) -> None:
@@ -626,6 +897,33 @@ def test_builtin_mixed_task_population_is_pooled_across_checkpoint_chunks() -> N
         assert resumed.snapshot() == values
 
 
+def test_builtin_emission_population_does_not_expand_with_ingress_evidence() -> None:
+    projector = KPIProjector(MemoryRegistry(()))
+    before = json.dumps(projector.snapshot(), separators=(",", ":"))
+    # Even event-shaped ingress envelopes must not enter the legacy population;
+    # malformed builtin payloads demonstrate that exclusion happens before decode.
+    for ordinal, schema in enumerate((
+        "lowalt.task.created", "lowalt.incident.occurred", "lowalt.energy.swap_finished",
+        "packs.logistics.transition", "traffic.report.sent", "rescue.event", "adapters.ns3.send",
+    )):
+        projector.consume(replace(
+            recorded(str(ordinal), 99, schema=schema), source_kind="ingress",
+        ))
+    rescue_command = replace(
+        recorded("ingress-rescue", 1, schema="rescue.bid", kind="command"),
+        route="consumer", target="consumer", source_kind="ingress",
+        payload={"data_json": '{"roles": ["inspect"]}'},
+    )
+    projector.consume(frame(1, [admission(rescue_command)]))
+    projector.consume(frame(2, [{"kind": "ingress_publish", "message": emitted(rescue_command)["message"]}]))
+    assert json.dumps(projector.snapshot(), separators=(",", ":")) == before
+    # Matching partition commands still count, as on main; no global event filter.
+    projector.consume(replace(rescue_command, message_id="partition-rescue", source_kind="partition"))
+    assert projector.snapshot()["rescue_bids"]["value"] == 1
+    assert projector.snapshot()["rescue_candidates"]["value"] == 1
+    assert projector.snapshot()["rescue_bus_messages"]["value"] == 1
+
+
 def test_legacy_rescue_report_preserves_empty_counts_and_whole_provider_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -642,6 +940,130 @@ def test_legacy_rescue_report_preserves_empty_counts_and_whole_provider_override
     replacement = MetricPlugin("lowalt", (), api_version=1)
     entry_points(monkeypatch, SimpleNamespace(name="lowalt", load=lambda: replacement))
     assert compute(kernel) == {"run_id": "rescue", "duration_s": 0.0}
+
+
+def test_report_reducers_receive_reader_originals_not_lossy_viewer_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    from aeroagentsim.packs.metrics import compute
+
+    large = 2**63 + 7
+    stamp = asdict(Stamp("external-clock", 19, 2, "external-map"))
+    pending = replace(
+        recorded("admission", 9, schema=COMMAND_SCHEMA, kind="command", cursor=(1, 0)),
+        source_kind="ingress", source="external-host", route="consumer", target="consumer",
+        origin=asdict(ItemRef(1, 0)), source_stamp=stamp,
+    )
+    sample = replace(
+        recorded("partition-sample", large, cursor=(1, 1)),
+        route="consumer", topic=None, target="consumer",
+        origin=asdict(ItemRef(1, 1)), source_stamp=stamp,
+    )
+    graph = replace(
+        recorded("graph", 0, schema="aas.langgraph.record", cursor=(1, 3)),
+        payload={"decision_id": "rescue_center/1", "phase": "model_call",
+                 "data_json": '{"identity": "call", "request": {}}'},
+        origin=asdict(ItemRef(1, 3)), source_stamp=stamp,
+    )
+    records = [
+        frame(1, [
+            admission(pending), emitted(sample),
+            {"kind": "delivery", "message": emitted(replace(sample, message_id="delivery-copy"))["message"]},
+            emitted(graph),
+            {"kind": "enqueue", "message": sample.message_id, "recipient": "consumer"},
+        ]),
+        frame(2, [
+            {"kind": "ingress_publish", "message": emitted(pending)["message"]},
+            {"kind": "enqueue", "message": pending.message_id, "recipient": "consumer"},
+        ]),
+    ]
+    registry = MemoryRegistry(())
+    header = write_reader_run(tmp_path, registry, records, cut_index=2)
+    with open_run(tmp_path) as run:
+        originals = list(run.snapshot().iter_messages())
+    assert [message.message_id for message in originals] == [pending.message_id, sample.message_id, graph.message_id]
+    assert [message.cursor for message in originals] == [(1, 0), (1, 1), (1, 3)]
+    assert originals[0].available_ns is None  # Later publication must not enrich.
+    assert originals[1] == sample and originals[2] == graph
+    assert type(originals[1].payload["value"]) is int
+    expected = {message.message_id: message for message in originals}
+
+    class CanonicalReportReducer(SumReducer):
+        descriptors = (
+            replace(TOTAL, id="rescue_radio_bytes", unit="B"),
+            replace(TOTAL, id="rescue_radio_packets"),
+        )
+        input_schemas = ("external.", "aas.")
+
+        def consume(self, state: list[int | float], message: RecordedMessage) -> None:
+            # Includes source kind, route/target/topic, origin, original cursor,
+            # availability, sequence, source stamp and lossless integer payloads.
+            assert message == expected[message.message_id]
+            if message.source_kind == "partition":
+                state.append(message.payload.get("value", 0))
+
+        def snapshot(self, state: list[int | float]) -> dict[str, Any]:
+            return {"rescue_radio_bytes": sum(state) if state else None,
+                    "rescue_radio_packets": len(state) if state else None}
+
+    replacement = MetricPlugin("lowalt", (CanonicalReportReducer(),))
+    entry_points(monkeypatch, SimpleNamespace(name="lowalt", load=lambda: replacement))
+    accumulator = MetricAccumulator((replacement,))
+    accumulator.feed(originals)
+    projector = KPIProjector(registry, plugins=(replacement,))
+    projector.consume(header)
+    for record in records:
+        projector.consume(record)
+    kernel = SimpleNamespace(header=header, records=records, configuration=freeze({"scenario": {
+        "id": "rescue", "engines": {
+            "tasks": {"plugin": "lowalt_tasks", "config": {"rescue": {}}},
+            # Force the historical viewer projection too: its console aliases,
+            # delivery copies and tagged integers must not reach this reducer.
+            "inspection": {"plugin": "inspection", "config": {
+                "event_schema": "packs.inspection.observation", "targets": [
+                    {"id": "waypoint", "kind": "waypoint", "point": [0, 0]},
+                ],
+            }},
+        },
+    }}))
+    result = compute(kernel)
+    for name, value in accumulator.snapshot().items():
+        assert result[name] == projector.snapshot()[name]["value"] == value
+    assert result["rescue_radio_bytes"] == large and type(result["rescue_radio_bytes"]) is int
+    assert result["rescue_radio_packets"] == 2
+    assert result["inspection"]["observations"] == 0
+
+
+@pytest.mark.parametrize("metric_id,unit", [("rescue_radio_packets", "count"), ("rescue_radio_bytes", "B")])
+@pytest.mark.parametrize("with_evidence", [False, True])
+def test_report_preserves_installed_rescue_reducers_unknown_counters(
+    monkeypatch: pytest.MonkeyPatch, metric_id: str, unit: str, with_evidence: bool,
+) -> None:
+    from aeroagentsim.packs.lowalt.metrics import RescueReducer
+    from aeroagentsim.packs.metrics import compute
+
+    # A builtin subclass with its own policy is still an installed replacement,
+    # not the exact shipped reducer whose report mode supplies empty zeros.
+    class UnknownCounter(RescueReducer):
+        descriptors = (replace(TOTAL, id=metric_id, unit=unit,
+                               missing_data_policy="None when eligible radio telemetry is absent."),)
+        input_schemas = ("rescue.", "adapters.ns3.")
+
+        def consume(self, state: Any, message: RecordedMessage) -> None:
+            pass
+
+        def snapshot(self, state: Any) -> dict[str, Any]:
+            return {metric_id: None}
+
+    replacement = MetricPlugin("lowalt", (UnknownCounter(),))
+    entry_points(monkeypatch, SimpleNamespace(name="lowalt", load=lambda: replacement))
+    records = [frame(1, [emitted(domain_message(
+        "rescue.event", {"data_json": '{"kind": "noticed", "event": "R7"}'}, 0, "notice",
+    ))])] if with_evidence else []
+    kernel = SimpleNamespace(configuration=freeze({"scenario": {"id": "rescue", "engines": {
+        "tasks": {"plugin": "lowalt_tasks", "config": {"rescue": {}}},
+    }}}), records=records)
+    assert compute(kernel)[metric_id] is None
 
 
 def test_rescue_outcomes_keep_last_first_per_incident_semantics() -> None:

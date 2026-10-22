@@ -65,6 +65,7 @@ def _signature(path: Path) -> list[Any]:
     import hashlib
 
     from aeroagentsim import metrics_api
+    from aeroagentsim.runs import reader as run_reader
 
     files = [path / "scenario.json", path / "runtime.registry.json"]
     if (path / "behaviour.ir.json").exists():
@@ -73,7 +74,7 @@ def _signature(path: Path) -> list[Any]:
         Path(__file__).with_name(name + ".py")
         for name in ("feed_index", "projector", "subjects", "kpis", "narratives")
     )
-    files.append(Path(metrics_api.__file__))
+    files.extend((Path(metrics_api.__file__), Path(run_reader.__file__)))
     # Every eligible provider is retained for schema-prefix dispatch, including
     # external providers whose first matching message arrives after this cut.
     # Revisions, entry-point identity and descriptors replace pack source paths.
@@ -243,6 +244,11 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             document = json.loads((path / "scenario.json").read_text())
             subjects = SubjectProjection(registry, document)
             kpis = KPIProjector(registry, document.get("presentation", []))
+            if storage.entries:
+                # Original ingress envelopes and event target/topic classification
+                # use the same pinned header metadata as the public run reader.
+                for header in storage.records(0, 1):
+                    kpis.consume(header)
             narratives = NarrativeProjector.from_directory(path)
         if valid:
             cursor = state["next"]
