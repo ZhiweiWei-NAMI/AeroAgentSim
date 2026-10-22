@@ -33,7 +33,9 @@ Choose targeted tests while developing and run the relevant broader checks once 
 
 ## Add a plugin
 
-Start with [Write a domain plugin](docs/guides/plugins.md). Define which fields the plugin owns, its command and event schemas, its time/ingress contract and its entry point. Provide a small committed scenario and tests for meaningful state changes, command receipts and failure behaviour. A replacement owner must start in a new run; two plugins cannot write the same field in one run.
+To ship templates and knob hooks without changing the platform, follow the [scenario plugin guide](docs/guides/scenario-plugins.md) and [plugin contracts](docs/reference/plugin-contracts.md).
+
+For an engine plugin, start with [Write a domain plugin](docs/guides/plugins.md). Define which fields the plugin owns, its command and event schemas, its time/ingress contract and its entry point. Provide a small committed scenario and tests for meaningful state changes, command receipts and failure behaviour. A replacement owner must start in a new run; two plugins cannot write the same field in one run.
 
 Live inference belongs in a decision plugin. Keep credentials in named environment variables and expose observation limits and inference timing explicitly. Missing services must remain visible errors rather than synthesized outcomes.
 

@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/31cc139f-df4a-4ad1-9811-1c7c3758fd31
 ## What it does
 
 - **Build a scenario by describing it.** The assistant reads the platform's real templates, places and rules, proposes a plan, and changes nothing until you confirm. Works with any OpenAI-compatible model, including DeepSeek.
-- **Nine ready-made worlds.** Parcel, medical and meal delivery, power-line inspection, crop spraying, air taxis, security patrol, a traffic accident and a shared city day.
+- **Ten ready-made worlds.** Parcel, medical and meal delivery, power-line inspection, crop spraying, air taxis, security patrol, a traffic accident, flood rescue and a shared city day.
 - **See why things happen.** Change rules and algorithms, run again, and trace every result to recorded events in a 3D city with replay.
 
 https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0
@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0
 
 Python 3.10+ and Node.js 22 with npm. No GPU, Docker or account needed.
 
-**Assets:** the public clone bundles a real lightweight OSM Huangpu city; the base installation and all nine templates need no separate asset download. For detailed buildings and display models, optionally run `aeroagentsim assets fetch` after installation, then `aeroagentsim assets list` and reload the viewer. Pack `huangpu-city` **1.1.0** comes from Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) (`huangpu-city-v1.1.zip`, about 123.2 MiB). Fetch verifies the archive SHA-256 and installation checks manifest file sizes. Packs live outside Git in `$XDG_DATA_HOME/aeroagentsim/assets`, default `~/.local/share/aeroagentsim/assets`; `AEROAGENTSIM_ASSETS_DIR` overrides it. OSM data is © OpenStreetMap contributors, ODbL 1.0; building mesh, texture and model terms come from the pack's `NOTICE.txt`. See [asset verification and licences](ASSETS.md) and [post-install checks](INSTALL.md#post-install-acceptance).
+**Assets:** the public clone bundles a real lightweight OSM Huangpu city; the base installation and all ten templates need no separate asset download. For detailed buildings and display models, optionally run `aeroagentsim assets fetch` after installation, then `aeroagentsim assets list` and reload the viewer. Pack `huangpu-city` **1.1.0** comes from Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) (`huangpu-city-v1.1.zip`, about 123.2 MiB). Fetch verifies the archive SHA-256 and installation checks manifest file sizes. Packs live outside Git in `$XDG_DATA_HOME/aeroagentsim/assets`, default `~/.local/share/aeroagentsim/assets`; `AEROAGENTSIM_ASSETS_DIR` overrides it. OSM data is © OpenStreetMap contributors, ODbL 1.0; building mesh, texture and model terms come from the pack's `NOTICE.txt`. See [asset verification and licences](ASSETS.md) and [post-install checks](INSTALL.md#post-install-acceptance).
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
@@ -60,7 +60,7 @@ No model? `aeroagentsim run-template parcel-delivery` opens a ready-made scenari
 
 ## Pick a scenario
 
-Nine ready-made worlds, each with controls to change and KPIs to measure the result. Click a thumbnail for the scenario guide.
+Ten ready-made worlds, each with controls to change and KPIs to measure the result. Click a thumbnail for the scenario guide.
 
 <table>
   <tr>
@@ -76,7 +76,7 @@ Nine ready-made worlds, each with controls to change and KPIs to measure the res
     <td align="center"><a href="docs/examples/city-day.md"><img src="scenarios/templates/city-day/thumbnail.png" alt="One day in a shared city"><br><b>One day in a shared city</b></a><br><code>city-day</code><br>Deliveries, inspections, air taxis and incident response interact.</td>
   </tr>
 
-<tr><td align="center"><a href="scenarios/templates/food-delivery/README.md"><img src="scenarios/templates/food-delivery/thumbnail.png" alt="Restaurant meal delivery"><br><b>Restaurant meal delivery</b></a><br><code>food-delivery</code><br>Preparation, pickup, physical delivery, kitchen disruptions and on-time results.</td></tr>
+<tr><td align="center"><a href="scenarios/templates/food-delivery/README.md"><img src="scenarios/templates/food-delivery/thumbnail.png" alt="Restaurant meal delivery"><br><b>Restaurant meal delivery</b></a><br><code>food-delivery</code><br>Preparation, pickup, physical delivery, kitchen disruptions and on-time results.</td><td align="center"><a href="scenarios/templates/flood-rescue/README.md"><img src="scenarios/templates/flood-rescue/thumbnail.png" alt="Rooftop flood rescue"><br><b>Flood rescue</b></a><br><code>flood-rescue</code><br>Compare rescue participation policies over seeded authored episodes.</td></tr>
 </table>
 
 Open any scenario with `aeroagentsim run-template <id>`. Each declares its own knobs; for example, `aeroagentsim run-template parcel-delivery --set fleet_size=12 --set wind_speed=8`. [Template guide](docs/guides/templates.md)
@@ -136,7 +136,13 @@ flowchart LR
 - **Replay from the record.** Inspect recorded state and agent decisions without rerunning physics, cameras or model calls.
 - **Typed by AeroGraph.** Define entities, relations and rules by type; shipped snapshots work without an AeroGraph checkout.
 
-[Architecture](docs/concepts/architecture.md) · [Plugins and native simulators](docs/guides/plugins.md) · [Design notes](docs/design-notes.md)
+[Architecture](docs/concepts/architecture.md) · [Scenario plugins](docs/guides/scenario-plugins.md) · [Engine plugins and native simulators](docs/guides/plugins.md) · [Design notes](docs/design-notes.md)
+
+## Add your own scenario plugin
+
+Package templates and named knob hooks in a `ScenarioPlugin`, discovered through `aeroagentsim.scenarios`.
+Built-in scenarios use the same contract; external packages need no platform changes.
+Start with the [scenario plugin guide](docs/guides/scenario-plugins.md) and [plugin contracts](docs/reference/plugin-contracts.md).
 
 ## Where things live
 

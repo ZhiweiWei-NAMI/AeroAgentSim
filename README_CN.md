@@ -16,14 +16,14 @@
 ## 它能做什么
 
 - **说一句话就能搭场景。** 助手读取平台真实的模板、地点和规则，给出方案；在你确认之前不会改动任何内容。支持任何 OpenAI 兼容接口的模型，包括 DeepSeek。
-- **九个现成场景。** 包裹、医疗与外卖配送，电力巡检，农田喷洒，空中出租车，安防巡逻，交通事故，以及多业务共享的城市一天。
+- **十个现成场景。** 包裹、医疗与外卖配送，电力巡检，农田喷洒，空中出租车，安防巡逻，交通事故，洪涝救援，以及多业务共享的城市一天。
 - **看清结果的原因。** 修改规则和算法后重新运行，在可回放的 3D 城市中把每个结果追溯到记录的事件。
 
 ## 开始
 
 需要 Python 3.10+、Node.js 22 和 npm，无需 GPU、Docker 或账户。
 
-**城市资源：**公开仓库自带真实的 OSM 黄浦轻量城市，基础安装和九个模板都不需要另行下载。需要精细建筑与展示模型时，安装后可选运行 `aeroagentsim assets fetch`，再用 `aeroagentsim assets list` 查看并重新加载视图。资源包 `huangpu-city` **1.1.0** 来自 Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1)（`huangpu-city-v1.1.zip`，约 123.2 MiB）。下载会校验归档 SHA-256，安装会核对清单文件大小。资源保存在 Git 仓库之外的 `$XDG_DATA_HOME/aeroagentsim/assets`，默认 `~/.local/share/aeroagentsim/assets`，可用 `AEROAGENTSIM_ASSETS_DIR` 更改。OSM 数据署名为 © OpenStreetMap contributors，采用 ODbL 1.0；建筑网格、纹理和展示模型的许可以资源包 `NOTICE.txt` 为准。详见[资源校验与许可](ASSETS.md)和[安装后验收](INSTALL.md#post-install-acceptance)。
+**城市资源：**公开仓库自带真实的 OSM 黄浦轻量城市，基础安装和十个模板都不需要另行下载。需要精细建筑与展示模型时，安装后可选运行 `aeroagentsim assets fetch`，再用 `aeroagentsim assets list` 查看并重新加载视图。资源包 `huangpu-city` **1.1.0** 来自 Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1)（`huangpu-city-v1.1.zip`，约 123.2 MiB）。下载会校验归档 SHA-256，安装会核对清单文件大小。资源保存在 Git 仓库之外的 `$XDG_DATA_HOME/aeroagentsim/assets`，默认 `~/.local/share/aeroagentsim/assets`，可用 `AEROAGENTSIM_ASSETS_DIR` 更改。OSM 数据署名为 © OpenStreetMap contributors，采用 ODbL 1.0；建筑网格、纹理和展示模型的许可以资源包 `NOTICE.txt` 为准。详见[资源校验与许可](ASSETS.md)和[安装后验收](INSTALL.md#post-install-acceptance)。
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
@@ -56,7 +56,7 @@ AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dis
 
 ## 选择一个场景
 
-九个可直接运行的场景，都有可调参数和用于衡量结果的指标（KPI）。点击缩略图查看场景说明。
+十个可直接运行的场景，都有可调参数和用于衡量结果的指标（KPI）。点击缩略图查看场景说明。
 
 <table>
   <tr>
@@ -72,7 +72,7 @@ AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dis
     <td align="center"><a href="docs/examples/city-day.md"><img src="scenarios/templates/city-day/thumbnail.png" alt="共享城市的一天"><br><b>共享城市的一天</b></a><br><code>city-day</code><br>配送、巡检、空中出租车与事故响应相互影响。</td>
   </tr>
 
-<tr><td align="center"><a href="scenarios/templates/food-delivery/README.md"><img src="scenarios/templates/food-delivery/thumbnail.png" alt="Restaurant meal delivery"><br><b>餐厅外卖配送</b></a><br><code>food-delivery</code><br>备餐、取餐、配送、延误干预与准时送达统计。</td></tr>
+<tr><td align="center"><a href="scenarios/templates/food-delivery/README.md"><img src="scenarios/templates/food-delivery/thumbnail.png" alt="Restaurant meal delivery"><br><b>餐厅外卖配送</b></a><br><code>food-delivery</code><br>备餐、取餐、配送、延误干预与准时送达统计。</td><td align="center"><a href="scenarios/templates/flood-rescue/README.md"><img src="scenarios/templates/flood-rescue/thumbnail.png" alt="屋顶洪涝救援"><br><b>洪涝救援</b></a><br><code>flood-rescue</code><br>在相同种子的作者设定场景中对比救援参与策略。</td></tr>
 </table>
 
 用 `aeroagentsim run-template <id>` 打开任意场景。各模板分别定义可调参数，例如：`aeroagentsim run-template parcel-delivery --set fleet_size=12 --set wind_speed=8`。[模板指南](docs/guides/templates.md)
@@ -132,7 +132,13 @@ flowchart LR
 - **从记录回放。** 查看已记录的状态和智能体决策，无需重新运行物理仿真、相机或模型调用。
 - **AeroGraph 类型系统。** 按类型定义实体、关系与规则；项目自带的快照无需另行安装 AeroGraph。
 
-[架构](docs/concepts/architecture.md) · [插件与原生仿真器](docs/guides/plugins.md) · [设计说明](docs/design-notes.md)
+[架构](docs/concepts/architecture.md) · [场景插件](docs/guides/scenario-plugins.md) · [引擎插件与原生仿真器](docs/guides/plugins.md) · [设计说明](docs/design-notes.md)
+
+## 添加自己的场景插件
+
+用 `ScenarioPlugin` 打包模板和具名参数钩子，通过 `aeroagentsim.scenarios` 发现。
+内置场景使用同一契约，外部包无需修改平台代码。
+从[场景插件指南](docs/guides/scenario-plugins.md)和[插件契约](docs/reference/plugin-contracts.md)开始。
 
 ## 代码在哪里
 

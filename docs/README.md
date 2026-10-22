@@ -2,9 +2,9 @@
 
 AeroAgentSim is a general-purpose simulation platform for experiments involving physical systems, networks, environmental conditions and decision-making agents. AeroGraph types describe the world; replaceable domain plugins evolve it through one shared discrete-event runtime. The console configures experiments and shows their graph and 3D views on the same timeline.
 
-Start in the workbench gallery: open the guide of parcel / medical delivery, inspection, spraying, air taxi, patrol, traffic-accident response, food delivery or the mixed city day, then create a project. The committed registry snapshots and procedural city work without the AeroGraph repository or a separate mesh pack.
+Start in the workbench gallery: open the guide of parcel / medical delivery, inspection, spraying, air taxi, patrol, traffic-accident response, food delivery, flood rescue or the mixed city day, then create a project. The committed registry snapshots and procedural city work without the AeroGraph repository or a separate mesh pack.
 
-After [installation](getting-started/install.md), `aeroagentsim templates` lists all nine templates. `aeroagentsim run-template parcel-delivery` opens the project in the workbench; choose **Validate → Save version → Initialize → Start**, or add `--headless` to run directly in the terminal. `aeroagentsim assets fetch` installs the optional Huangpu city pack 1.1 from release tag `assets-huangpu-city-v1.1`; reload the viewer to use it.
+After [installation](getting-started/install.md), `aeroagentsim templates` lists all ten built-in templates. `aeroagentsim run-template parcel-delivery` opens the project in the workbench; choose **Validate → Save version → Initialize → Start**, or add `--headless` to run directly in the terminal. `aeroagentsim assets fetch` installs the optional Huangpu city pack 1.1 from release tag `assets-huangpu-city-v1.1`; reload the viewer to use it.
 
 ## Get started
 
@@ -40,6 +40,7 @@ After [installation](getting-started/install.md), `aeroagentsim templates` lists
 | Change battery, airspace or wind policy | [Edit the low-altitude rules](guides/lowalt-rules.md) |
 | Compare allocation algorithms | [Matched-seed experiments](guides/experiments.md) |
 | Publish a reusable scenario | [Make a template](guides/templates.md) |
+| Ship templates and knob hooks in a package | [Scenario plugins](guides/scenario-plugins.md) |
 | Provide external input | [Inject external events](guides/external-events.md) |
 | Use a model-backed agent | [Deploy an agent](guides/agents.md) |
 | Inspect a result | [Visualization and inspection](guides/visualization.md) |
@@ -48,11 +49,14 @@ After [installation](getting-started/install.md), `aeroagentsim templates` lists
 
 ## Reference
 
-- [Scenario YAML](reference/scenario.md)
-- [Behaviour packages](reference/behaviour-package.md)
-- [Predicate dialect](reference/predicate-dialect.md)
-- [HTTP API](reference/http-api.md)
-- [Command line](reference/cli.md)
-- [Viewer feed](reference/viewer-feed.md)
+| Contract | Reference |
+| --- | --- |
+| Scenario configuration | [Scenario YAML](reference/scenario.md) |
+| Behaviour packages | [Behaviour packages](reference/behaviour-package.md) |
+| Predicate expressions | [Predicate dialect](reference/predicate-dialect.md) |
+| Plugin APIs and discovery | [Plugin contracts](reference/plugin-contracts.md) |
+| REST and SSE | [HTTP API](reference/http-api.md) |
+| Command line | [CLI](reference/cli.md) |
+| Recorded views | [Viewer feed](reference/viewer-feed.md) |
 
 See [Contributing](../CONTRIBUTING.md) for development and the [changelog](../CHANGELOG.md) for release changes.

@@ -5,11 +5,17 @@ named controls. Start with a scenario that already runs from a public clone,
 with a pinned registry snapshot and any behaviour or decision inputs beside
 it. Keep every assumption in those files.
 
+`scenarios/templates/` holds the built-in templates, registered as scenario
+plugins in `src/aeroagentsim/scenarios/`. For an external template, ship its
+inputs in a plugin package instead of adding files to the platform checkout;
+see [Scenario plugins](scenario-plugins.md) and [Plugin contracts](../reference/plugin-contracts.md).
+
 1. Create `scenarios/templates/your-id/` and copy your scenario and its inputs
    there. Check that relative registry and behaviour paths resolve from the
    scenario directory. An AeroGraph checkout must not be needed at launch.
 2. Add `template.yaml` using the format below. Describe what happens, what to
-   watch and what to change in ordinary language.
+   watch and what to change in ordinary language. For a new built-in template,
+   add its id to `TEMPLATES` in `src/aeroagentsim/scenarios/__init__.py`.
 3. Point each knob at an existing scenario member using a JSON pointer. Keep
    bounds small enough that the default run completes quickly.
 4. Run `aeroagentsim templates`, then launch with `run-template`. Fetch KPIs or
@@ -65,15 +71,16 @@ pointer segments escape `~` as `~0` and `/` as `~1`; array members use their
 index. For changes involving multiple fields or structure, use an explicitly
 registered named `apply` hook instead of a pointer. Hooks receive a copied
 document, its base directory and the validated value as
-`hook(document, base, value)`. Register it with
-`registry.register_apply_hook("your-hook", hook)` before application. Knob
-values still pass typed validation.
+`hook(document, base, value)`. Expose it in a scenario plugin's `apply_hooks`
+mapping as `your-plugin.your-hook`, and use that name in the knob's `apply`
+field. Knob values still pass typed validation. See the
+[scenario plugin guide](scenario-plugins.md) for packaging and hook rules.
 
 ## Additive Chinese metadata (2.1)
 
 The English fields above stay required. Chinese siblings are optional, so
 existing `aeroagentsim.template/v1` manifests and English clients still work.
-All nine shipped templates include Chinese titles, summaries, observation and
+All ten shipped templates include Chinese titles, summaries, observation and
 experiment bullets, and knob labels.
 
 | Optional field | Shape and validation |

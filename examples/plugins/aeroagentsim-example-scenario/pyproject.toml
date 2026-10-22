@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aeroagentsim-example-scenario"
+version = "0.1.0"
+description = "A minimal external AeroAgentSim scenario plugin"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["aeroagentsim"]
+
+[project.entry-points."aeroagentsim.scenarios"]
+example-patrol = "aeroagentsim_example_scenario:plugin"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["aeroagentsim_example_scenario"]
+namespaces = false
+
+[tool.setuptools.package-data]
+aeroagentsim_example_scenario = ["templates/*/*.yaml", "templates/*/*.json"]

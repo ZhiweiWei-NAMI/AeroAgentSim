@@ -1,0 +1,34 @@
+format: aeroagentsim.template/v1
+id: example-patrol
+city: huangpu
+title: Example patrol plugin
+summary: One drone patrols a district and responds to a scheduled investigation.
+category: security
+difficulty: beginner
+duration_s: 300
+scenario: scenario.yaml
+observe:
+- Watch the drone visit each patrol point.
+- Watch the higher-priority investigation interrupt routine patrols.
+try:
+- Change the interval between patrol task arrivals.
+- Switch to interactive operator input.
+knobs:
+- id: run_mode
+  label: Run mode
+  type: choice
+  default: scheduled
+  options: [scheduled, interactive]
+  apply: lowalt.operator_mode
+- id: patrol_interval_s
+  label: Patrol arrival interval (s)
+  type: integer
+  default: 100
+  min: 30
+  max: 120
+  apply: example-patrol.patrol_interval
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- patrol_visits
