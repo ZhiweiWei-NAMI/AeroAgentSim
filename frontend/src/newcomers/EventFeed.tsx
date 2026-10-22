@@ -11,9 +11,25 @@ export interface EventFeedProps {
   events: BusinessEvent[];
   entityNames?:Map<string,string>;
   available?:boolean;onExplore?:()=>void;
+  /** Explicit raw-record destination; otherwise derived from the current workbench URL. */
+  rawRecordsHref?:string;
   onSelect?: (event: BusinessEvent) => void;
   /** Entity ids currently selected elsewhere (e.g. clicked in the 3D view); matching events are highlighted. */
   selectedEntities?: string[];
+}
+
+/**
+ * A reachable view of the committed records when no readable business feed was
+ * projected. The workbench URL carries the run, not this panel, so derive the
+ * destination from it instead of naming a view the workbench does not expose.
+ */
+function rawRecordsTarget(): string {
+  const query = new URLSearchParams(window.location.search);
+  const run = query.get('run'), api = query.get('api');
+  if (!run) return `/?records=1${api ? `&api=${encodeURIComponent(api)}` : ''}`;
+  const mode = query.get('mode') === 'live' ? 'live' : 'replay';
+  const cut = query.get('cut');
+  return `/agents/${encodeURIComponent(run)}?mode=${mode}${api ? `&api=${encodeURIComponent(api)}` : ''}${cut ? `&cut=${encodeURIComponent(cut)}` : ''}`;
 }
 
 const SEVERITIES: Severity[] = ['info', 'notice', 'warning', 'critical'];
@@ -29,8 +45,9 @@ function severityClass(severity: Severity): string {
  * Category chips filter the list; clicking a card reports it via `onSelect`
  * (the Runs page owns what that does, e.g. flying the camera).
  */
-export function EventFeed({ events, onSelect, selectedEntities,available=true,onExplore,entityNames }: EventFeedProps) {
+export function EventFeed({ events, onSelect, selectedEntities,available=true,onExplore,entityNames,rawRecordsHref }: EventFeedProps) {
   const { t, locale } = useI18n();
+  const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [severity, setSeverity] = useState<Severity | 'all'>('all');
 
@@ -64,9 +81,11 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
       {visible.length === 0 ? (
         <p className="newc-feed-empty" role="status">
           {events.length === 0
-            ? (available?t('No events yet at this moment. Follow the run to watch what happens next.'):t('This run does not include readable event updates. Open Expert view to explore its recorded activity.'))
+            ? (available?t('No events yet at this moment. Follow the run to watch what happens next.'):L('This run has no readable event summaries. Open its raw records instead.', '这次运行没有可读的事件摘要。请改为查看原始记录。'))
             : t('No events match the filters you picked. Clear a filter above to see the rest.')}
-          {!available&&onExplore&&<button className="console-btn" onClick={onExplore}>{t('Explore recorded activity')}</button>}
+          {!available && (onExplore
+            ? <button className="console-btn" onClick={onExplore}>{t('Explore recorded activity')}</button>
+            : <a className="console-btn" data-testid="event-feed-raw-records" href={rawRecordsHref ?? rawRecordsTarget()}>{t('Explore recorded activity')}</a>)}
         </p>
       ) : (
         <ul className="newc-feed-list">

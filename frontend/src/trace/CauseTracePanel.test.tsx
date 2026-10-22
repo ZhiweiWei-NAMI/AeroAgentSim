@@ -19,6 +19,17 @@ it('tells the story in plain words and lets each follow-up continue the walk', (
   expect(open).toHaveBeenCalledWith({ kind: 'step', instanceId: 'chain:b', revision: '1' });
   expect(screen.queryByText(/receipt|invocation/i)).toBeNull();
   expect(screen.getByText('Involved objects:')).toBeTruthy();
+  // Payload/message matches are shown as recorded links, not as causes.
+  expect(screen.getAllByText(/recorded link/).length).toBeGreaterThan(0);
+  expect(screen.queryByText(/same-cut context/)).toBeNull();
+});
+
+it('labels same-source facts and matched records as context rather than causation', () => {
+  const store = traceStore(), open = vi.fn();
+  const model = explain(store, { kind: 'message', messageId: 'm1', cut: 4 })!;
+  render(<CauseTracePanel store={store} model={model} canGoBack={false} onOpen={open} onBack={() => {}} onClose={() => {}} onSelectEntity={() => {}} onSeek={() => {}} />);
+  expect(screen.getAllByText(/recorded link/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/same-cut context/).length).toBeGreaterThan(0);
 });
 
 it('lets other pages open a trace through the bus and the entity panel opens moments and changes', () => {
@@ -48,6 +59,16 @@ it('localizes the complete cause walk while Back, close, entity focus and seek r
   fireEvent.click(screen.getByRole('button',{name:'查看此步骤之后的场景'})); expect(seek).toHaveBeenCalledWith(4);
   fireEvent.click(screen.getByRole('button',{name:/Demo Watch: 等待 → 已观察/})); expect(open).toHaveBeenCalledWith({kind:'step',instanceId:'chain:b',revision:'1'});
   fireEvent.click(screen.getByRole('button',{name:'关闭原因说明'})); expect(close).toHaveBeenCalledOnce();
+  view.unmount(); localStorage.clear();
+});
+
+it('uses the Chinese recorded-link and same-cut wording without calling either a cause', () => {
+  localStorage.setItem('aeroagentsim.locale','zh-CN');
+  const store=traceStore(), model=explain(store,{kind:'message',messageId:'m1',cut:4},'zh-CN')!;
+  const view=render(<I18nProvider><CauseTracePanel store={store} model={model} canGoBack={false} onOpen={()=>{}} onBack={()=>{}} onClose={()=>{}} onSelectEntity={()=>{}} onSeek={()=>{}}/></I18nProvider>);
+  expect(screen.getAllByText(/记录关联/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/同一时刻上下文/).length).toBeGreaterThan(0);
+  expect(screen.queryByText(/因果/)).toBeNull();
   view.unmount(); localStorage.clear();
 });
 

@@ -6,7 +6,7 @@ import { Details } from '../console/Details';
 import { displayTime } from '../pages/display-time';
 import { readableLabel } from '../pages/inspection-format';
 import { entityId } from '../viewport/bindings';
-import { idLabel, writerName, type CauseRef, type EffectView, type FollowUpView, type PredicateView, type TraceModel, type TriggerView } from './cause-trace';
+import { idLabel, writerName, type CauseRef, type EffectView, type FollowUpView, type LinkBasis, type PredicateView, type TraceModel, type TriggerView } from './cause-trace';
 import { useI18n } from '../i18n/I18nProvider';
 import './trace.css';
 
@@ -16,6 +16,14 @@ interface Props {
   onSelectEntity: (key: EntityKey) => void; onSeek: (cut: number) => void;
 }
 const when = (store: TemporalFeedStore, instant?: Instant) => instant ? displayTime(instant.ns, store.header.start.ns) : '';
+/** Never present a matched or co-occurring record as a causal claim. */
+const basisLabel = (basis: LinkBasis, locale: string) => basis === 'recorded'
+  ? (locale === 'zh-CN' ? '记录关联' : 'recorded link')
+  : (locale === 'zh-CN' ? '同一时刻上下文' : 'same-cut context');
+function Basis({ basis }: { basis?: LinkBasis }) {
+  const { locale } = useI18n();
+  return basis ? <small className="ct-note"> · <span className="ct-basis" data-basis={basis}>{basisLabel(basis, locale)}</span></small> : null;
+}
 
 function EntityChip({ store, entity, onSelectEntity }: { store: TemporalFeedStore; entity: EntityKey; onSelectEntity: (key: EntityKey) => void }) {
   const { locale } = useI18n();
@@ -42,7 +50,7 @@ function Trigger({ store, trigger, onOpen, onSelectEntity }: { store: TemporalFe
   const { t } = useI18n();
   return <li className="ct-card ct-trigger">
     <h4>{t('What set it off')}</h4>
-    <p className="ct-main">{trigger.summary}{trigger.at ? <small> · {when(store, trigger.at)}</small> : null}</p>
+    <p className="ct-main">{trigger.summary}{trigger.at ? <small> · {when(store, trigger.at)}</small> : null}<Basis basis={trigger.basis} /></p>
     {trigger.predicate && <PredicateCard store={store} predicate={trigger.predicate} onOpen={onOpen} onSelectEntity={onSelectEntity} />}
     {trigger.source && <p className="ct-source">{trigger.source}{trigger.ref && <button type="button" className="ct-link" onClick={() => onOpen(trigger.ref!)}>{t('See where it came from')}</button>}</p>}
     {!trigger.source && trigger.ref && trigger.kind !== 'predicate' && <button type="button" className="ct-link" onClick={() => onOpen(trigger.ref!)}>{t('See where it came from')}</button>}
@@ -51,8 +59,10 @@ function Trigger({ store, trigger, onOpen, onSelectEntity }: { store: TemporalFe
 
 function Effects({ store, effects, onSeek }: { store: TemporalFeedStore; effects: EffectView[]; onSeek: (cut: number) => void }) {
   const { t, locale } = useI18n();
+  const basis = effects.find(effect => effect.basis)?.basis;
   return <li className="ct-card ct-effects">
     <h4>{t('What changed in the shared state')}</h4>
+    {basis && <p className="ct-note"><span className="ct-basis" data-basis={basis}>{basisLabel(basis, locale)}</span></p>}
     {effects.length === 0 ? <p className="ct-empty">{t('No shared state fields were written at this step.')}</p> : <>
       <ul className="ct-changes">{effects.map(effect => <li key={`${entityId(effect.entity)}/${effect.fieldId}`}>
         <div><span className="ct-entity-name">{effect.entityLabel}</span> · <span className="ct-field">{effect.fieldLabel}</span>{effect.unit ? <small> ({effect.unit})</small> : null}</div>
@@ -66,12 +76,12 @@ function Effects({ store, effects, onSeek }: { store: TemporalFeedStore; effects
 }
 
 function FollowUps({ items, onOpen, store }: { items: FollowUpView[]; onOpen: (ref: CauseRef) => void; store: TemporalFeedStore }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return <li className="ct-card ct-next">
     <h4>{t('What happened next')}</h4>
     {items.length === 0 ? <p className="ct-empty">{t('Nothing else was recorded as a result.')}</p> : <ul className="ct-follow">{items.map((item, index) => <li key={index} className={`ct-follow-${item.kind}`}>
-      {item.ref ? <button type="button" className="ct-follow-btn" onClick={() => onOpen(item.ref!)}><span>{item.label}</span><small>{item.detail}{item.at ? ` · ${when(store, item.at)}` : ''}</small></button>
-        : <div className="ct-follow-plain"><span>{item.label}</span><small>{item.detail}{item.at ? ` · ${when(store, item.at)}` : ''}</small></div>}
+      {item.ref ? <button type="button" className="ct-follow-btn" onClick={() => onOpen(item.ref!)}><span>{item.label}</span><small>{item.detail}{item.at ? ` · ${when(store, item.at)}` : ''}{item.basis ? <> · <span className="ct-basis" data-basis={item.basis}>{basisLabel(item.basis, locale)}</span></> : null}</small></button>
+        : <div className="ct-follow-plain"><span>{item.label}</span><small>{item.detail}{item.at ? ` · ${when(store, item.at)}` : ''}{item.basis ? <> · <span className="ct-basis" data-basis={item.basis}>{basisLabel(item.basis, locale)}</span></> : null}</small></div>}
     </li>)}</ul>}
   </li>;
 }
@@ -95,11 +105,11 @@ export function CauseTracePanel({ store, model, canGoBack, onOpen, onBack, onClo
     {!model ? <p className="ct-empty">{t('That moment is not loaded yet. Let the timeline load further and try again.')}</p> : <>
       <h4 className="ct-title">{model.heading}</h4>
       {model.subtitle && <p className="ct-when">{model.subtitle}</p>}
-      {model.choices.length > 0 && <div className="ct-choices"><p className="ct-sub">{t('Other things happened at this moment')}</p>{model.choices.map((choice, index) => <button key={index} type="button" className="ct-link" onClick={() => onOpen(choice.ref)}>{choice.label}</button>)}</div>}
+      {model.choices.length > 0 && <div className="ct-choices"><p className="ct-sub">{t('Other things happened at this moment')}{model.choices.some(choice => choice.basis) && <> · <span className="ct-basis" data-basis={model.choices.find(choice => choice.basis)!.basis}>{basisLabel(model.choices.find(choice => choice.basis)!.basis!, locale)}</span></>}</p>{model.choices.map((choice, index) => <button key={index} type="button" className="ct-link" onClick={() => onOpen(choice.ref)}>{choice.label}</button>)}</div>}
       <ol className={`ct-story${model.focus === 'message' ? ' ct-message-story' : ''}`}>
         {model.trigger && <Trigger store={store} trigger={model.trigger} onOpen={onOpen} onSelectEntity={onSelectEntity} />}
         {model.predicate && <li className="ct-card ct-trigger"><h4>{t('The condition')}</h4><p className="ct-main">{t('{condition} is ', {condition:model.predicate.label})}<strong>{model.predicate.value === null ? t('unknown') : model.predicate.value ? t('true') : t('false')}</strong><small> · {when(store, model.predicate.at)}</small></p><PredicateCard store={store} predicate={model.predicate} onOpen={onOpen} onSelectEntity={onSelectEntity} /></li>}
-        {model.sender && (model.sender.ref || !model.trigger) && <li className="ct-card ct-trigger"><h4>{t('Where it came from')}</h4><p className="ct-main">{model.sender.text}</p>{model.sender.ref && <button type="button" className="ct-link" onClick={() => onOpen(model.sender!.ref!)}>{t('See that step')}</button>}</li>}
+        {model.sender && (model.sender.ref || !model.trigger) && <li className="ct-card ct-trigger"><h4>{t('Where it came from')}</h4><p className="ct-main">{model.sender.text}<Basis basis={model.sender.basis} /></p>{model.sender.ref && <button type="button" className="ct-link" onClick={() => onOpen(model.sender!.ref!)}>{t('See that step')}</button>}</li>}
         {model.step && <li className="ct-card ct-step"><h4>{t('What ran')}</h4>
           <p className="ct-main">{t('Event chain')} <strong>{model.step.chainLabel}</strong></p>
           <p className="ct-states">{model.step.fromState ? <><span className="ct-state">{readableLabel(model.step.fromState,locale)}</span> → </> : null}<span className="ct-state ct-state-to">{readableLabel(model.step.toState,locale)}</span><small> · {t('step “{step}”', {step:model.step.stepId})}</small></p>

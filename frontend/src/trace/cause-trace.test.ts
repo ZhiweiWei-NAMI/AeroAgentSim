@@ -44,7 +44,8 @@ describe('cause trace', () => {
     expect(predicate.followUps[0].ref).toEqual({ kind: 'step', instanceId: 'chain:a', revision: '1' });
     const next = explain(value, step.followUps.find(item => item.kind === 'step')!.ref!)!;
     expect(next.step?.chainId).toBe('demo.watch');
-    expect(next.trigger).toMatchObject({ kind: 'event', ref: { kind: 'step', instanceId: 'chain:a' } });
+    expect(next.trigger).toMatchObject({ kind: 'event', basis: 'recorded', ref: { kind: 'step', instanceId: 'chain:a' } });
+    expect(predicate.followUps[0].basis).toBe('recorded');
   });
   it('attributes a change written by an engine, not a chain', () => {
     const model = explain(store(), { kind: 'change', entity: car, fieldId: 'demo.car.speed_mps', cut: 2 })!;
@@ -80,8 +81,21 @@ it('follows recorded operator provenance through readiness, dispatch and deliver
   const model = explain(value, { kind: 'event', atNs: '10', text: 'Preparation delayed', entities: [vehicle.id] })!;
   expect(model.focus).toBe('message');
   expect(model.followUps.map(row => row.ref?.kind === 'message' ? row.ref.messageId : undefined)).toEqual(['ready', 'assigned', 'delivered']);
+  expect(model.followUps.every(row => row.basis === 'recorded')).toBe(true);
   expect(explain(value, model.followUps.at(-1)!.ref!)!.trigger!.ref).toMatchObject({ kind: 'message', messageId: 'assigned' });
   expect(explain(value, model.followUps[0].ref!, 'zh-CN')!.followUps).toHaveLength(2);
+});
+
+it('labels schema/payload matches as recorded links and same-source facts as same-cut context', () => {
+  const model = explain(store(), { kind: 'message', messageId: 'm1', cut: 4 })!;
+  expect(model.focus).toBe('message');
+  expect(model.sender?.basis).toBe('recorded');
+  expect(model.effects).toHaveLength(1);
+  expect(model.effects[0]).toMatchObject({ fieldId: 'demo.incident.active', basis: 'same-cut' });
+  expect(model.followUps.length).toBeGreaterThan(0);
+  expect(model.followUps.every(row => row.basis === 'recorded')).toBe(true);
+  // The effect is committed evidence at the same cut, never promoted to a cause.
+  expect(model.effects[0].writer).toBe('behaviour');
 });
 
 it('uses an injection execution receipt to link the actual ingress command to its authored event', () => {
