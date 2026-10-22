@@ -62,6 +62,10 @@ def _path_lock(path: Path) -> threading.RLock:
 
 
 def _signature(path: Path) -> list[Any]:
+    import hashlib
+
+    from aeroagentsim import metrics_api
+
     files = [path / "scenario.json", path / "runtime.registry.json"]
     if (path / "behaviour.ir.json").exists():
         files.append(path / "behaviour.ir.json")
@@ -69,11 +73,20 @@ def _signature(path: Path) -> list[Any]:
         Path(__file__).with_name(name + ".py")
         for name in ("feed_index", "projector", "subjects", "kpis", "narratives")
     )
-    packs = Path(__file__).parents[1] / "packs"
-    files.extend(
-        (packs / "lowalt/overlay.py", packs / "traffic_accident/narratives.py")
-    )
-    result: list[Any] = [FORMAT]
+    files.append(Path(metrics_api.__file__))
+    # Every eligible provider is retained for schema-prefix dispatch, including
+    # external providers whose first matching message arrives after this cut.
+    # Revisions, entry-point identity and descriptors replace pack source paths.
+    plugins = metrics_api.discover_metric_plugins()
+    result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(plugins)]]
+    # Removing the old pack-file list must not drop narrative invalidation. Hash
+    # the effective declarations (including pack/IR/scenario overrides), rather
+    # than assuming two particular source filenames own every narrative.
+    declarations = NarrativeProjector.from_directory(path)._declarations
+    result.append(["narratives", hashlib.sha256(json.dumps(
+        declarations, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")).hexdigest()])
     for file in files:
         stat = file.stat()
         result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])

@@ -403,7 +403,7 @@ def main() -> None:
             )
         )
     elif args.command == "metrics":
-        from aeroagentsim.packs.metrics import metrics
+        from aeroagentsim.services.kpis import metrics
 
         print(json.dumps(metrics(args.run), sort_keys=True, indent=2))
     elif args.command == "replay":

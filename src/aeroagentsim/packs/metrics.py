@@ -140,10 +140,41 @@ def compute(kernel: Kernel) -> dict[str, Any]:
                 "targets": target_metrics,
             }
     if any(engine["plugin"] == "lowalt_tasks" and "rescue" in engine["config"] for engine in engines.values()):
-        from aeroagentsim.services.kpis import rescue_kpis
+        from aeroagentsim.metrics_api import (
+            MetricAccumulator,
+            MetricPlugin,
+            discover_metric_plugins,
+        )
+        from aeroagentsim.runs import RecordedMessage
 
+        from .lowalt.metrics import RESCUE_METRICS
+
+        # This historical report exposes flat rescue scalars, but uses the same
+        # public reducer contract/discovery as the service instead of importing a
+        # private service accumulator. Keep whole reducer ownership intact.
+        plugins = tuple(
+            MetricPlugin(plugin.name, tuple(
+                reducer for reducer in plugin.reducers
+                if any(item.id in RESCUE_METRICS for item in reducer.descriptors)
+            ), api_version=plugin.api_version)
+            for plugin in discover_metric_plugins()
+        )
+        accumulator = MetricAccumulator(plugins)
         messages = {m["id"]: m for commit in commits for m in commit["messages"]}
-        result.update(rescue_kpis(list(messages.values())))
+        for ordinal, message in enumerate(messages.values()):
+            accumulator.consume(RecordedMessage(
+                cursor=(0, ordinal), message_id=message["id"], kind=message["kind"],
+                schema_id=message["schemaId"], source=message["source"],
+                at_ns=int(message["at"]["ns"]), payload=message["payload"],
+            ))
+        values = accumulator.snapshot()
+        for name, (unit, _) in RESCUE_METRICS.items():
+            if name not in values:
+                continue  # A whole-provider replacement may omit legacy IDs.
+            # Legacy configured-pack reports exposed empty counters as zero;
+            # the KPI feed deliberately keeps entirely absent rescue evidence None.
+            value = values[name]
+            result[name] = 0 if value is None and unit in {"count", "B"} else value
     return result
 
 
