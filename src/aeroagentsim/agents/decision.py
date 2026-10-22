@@ -15,7 +15,7 @@ from aerokernel.values import thaw, typed_equal
 
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .observation import FieldGrant, build_observation
+from .observation import FieldGrant, build_observation, delivery_route
 from .provider import OpenAIProvider, Provider, ProviderError
 from .tools import ToolCatalog, ToolGrant
 
@@ -55,8 +55,10 @@ class Decision(ContextEngine):
             for item in grants["events"]
         ):
             raise ValueError("event grants require explicit schema/topic")
-        self.events = tuple(item["schema"] for item in grants["events"])
-        for schema in self.events:
+        self.events: tuple[tuple[str, str], ...] = tuple(
+            (item["schema"], item["topic"]) for item in grants["events"]
+        )
+        for schema, _ in self.events:
             if build.registry.message(schema).kind != "event":
                 raise ValueError("event grant requires event schema")
         tool_grants = tuple(
@@ -77,7 +79,9 @@ class Decision(ContextEngine):
                 type(point["timer_ns"]) is not int or point["timer_ns"] <= 0
             ):
                 raise ValueError("decision timer must be positive")
-            if "event" in point and point["event"] not in self.events:
+            if "event" in point and not any(
+                point["event"] == schema for schema, _ in self.events
+            ):
                 raise ValueError("decision point event is ungranted")
             if "receipt" in point and point["receipt"] not in {
                 "submitted",
@@ -151,7 +155,7 @@ class Decision(ContextEngine):
             emits=tuple(
                 sorted({RECORD_SCHEMA} | {grant.schema for grant in tool_grants})
             ),
-            subscribes=tuple(sorted({item["topic"] for item in grants["events"]})),
+            subscribes=tuple(sorted({topic for _, topic in self.events})),
             message_targets=tuple(
                 sorted({"agent-records"} | {grant.target for grant in tool_grants})
             ),
@@ -202,6 +206,8 @@ class Decision(ContextEngine):
                 triggered |= isinstance(data, dict) and "decision_point" in data
         triggered |= any(
             point.get("event") == delivery.message.schema_id
+            and delivery.message.kind == "event"
+            and (delivery.message.schema_id, delivery_route(ctx, delivery)) in self.events
             for point in self.points
             for delivery in ctx.inbox
         )
@@ -228,6 +234,11 @@ class Decision(ContextEngine):
             self.decide(ctx)
 
     def decide(self, ctx: EngineContext) -> None:
+        """Submit valid tool calls one by one, retaining earlier proposals in the batch.
+
+        A later invalid call or round failure leaves those proposals intact;
+        decision-level failure does not mean zero actions.
+        """
         self.sequence += 1
         decision = f"{self.partition.id}/{self.sequence}"
         observation = build_observation(
