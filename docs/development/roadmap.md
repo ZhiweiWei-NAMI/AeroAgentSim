@@ -5,46 +5,50 @@ the order in which they are needed. It is derived from the 2026-10-22 programme
 and is deliberately smaller than a feature list: a family is added when a real
 consumer needs it, with a version, tests and one owner.
 
-Among the families listed below, only the [scenario plugin
-API](../reference/plugin-contracts.md) is shipped today (`API_VERSION = 1`, ten
-built-in templates and three hook providers). Engines, algorithms, models and
-provider profiles are existing contracts documented in the same reference; they
-are not new families on this roadmap. Every row in the table below is
-**planned**. Naming one here does not make it importable or registerable, and an
-open draft PR is not a shipped contract. The current support boundary, including
-the internal surfaces that must not be used as plugin APIs, is documented in
-[plugin contracts](../reference/plugin-contracts.md). Repository-level choices
-are recorded in [decision records](../decisions/README.md).
+Shipped contract families are marked **Available** and link to their
+reference; everything else is **planned**. Naming a family here does not make
+it importable or registerable, and an open PR is not a shipped contract.
+Engines, algorithms, models and provider profiles are existing contracts
+documented in [plugin contracts](../reference/plugin-contracts.md), which also
+lists the internal surfaces that must not be used as plugin APIs.
+Repository-level choices are recorded in [decision
+records](../decisions/README.md).
 
 ## Waves
 
 | Wave | Focus | Status |
 | --- | --- | --- |
-| 1 | Correctness and governance fixes: agent grant pairing, provider credential containment, kernel close cleanup, fail-closed initialization, assistant authorship, duplicate inventory names, this roadmap and the PR template. | In progress |
-| 2 | Public run reader, owner-mediated mission commands (phase M1), metrics reducers, and product correctness fixes (preview positions, gallery headings, truthful hook values, provisional comparisons, docs). | Planned |
-| 3 | Presentations and effective controls, assistant operation families, preparation/scenario v2, agent-execution evidence, the #17 salvage (native primitives, browser depth, build knobs) and the installed-wheel packaging gate. | Planned |
-| Later | Registry overlays, algorithm capability metadata, kernel growth budgets, a single journal decoder, and the owner-led AeroRescue extraction. | Later |
+| 1 | Correctness and governance: agent grant pairing, provider credential containment, kernel close cleanup, fail-closed initialization, assistant authorship, duplicate inventory names, this roadmap and the PR template. | Done |
+| 2 | Public run reader, owner-mediated mission commands (phase M1), metrics reducers, and product correctness (preview positions, gallery headings, truthful hook values, provisional comparisons, documented product story). | Done |
+| 3 | Agent-execution view, the #17 salvage (native primitives, browser depth, build knobs) and the installed-wheel packaging gate. | Done |
+| 4 | Runtime ownership and evidence: exception-safe sessions, one journal admission routine, kernel growth measurement (no budgets yet), bounded experiments with comparison evidence, a browser experiment journey, one frontend transport policy, dock agent observation with non-causal link wording, and bilingual parity tests. | Done |
+| 5 | Shared extension discovery and admission, assistant operation families, bounded service lifecycle and remote-serving policy. | In progress |
+| Next | Presentations and effective controls, preparation contract / scenario v2, reproducible projections, evidence-consumer migration. | Planned |
+| Later | Registry overlays, algorithm capability metadata, kernel growth budgets (after measurements), and the owner-led AeroRescue extraction. | Later |
 
-Wave 1 changes behaviour without adding a contract family. Waves 2 and 3 add
-the families below; they are split so a contract, its implementation and its
-acceptance evidence can land in separate small PRs.
+Each family lands as a contract, an implementation and acceptance evidence in
+small PRs.
 
 ## Contract families
 
 | Contract | Purpose | Status | How to help |
 | --- | --- | --- | --- |
-| Public run reader — `aeroagentsim.runs` v1 | Read a committed run through a versioned, read-only facade instead of importing `RunStorage`, service indexes or kernel internals. | Planned — wave 2 | Propose the batch envelope from committed data; add fixtures for partial prefixes, gaps, reconnects, old runs and lossless numbers. Do not add a second storage API. |
-| Owner-mediated mission commands — `aas.mission.*` v1 | Let an owner engine reserve, divert, resume and release a mission through versioned commands, validation and terminal receipts. | Planned — wave 2, phase M1 | Work with the runtime owners on schemas and state transitions. Test stale revisions, concurrency, expiry, cancellation and payload ownership. Never use `owner.flights`; an ACK is not completion. |
-| Metrics reducers — `aeroagentsim.metrics` v1 | Contribute deterministic reducers that turn committed batches into named metrics, so CLI, live views and comparisons agree. | Available — API v1 ([contract](../reference/metrics-plugins.md)) | Add deterministic reducers over recorded messages with explicit descriptors, checkpoints and missing-data policies; preserve legacy KPI meanings and separate pack-report shapes. |
-| Presentations and effective controls — `aeroagentsim.presentations` v1 | Contribute localized labels, field and enum mappings, narrative templates and finite display primitives, and read back an applied knob's effective value. | Planned — wave 3 | Start from the existing pose/narrative bindings and the flood-rescue marker/region case. Add tests for unknown fields, missing values and bilingual placeholders. No remote JavaScript or executable renderers. |
-| Assistant operation families — `aeroagentsim.assistant_operations` v1 | Package semantic operations, parameter schemas, prerequisites and expectations together, while the host keeps staging, diff display, consent and validation. | Planned — wave 3 | Build a synthetic external family that compiles without a host switch. Test unknown operations, invalid parameters, zero-expectation “unassessed” and a compiler that makes no provider call. |
-| Preparation contract and scenario v2 — `aeroagentsim.scenario/v2` | Add opt-in v2 admission and deterministic final-seed preparation while v1 documents remain readable. | Planned — wave 3 | Write v1 compatibility fixtures and repeatable same-seed/different-seed preparation tests. Move domain expansion out of the generic loader instead of adding another branch to it. |
-| Unified agent-execution evidence v1 | One evidence envelope for observation, prompt, tool call, validation and result, so a recorded decision can be replayed and audited. | Planned — wave 3 | Propose the record shape with the agent and runtime owners. Test replay with no provider, retained IDs/order and explicit unknown evidence. A model reply is not mission completion. |
-| Registry overlays — `aeroagentsim.registry_overlays` | Compose declared registry overlays with explicit ordering, dependency checks and conflict rejection once explicit snapshots are insufficient. | Planned — later (P2) | Bring a second packaged domain that needs reusable composition. Until then use an explicit snapshot or inline descriptors; no implicit namespace takeover. |
+| Scenario plugins — `aeroagentsim.scenarios` | Templates, knobs and reusable apply hooks. | Available — API v1 ([contract](../reference/plugin-contracts.md)) | Add a scenario as an installable plugin; see the [guide](../guides/scenario-plugins.md). |
+| Public run reader — `aeroagentsim.runs` v1 | Read a committed run through a versioned, read-only facade instead of importing `RunStorage`, service indexes or kernel internals. | Available — API v1 ([contract](../reference/run-reader.md)) | Migrate external readers (demo exporters, AeroRescue episodes) onto it; add fixtures for old runs and partial prefixes. |
+| Owner-mediated mission commands — `aas.mission.*` v1 | Let an owner engine reserve, divert, resume and release a mission through versioned commands and typed terminal receipts. | Available — phase M1 ([contract](../reference/mission-commands.md)) | Payload ownership is not covered by these four commands; propose an owner-specific delivery command. An ACK or acceptance is not completion. |
+| Metrics reducers — `aeroagentsim.metrics` v1 | Deterministic reducers over recorded messages, so CLI, live views and comparisons agree. | Available — API v1 ([contract](../reference/metrics-plugins.md)) | Add reducers with explicit descriptors and missing-data policies; preserve legacy KPI meanings. |
+| Agent-execution view v1 | One read view over observation, prompt, tool call, validation and result for recorded decisions. | Available — view v1 ([reference](../reference/agent-execution.md)) | Extend fixtures for scripted, structured-JSON and function-tool modes. A model reply is not mission completion. |
+| Comparison evidence | Bounded experiments and per-row cut, definition and compatibility metadata. | Available ([reference](../reference/comparison-evidence.md)) | Add definition revisions to metrics so more comparisons can be known-compatible instead of unknown. |
+| Shared extension admission | One discovery helper and admission rules for every family. | In progress | Review the admission rules when they land; report families that diverge. |
+| Assistant operation families — `aeroagentsim.assistant_operations` v1 | Package semantic operations, parameter schemas, prerequisites and expectations together, while the host keeps staging, diff display, consent and validation. | In progress | Build a synthetic external family that compiles without a host switch. |
+| Presentations and effective controls — `aeroagentsim.presentations` v1 | Localized labels, field and enum mappings, narrative templates and finite display primitives, plus the effective value of an applied knob. | Planned | Start from the existing pose/narrative bindings and the flood-rescue marker/region case. No remote JavaScript or executable renderers. |
+| Preparation contract and scenario v2 — `aeroagentsim.scenario/v2` | Opt-in v2 admission and deterministic final-seed preparation while v1 documents remain readable. | Planned | Write v1 compatibility fixtures and repeatable same-seed/different-seed preparation tests. |
+| Registry overlays — `aeroagentsim.registry_overlays` | Compose declared registry overlays with explicit ordering, dependency checks and conflict rejection. | Later (P2) | Bring a second packaged domain that needs reusable composition. Until then use explicit snapshots or inline descriptors. |
 
-Statuses describe code in `main`. “Planned” means no implementation is merged,
-not that nobody is thinking about it. We update this page when a family ships;
-we do not promise dates.
+Statuses describe code in `main`. "In progress" means work is under review,
+not merged. We update this page when a family ships; we do not promise dates.
+Kernel growth is [measured](../performance/runtime-data.md) but has no budget
+yet.
 
 ## Anti-goals
 
