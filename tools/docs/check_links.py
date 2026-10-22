@@ -14,10 +14,11 @@ LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>]+>|[^\s)]+)(?:\s+[^)]*)?\)")
 DEFINITION = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*(<[^>]+>|\S+)", re.MULTILINE)
 REFERENCE = re.compile(r"!?\[([^\]\n]+)\]\[([^\]\n]*)\]")
 HTML_LINK = re.compile(r"(?:href|src)=[\"']([^\"']+)[\"']")
+INLINE_CODE = re.compile(r"(`+)(?!`).+?(?<!`)\1(?!`)")
 
 
-def prose(source: str) -> str:
-    """Keep line positions while excluding fenced code examples."""
+def prose(source: str, *, inline: bool = True) -> str:
+    """Keep line positions while excluding fenced (and, by default, inline) code."""
     lines = []
     fence = ""
     for line in source.splitlines(keepends=True):
@@ -26,12 +27,13 @@ def prose(source: str) -> str:
             fence = "" if fence else marker[1][0]
             lines.append("\n")
         else:
-            lines.append("\n" if fence else line)
+            # Inline code spans are not links either (e.g. a `[a-z][a-z_-]*` pattern).
+            lines.append("\n" if fence else INLINE_CODE.sub(lambda m: " " * len(m[0]), line) if inline else line)
     return "".join(lines)
 
 
 def anchors(path: Path) -> set[str]:
-    content = prose(path.read_text(encoding="utf-8"))
+    content = prose(path.read_text(encoding="utf-8"), inline=False)
     result = set(re.findall(r"\bid=[\"']([^\"']+)[\"']", content))
     counts: dict[str, int] = {}
     for line in content.splitlines():
