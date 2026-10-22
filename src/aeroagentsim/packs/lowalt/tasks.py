@@ -22,11 +22,15 @@ from aeroagentsim.algorithms.protocols import (
     Snapshot,
 )
 from aeroagentsim.engines.common import bootstrap_owned, policies
+from aeroagentsim.mission_api import (
+    MISSION_COMMAND_SCHEMAS, MISSION_STATUS_TOPIC, STATUS_SCHEMA,
+)
 from aeroagentsim.packs.arrivals import arrival_times
 from aeroagentsim.packs.common import distance, finite, ns, read, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
 from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
+from .mission_control import MissionControl
 from .overlay import COOP_OPTIONS, HANDOFF_FIELDS, INCIDENT_FIELDS, TASK_KINDS
 
 TASK_FIELDS = (
@@ -255,6 +259,14 @@ class LowaltTasks(ContextEngine):
             produced += INCIDENT_FIELDS + HANDOFF_FIELDS
         if self.food_enabled:
             produced += FOOD_FIELDS
+        self.mission = MissionControl(self)
+        mission_ids = set(MISSION_COMMAND_SCHEMAS) | {STATUS_SCHEMA}
+        registered = {message.id for message in build.registry.messages}
+        if registered & mission_ids and not mission_ids <= registered:
+            raise ValueError("mission control requires the complete v1 descriptor set")
+        # Explicit custom/historical registries without mission descriptors keep
+        # their original declaration and receipts. The lowalt overlay includes v1.
+        mission_enabled = mission_ids <= registered
         super().__init__(
             Partition(
                 build.id,
@@ -278,7 +290,8 @@ class LowaltTasks(ContextEngine):
                         + rescue_fields
                     )
                 ),
-                emits=rescue_events + tuple(
+                commands=MISSION_COMMAND_SCHEMAS if mission_enabled else (),
+                emits=((STATUS_SCHEMA,) if mission_enabled else ()) + rescue_events + tuple(
                     "lowalt.task." + s
                     for s in (
                         "created",
@@ -336,7 +349,8 @@ class LowaltTasks(ContextEngine):
                     "lowalt.events",
                     "lowalt.allocations",
                     self.motion["target"],
-                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()) + rescue_topics,
+                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()) + rescue_topics
+                + ((MISSION_STATUS_TOPIC,) if mission_enabled else ()),
                 lifecycle=True,
                 rng_streams=("arrivals", "sites"),
             ),
@@ -603,8 +617,11 @@ class LowaltTasks(ContextEngine):
                         "remaining original work route is blocked"
                     )
         except ValueError as exc:
-            if not isinstance(exc, NoFlyRouteUnavailable) and recorder is None:
+            if (not isinstance(exc, NoFlyRouteUnavailable) and recorder is None
+                and flight.purpose != "mission"):
                 raise
+            # Mission callers translate ordinary planner no-path errors into
+            # their typed route_unavailable result, including on replanning.
             # Keep the original mission/charging goal and retry after a zone
             # change. This stopped flight waits; no arrival/completion is faked.
             flight.goal, flight.route = goal, ()
@@ -635,6 +652,10 @@ class LowaltTasks(ContextEngine):
             {v.id: v for v in self._snapshot(ctx).vehicles} if assignments else {}
         )
         for proposal in assignments:
+            # An asynchronous allocation reply may predate a reservation. Drop
+            # that obsolete offer, not the queued task or the reservation.
+            if self.mission.excluded(ctx, proposal.vehicle):
+                continue
             if proposal.task in used_tasks or proposal.vehicle in used_vehicles:
                 raise ValueError("allocator duplicated task or vehicle")
             used_tasks.add(proposal.task)
@@ -675,6 +696,7 @@ class LowaltTasks(ContextEngine):
             self._route(ctx, flight, vec(read(ctx, origin, "lowalt.site_position")))
 
     def _control(self, ctx: EngineContext, payload: dict[str, Any]) -> None:
+        self.mission.control(ctx, payload)
         flight = self.flights[payload["vehicle"]]
         action = payload["action"]
         if action in {"release", "resume"}:
@@ -699,7 +721,7 @@ class LowaltTasks(ContextEngine):
                 # the aircraft idle and leave the reserve recall open forever.
                 flight.avoidance_resume_purpose = "charge"
                 flight.avoidance_resume_goal = flight.goal
-            if flight.purpose in {"task", "incident_response", "handoff_drop", "handoff_pickup", "rescue"}:
+            if flight.purpose in {"task", "incident_response", "handoff_drop", "handoff_pickup", "rescue", "mission"}:
                 flight.control_resume_purpose = flight.purpose
                 if flight.work_active:
                     flight.saved_route = (
@@ -823,6 +845,7 @@ class LowaltTasks(ContextEngine):
                                 flight.job = None
                             if not flight.replan:
                                 flight.route, flight.goal = (), None
+                self.mission.motion_receipt(ctx, flight, data)
                 if status in {"succeeded", "failed", "rejected", "canceled"}:
                     self.moves.pop(cid)
         for flight in self.flights.values():
@@ -831,6 +854,8 @@ class LowaltTasks(ContextEngine):
                 flight.command_id = None
                 self._submit(ctx, flight, None)
         for delivery in ctx.inbox:
+            if self.mission.handle(ctx, delivery):
+                continue
             payload = cast(dict[str, Any], thaw(delivery.message.payload))
             if self.rescue is not None and self.rescue.on_message(ctx, delivery.message.schema_id, payload):
                 continue
@@ -938,6 +963,7 @@ class LowaltTasks(ContextEngine):
             self._poll(ctx)
         if {"lowalt_tasks": "tick"} in timers:
             ctx.wake_at(ctx.now.ns + self.tick, {"lowalt_tasks": "tick"})
+        self.mission.poll(ctx)
 
     def _eligible(self, ctx: EngineContext, job: Job, flight: Flight) -> bool:
         overrides = self.cfg.get("vehicle_task_kinds", {})
@@ -988,8 +1014,12 @@ class LowaltTasks(ContextEngine):
         return {"incident": incident.ref.id, "handoff": "handoff-" + incident.ref.id,
                 "task": incident.job.ref.id, "requester": incident.responder}
 
-    def _coop_reserved(self, vehicle: str) -> bool:
-        return any(
+    def _coop_reserved(self, vehicle: str, ctx: EngineContext | None = None) -> bool:
+        mission_reserved = (
+            self.mission.reserved(vehicle) if ctx is None
+            else self.mission.excluded(ctx, vehicle)
+        )
+        return mission_reserved or any(
             (incident.responder == vehicle and incident.phase not in {"photographed", "reported", "decision_failed"})
             or (incident.helper == vehicle and incident.handoff_phase == "accepted")
             or (incident.helper == vehicle and incident.handoff_phase == "dropped")
@@ -1130,7 +1160,7 @@ class LowaltTasks(ContextEngine):
             if incident.phase != "occurred" or incident.responder is not None or read(ctx, incident.ref, "lowalt.incident_state") != "occurred":
                 continue
             for vehicle in self.cooperation["watchers"]["vehicles"]:
-                if self._coop_reserved(vehicle):
+                if self._coop_reserved(vehicle, ctx):
                     continue
                 gap = self._coop_distance(ctx, vehicle, incident.config["position"], horizontal=True)
                 if gap > self.cooperation["watchers"]["notice_radius_m"]:
@@ -1211,6 +1241,8 @@ class LowaltTasks(ContextEngine):
     def _coop_candidate(self, ctx: EngineContext, incident: Incident, identity: str) -> str | None:
         assert self.cooperation is not None and incident.job is not None and incident.responder is not None
         flight = self.flights[identity]
+        if self.mission.excluded(ctx, identity):
+            return "Vehicle reserved for a mission / 无人机已被任务预留"
         if identity == incident.responder:
             return "Requester cannot take its own handoff / 请求者不能接替自身"
         if any(other is not incident and (
@@ -1466,7 +1498,7 @@ class LowaltTasks(ContextEngine):
                 if f.job is not None
                 and f.suspended is None
                 and f.purpose == "task"
-                and not self._coop_reserved(f.vehicle.id)
+                and not self._coop_reserved(f.vehicle.id, ctx)
                 and self._eligible(ctx, urgent, f)
                 and read(ctx, f.job.ref, "lowalt.task_kind") in interruptible
                 and read(ctx, f.job.ref, "lowalt.task_priority")
@@ -1527,9 +1559,10 @@ class LowaltTasks(ContextEngine):
         from aeroagentsim.packs.geometry import segment_hits_box
 
         for flight in self.flights.values():
-            if flight.job is None or flight.vehicle.id in self.cfg.get(
-                "zone_exemptions", {}
-            ).get(identity, ()):
+            if (
+                (flight.job is None and not self.mission.reserved(flight.vehicle.id))
+                or flight.vehicle.id in self.cfg.get("zone_exemptions", {}).get(identity, ())
+            ):
                 continue
             start = vec(read(ctx, flight.vehicle, "lowalt.position"))
             points = (
@@ -1542,14 +1575,17 @@ class LowaltTasks(ContextEngine):
                 flight.replan = True
                 flight.paused_route = None
                 flight.route = ()
-                self._event(
-                    ctx,
-                    "replanned",
-                    task=flight.job.ref.id,
-                    vehicle=flight.vehicle.id,
-                    zone=identity,
-                    reason="active no-fly zone",
-                )
+                if self.mission.reserved(flight.vehicle.id):
+                    self.mission.control(ctx, {"vehicle": flight.vehicle.id, "action": "reroute"})
+                if flight.job is not None:
+                    self._event(
+                        ctx,
+                        "replanned",
+                        task=flight.job.ref.id,
+                        vehicle=flight.vehicle.id,
+                        zone=identity,
+                        reason="active no-fly zone",
+                    )
                 self._brake(ctx, flight)
 
     def _observation(self, ctx: EngineContext, flight: Flight) -> None:
@@ -1845,6 +1881,8 @@ class LowaltTasks(ContextEngine):
             self._coop_tick(ctx)
         self._preempt(ctx)
         for flight in self.flights.values():
+            if self.mission.blocks(ctx, flight):
+                continue
             if flight.vehicle.id in self.coop_resumed:
                 continue
             if flight.pending or flight.command_id is not None:
@@ -1901,6 +1939,8 @@ class LowaltTasks(ContextEngine):
                         flight.replan = True
                     else:
                         self._restore_control(flight)
+            if self.mission.blocks(ctx, flight):
+                continue
             if self.cooperation is not None and self._coop_flight(ctx, flight):
                 continue
             if self.rescue is not None and self.rescue.flight(ctx, flight):
@@ -2124,7 +2164,7 @@ class LowaltTasks(ContextEngine):
                     and not read(ctx, self.by_id[v.id], "lowalt.returning_to_charge")
                     and self.flights[v.id].job is None
                     and self.flights[v.id].purpose == "task"
-                    and not self._coop_reserved(v.id)
+                    and not self._coop_reserved(v.id, ctx)
                     and not self.flights[v.id].pending
                     and self.flights[v.id].command_id is None
                     and v.soc > self.cfg["dispatch_min_soc"],

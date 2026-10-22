@@ -90,13 +90,18 @@ Fail-closed requirements must not be confused with checks that do not exist. In 
 
 Factory callability, slot-method checks and schema descriptors likewise do not establish full semantic conformance. Determinism, hook purity, secret hygiene and external revision capture remain plugin/operator responsibilities where not mechanically enforced.
 
+## Owner-mediated mission control
+
+| Capability | Availability |
+| --- | --- |
+| Owner-mediated mission control | [available for the lowalt Tasks owner (v1)](mission-commands.md). Reserve/divert/resume/release use kernel commands and committed-effect receipts; embedded Rescue migration and payload-consume commands remain planned. |
+
 ## Planned extension points — not available
 
 These are design directions, not groups or interfaces a distribution can register today.
 
 | Planned capability | Current boundary / supported alternative |
 | --- | --- |
-| Owner-mediated mission control | No generic reserve/divert/resume/release mission contract. Use existing owner-specific commands and receipts where available; never reach into `owner.flights`. A safety/control event is not a general mission-control API. |
 | Registry overlay plugins | No discoverable `aeroagentsim.registry_overlays` family or `registry.overlays` selection contract. Use explicit inline descriptors or a complete registry snapshot supported by [the loader](scenario.md#registry-section). An overlay filename alone is not discovery. |
 | Assistant families | No external operation/compiler/expectation registration contract. Existing template controls can use pointers/hooks; new semantic assistant operations still require host changes to [dispatch](../../src/aeroagentsim/assistant/compiler.py). |
 | Metrics reducers | No `aeroagentsim.metrics` reducer registration contract. [KPI projection](../../src/aeroagentsim/services/kpis.py) is host implementation; do not import it as a plugin API. |

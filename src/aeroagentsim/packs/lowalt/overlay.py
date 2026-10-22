@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from aeroagentsim.mission_api import mission_descriptors
+
 TASK_KINDS = (
     "parcel",
     "food",
@@ -713,4 +715,5 @@ def overlay() -> dict[str, Any]:
                 "cancel_support": False,
             }
         )
+    messages.extend(mission_descriptors())
     return {"types": types, "fields": fields, "messages": messages}
