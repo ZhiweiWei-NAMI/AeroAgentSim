@@ -1,6 +1,6 @@
 These shared components serve the current Workbench's template settings, KPIs, business events and run comparison.
 
-Workbench loads `/v1/templates`. `TemplateKnobControl` preserves declared knob types; `presentation.ts` provides the shared labels. The retired gallery, customization page and experiment panel have been removed. Batch experiments remain available through the backend and CLI.
+Workbench loads `/v1/templates`. `TemplateKnobControl` preserves declared knob types; `presentation.ts` provides the shared labels. The retired gallery and customization page have been removed. Records now has a bounded experiment panel in `frontend/src/experiments/`: it derives typed axes from a template's knobs, previews configurations × seeds against a visible browser limit, confirms once and POSTs once, then follows the bookmarkable `?experiment=<id>` query with the existing GET. It shows run-cell states (including failed and interrupted) and the server's `mean`/`std`/`n` unchanged, with null as unavailable; it adds no experiment-list, resume or cancel API, and larger factorial grids remain available through the CLI.
 
 Event and KPI views read committed `events` and `kpis` at the same cut as the city. Clicking an event seeks its originating commit and selects the actual entity identity. Missing measurements stay unmeasured. Per-cut snapshots take precedence over the summary endpoint; time-only summaries cannot distinguish same-nanosecond cuts.
 
