@@ -243,10 +243,25 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             )
             document = json.loads((path / "scenario.json").read_text())
             subjects = SubjectProjection(registry, document)
-            kpis = KPIProjector(registry, document.get("presentation", []))
-            if storage.entries:
-                # Original ingress envelopes and event target/topic classification
-                # use the same pinned header metadata as the public run reader.
+            # Source declarations can invalidate reducer progress without changing
+            # the immutable journal header. Retain only its routing/source context;
+            # metric state must still rebuild from the first committed record.
+            journal_identity = next(
+                (item for item in signature if item[0] == str(path / "journal.jsonl")),
+                None,
+            )
+            message_context = None
+            if journal_identity is not None and journal_identity in state.get("signature", []):
+                message_context = (
+                    cached.kpis.message_context if cached is not None
+                    else state.get("kpis", {}).get("message_context")
+                )
+            kpis = KPIProjector(
+                registry, document.get("presentation", []), message_context=message_context,
+            )
+            if not valid and message_context is None and storage.entries:
+                # Bootstrap a new journal only. Valid checkpoints restore their
+                # header context below without a redundant record-zero read.
                 for header in storage.records(0, 1):
                     kpis.consume(header)
             narratives = NarrativeProjector.from_directory(path)

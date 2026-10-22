@@ -88,6 +88,7 @@ class KPIProjector:
     def __init__(
         self, registry: MemoryRegistry, presentation: list[dict[str, Any]] | None = None,
         *, plugins: tuple[MetricPlugin, ...] | None = None,
+        message_context: dict[str, Any] | None = None,
     ) -> None:
         self.registry = registry
         self.fields = {field.id: field for field in registry.fields}
@@ -97,7 +98,7 @@ class KPIProjector:
         self._types: dict[str, list[str]] = {}
         self._metrics = MetricAccumulator(plugins)
         self.descriptors = MappingProxyType(_ordered_descriptors(self._metrics.plugins))
-        self._message_context: dict[str, Any] | None = None
+        self._message_context = deepcopy(message_context)
 
     def __getattr__(self, name: str) -> Any:
         # Read-only compatibility for the old internal projector attributes.
@@ -125,8 +126,13 @@ class KPIProjector:
                 projector.consume(header)
         return projector
 
+    @property
+    def message_context(self) -> dict[str, Any] | None:
+        """Detached immutable-journal metadata, independent of reducer progress."""
+        return deepcopy(self._message_context)
+
     def cursor(self) -> dict[str, Any]:
-        return {**self._metrics.cursor(), "message_context": deepcopy(self._message_context)}
+        return {**self._metrics.cursor(), "message_context": self.message_context}
 
     def restore_cursor(self, cursor: dict[str, Any]) -> None:
         self._metrics.restore_cursor(cursor)
