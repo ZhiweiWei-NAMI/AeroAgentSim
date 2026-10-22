@@ -1458,28 +1458,68 @@ class Kernel:
         return iter(self._store.records.fork())
 
     def close(self) -> None:
-        """Close engines idempotently and report cleanup errors."""
+        """Attempt all cleanup once, retaining stop and resource failures."""
+        primary: BaseException | None = None
         with self._ingress_condition:
             if self._closed:
                 return
-            if (
-                self._bound
-                and self._store.sealed_ns is not None
-                and not self._store.faulted
-                and (self._store.run_target is not None or self._store.pending_ingress)
-            ):
-                self._record_control("run_stop", {})
+            # Claim closure before publication callbacks can reenter.
             self._closed = True
-            self._ingress_condition.notify_all()
-        errors = []
+            try:
+                if (
+                    self._bound
+                    and self._store.sealed_ns is not None
+                    and not self._store.faulted
+                    and (
+                        self._store.run_target is not None or self._store.pending_ingress
+                    )
+                ):
+                    self._record_control("run_stop", {})
+            except BaseException as exc:
+                primary = exc
+            finally:
+                self._ingress_condition.notify_all()
+        errors: list[tuple[str, BaseException]] = []
         for eid in sorted(self._engines):
             try:
                 self._engines[eid].close()
-            except Exception as exc:
-                errors.append(exc)
-        self.journal.close()
+            except BaseException as exc:
+                if primary is None and not isinstance(exc, Exception):
+                    primary = exc
+                else:
+                    errors.append((f"engine:{eid}", exc))
+        try:
+            self.journal.close()
+        except BaseException as exc:
+            if primary is None and (not errors or not isinstance(exc, Exception)):
+                primary = exc
+            else:
+                errors.append(("journal", exc))
+        if primary is not None:
+            if errors:
+                if isinstance(primary, KernelError):
+                    primary.context = MappingProxyType(
+                        {**primary.context, "cleanup_errors": tuple(errors)}
+                    )
+                else:
+                    cleanup = KernelError(
+                        "CLOSE_FAILED",
+                        "resource cleanup failed",
+                        cleanup_errors=tuple(errors),
+                    )
+                    cleanup.__context__ = primary.__context__
+                    primary.__context__ = cleanup
+            context = primary.__context__
+            try:
+                raise primary
+            except BaseException:
+                # An outer handler must not replace the retained diagnostics.
+                primary.__context__ = context
+                raise
         if errors:
-            raise KernelError("CLOSE_FAILED", "engine cleanup failed") from errors[0]
+            raise KernelError(
+                "CLOSE_FAILED", "resource cleanup failed", cleanup_errors=tuple(errors)
+            ) from errors[0][1]
 
     @classmethod
     def _from_header(cls, header: dict[str, Any]) -> Kernel:
