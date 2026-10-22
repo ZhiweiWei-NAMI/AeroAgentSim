@@ -76,8 +76,21 @@ def create_app(
     scenario_root = Path.cwd() if scenario_root is None else scenario_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.presentation_api import (
+        ControlRegistry,
+        Known,
+        Unavailable,
+        admit_presentation_plugins,
+        discover_presentation_plugins,
+        presentation_snapshot,
+        read_controls,
+        verify_presentation_snapshot,
+    )
 
     templates = TemplateRegistry(templates_root)
+    # Check duplicate installed names before loading anything. Pinned reads load
+    # only their recorded names; unrelated new factories cannot activate there.
+    discover_presentation_plugins(names=())
     from .experiments import ExperimentManager
 
     experiments = ExperimentManager(root, templates)
@@ -305,8 +318,21 @@ def create_app(
                 "studio_revision": revision,
                 "workspace_name": draft["name"],
             }
+        try:
+            presentation_plugins = discover_presentation_plugins()
+            admit_presentation_plugins(presentation_plugins, scenario.registry, document=scenario.document)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        source_template = template or workspace_metadata.get("template")
+        pinned_controls = next((item["knobs"] for item in templates.list()
+                                if source_template and item["id"] == source_template["id"]), [])
+        display = presentation_snapshot(presentation_plugins, controls=tuple(pinned_controls))
         storage = RunStorage(path)
         storage.prepare(scenario)
+        storage._atomic("presentation.snapshot.json", display)
+        storage._atomic("manifest.json", {
+            **storage.metadata(), "presentation_snapshot_digest": display["digest"],
+        })
         if workspace_metadata:
             storage._atomic(
                 "manifest.json", {**storage.metadata(), **workspace_metadata}
@@ -336,11 +362,27 @@ def create_app(
         from .feed_index import kpi_result as project_run
         from .feed_index import results_state
         from .storage import summary_configuration
+        from aeroagentsim.presentations import read_presentation_snapshot
 
         metadata = json.loads((path / "manifest.json").read_text())
         document = summary_configuration(path)
         template = metadata.get("template")
         knobs: dict[str, Any] = {}
+        effective_controls: dict[str, Any] = {}
+        display = read_presentation_snapshot(path)
+        presentation_unavailable: str | None = None
+        try:
+            if display is None:
+                selected = discover_presentation_plugins()
+            else:
+                names = tuple(provider["name"] for provider in display["providers"])
+                selected = verify_presentation_snapshot(display, discover_presentation_plugins(names=names))
+        except Exception as exc:
+            if display is None:
+                raise  # Malformed current admission is never a legacy fallback.
+            presentation_unavailable = f"Presentation dependency unavailable ({type(exc).__name__}): {exc}"
+            selected = ()
+        control_readers = {name: reader for plugin in selected for name, reader in plugin.control_readers.items()}
         if template:
             # Template metadata records the controls originally applied. Other
             # editors can change their sources before the version is pinned.
@@ -418,10 +460,46 @@ def create_app(
                 # remains available in the pinned configuration comparison.
                 if type(value) in (str, bool) or numeric(value):
                     knobs[knob["id"]] = value
-        kpis = project_run(path, include_series=False) if include_kpis else None
+            # This additive contract reports unknown sources explicitly. Keep the
+            # legacy knobs projection and historical template metadata unchanged.
+            effective_declared = declared if display is None else display.get("controls", [])
+            effective_readers = control_readers
+            if presentation_unavailable is not None:
+                # Pointers remain readable, but changed/unavailable trusted code
+                # must not reinterpret a pinned run or replay an apply hook.
+                effective_readers = {
+                    control["apply"]: (lambda document, reason=presentation_unavailable: Unavailable(reason))
+                    for control in effective_declared if "apply" in control
+                }
+            observations = read_controls(
+                pinned, ControlRegistry(controls=tuple(effective_declared), readers=effective_readers)
+            )
+            effective_controls = {
+                identifier: (
+                    {"status": "known", "value": observation.value,
+                     "evidence_digest": observation.evidence_digest}
+                    if isinstance(observation, Known)
+                    else {"status": "unavailable", "reason": observation.reason}
+                )
+                for identifier, observation in observations.items()
+            }
+        if presentation_unavailable is None:
+            kpis = project_run(path, include_series=False) if include_kpis else None
+            state = results_state(path, metadata)
+        else:
+            # Cached projections also depend on the pinned presentation selection.
+            # Do not serve stale KPIs or ask the cache to reinterpret this run just
+            # to read its configuration/controls. None is not a measured zero.
+            kpis = None
+            final_cursor = metadata.get("final_cursor")
+            state = {
+                "results_final": False, "results_cursor": None,
+                "final_commit_index": final_cursor - 1 if type(final_cursor) is int and final_cursor >= 1 else None,
+                "results_unavailable": presentation_unavailable,
+            }
         return {
             **metadata,
-            **results_state(path, metadata),
+            **state,
             "title": template["title"] if template else document["id"],
             **(
                 {
@@ -432,6 +510,7 @@ def create_app(
                 else {}
             ),
             "knobs": knobs,
+            "effective_controls": effective_controls,
             "algorithms": document.get("algorithms", {}),
             **(
                 {"kpis": kpis["final"]}

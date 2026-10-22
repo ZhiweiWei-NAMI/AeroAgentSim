@@ -446,25 +446,7 @@ def header(directory: Path) -> dict[str, Any]:
         for name, spec in engines.items():
             if not (isinstance(spec, dict) and isinstance(spec.get("plugin"), str)):
                 continue
-            row: dict[str, Any] = {"id": name, "plugin": spec["plugin"]}
-            if spec["plugin"] == "environment":
-                # Authored gust intervals for the viewer's wind widget (spec §6).
-                intervals = sorted({
-                    (gust["start_ns"], gust["end_ns"])
-                    for profile in spec.get("config", {}).get("profiles", {}).values()
-                    for field_id, authored in profile.items()
-                    if field_id in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}
-                    for gust in authored.get("gusts", [])
-                })
-                if intervals:
-                    gusts: list[list[int]] = []
-                    for start, end in intervals:
-                        if gusts and start <= gusts[-1][1]:
-                            gusts[-1][1] = max(gusts[-1][1], end)
-                        else:
-                            gusts.append([start, end])
-                    row["gusts"] = gusts
-            rows.append(row)
+            rows.append({"id": name, "plugin": spec["plugin"]})
         result["engines"] = rows
     if "epoch" in metadata:
         result["epoch"] = metadata["epoch"]
@@ -493,48 +475,13 @@ def header(directory: Path) -> dict[str, Any]:
                 ],
             }
         )
-    # Frozen geometry has priority even for legacy versions authored before
-    # the city/region conflict diagnostic. Omitting city prevents the REST
-    # header adapter from replacing this scene with Huangpu again.
+    # Generic frozen geometry takes priority over optional compatibility resources.
     from aeroagentsim.authoring.replay import scene_header
+    from aeroagentsim.presentations import apply_header_presentations
 
     result.update(scene_header(directory, ""))
-    # Journaled presentation light also supplies the header's initial scene look.
-    light = next((entity["facts"]["lowalt.light"] for entity in scenario.get("entities", [])
-                  if entity.get("type") == "lowalt:Environment" and "lowalt.light" in entity.get("facts", {})), None)
-    if scenario.get("city") == "huangpu" and not (directory / "studio-scene.json").is_file():
-        from aeroagentsim.assets import installed
-        from aeroagentsim.authoring.demo import city_presentation, detailed_city
-
-        result["city"] = "huangpu"
-        result["cityDetail"] = "detailed" if detailed_city() else "lite"
-        result["assetPacks"] = [{"id": p["id"], "version": p["version"], "title": p["title"]} for p in installed()]
-        result["scene"] = city_presentation()
-        result.setdefault("scene_source", {"kind": "fixed-city", "id": "huangpu", "attribution": result["scene"]["attribution"]})
-        result["presentation"] = [dict(binding) for binding in result["presentation"]]
-        for binding in result["presentation"]:
-            model = {"aas:TrafficRoadVehicle": "car", "aas:TrafficUAV": "uav"}.get(binding["typeId"])
-            if model is not None:
-                binding["visual"] = {
-                    "kind": "model", "scale": 1.0,
-                    "asset": "/v1/studio/demo-assets/models/" + model + ".glb" if detailed_city() else "procedural:" + model,
-                }
-        # v1.1 packs carry a display-model catalog. The viewer (never the capture path)
-        # may then pick a catalogued model per entity; `catalog` only names the model kind.
-        from aeroagentsim.assets import model_catalog
-
-        catalog = model_catalog()
-        if catalog:
-            result["modelCatalog"] = catalog
-            for binding in result["presentation"]:
-                kind = {
-                    "aas:TrafficRoadVehicle": "road_vehicle", "aas:TrafficUAV": "uav", "lowalt:UAV": "uav",
-                }.get(binding["typeId"])
-                if kind is not None:
-                    binding["visual"] = {**binding["visual"], "catalog": kind}
+    apply_header_presentations(result, scenario, directory, registry=registry)
     subject_spec = scenario["registry"]
-    if light in {"day", "dusk"}:
-        result.setdefault("scene", {})["lighting"] = light
     declared = dict(subject_spec.get("message_subjects", {}))
     declared.update(
         {
