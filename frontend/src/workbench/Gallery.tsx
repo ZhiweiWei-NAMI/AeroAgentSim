@@ -9,6 +9,8 @@ import { ApiError, type Project, type WorkbenchApi } from './api';
 import { Markdown } from './Markdown';
 import { linkedGuide, loadGuideSource } from '../console/guides';
 import { DescribeCard } from '../assistant/motion/DescribeCard';
+import { loadPluginInventory, scenarioPluginForTemplate, type PluginInventory as PluginInventoryData, type PluginInventoryResult } from '../plugins/api';
+import { PluginInventory } from '../plugins/PluginInventory';
 import './gallery.css';
 
 const relative = (iso: string, zh: boolean) => {
@@ -25,11 +27,12 @@ const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'sev
 
 /** S8: the heading count is derived from the template list. English spells the number as a
  *  word up to twelve, otherwise numerals; Chinese always uses numerals. Sentence case keeps
- *  the heading's leading capital ("Nine ready-made worlds"). */
+ *  the heading's leading capital ("Nine ready-made worlds"). Chinese stays domain-neutral so
+ *  installed plugins are not described as low-altitude worlds. */
 export function readyWorldsHeading(count: number): { en: string; zh: string } {
   const word = count <= 12 ? NUMBER_WORDS[count] ?? String(count) : String(count);
   const en = `${word} ready-made worlds`;
-  return { en: en.charAt(0).toUpperCase() + en.slice(1), zh: `${count} 个现成的低空世界` };
+  return { en: en.charAt(0).toUpperCase() + en.slice(1), zh: `${count} 个现成场景` };
 }
 
 /** Both translations live in the template's one guide; ordinary Markdown stays intact. */
@@ -56,7 +59,9 @@ export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, 
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [templates, setTemplates] = useState<ScenarioTemplate[]>(), [projects, setProjects] = useState<Project[]>();
   const [error, setError] = useState<string>(), [guide, setGuide] = useState<ScenarioTemplate>();
+  const [pluginResult, setPluginResult] = useState<PluginInventoryResult>(), [pluginsOpen, setPluginsOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const inventory: PluginInventoryData | undefined = pluginResult && pluginResult.ok ? pluginResult.inventory : undefined;
   const dialog = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
@@ -75,12 +80,30 @@ export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, 
     void api.projects(abort.signal).then(setProjects).catch(problem => { if (!abort.signal.aborted) setError(String(problem)); });
     return () => abort.abort();
   }, [api]);
+  // Provenance is additive: an older server (404/501) simply leaves every card unbadged.
+  useEffect(() => {
+    const abort = new AbortController();
+    void loadPluginInventory(api.base, abort.signal).then(result => { if (!abort.signal.aborted) setPluginResult(result); });
+    return () => abort.abort();
+  }, [api.base]);
   const titleOf = (template: ScenarioTemplate) => localized(template, 'title', locale) ?? template.title;
+  const provenanceOf = (template: ScenarioTemplate) => {
+    const plugin = scenarioPluginForTemplate(inventory, template.id);
+    if (!plugin) return undefined;
+    const builtin = plugin.origin === 'builtin', source = plugin.distribution ? `${plugin.name} · ${plugin.distribution}` : plugin.name;
+    return {
+      label: builtin ? L('built-in', '内置') : plugin.distribution ?? plugin.name,
+      title: L(
+        `Declared by ${builtin ? 'built-in' : 'installed'} scenario plugin ${source}. Matched by template id; a configured template root can register the same id.`,
+        `由${builtin ? '内置' : '已安装'}场景插件 ${source} 声明。按模板 ID 匹配；配置的模板根目录可能注册相同 ID。`,
+      ),
+    };
+  };
   // Only derived once the list has loaded; before that the count would read "Zero worlds".
   const heading = templates ? readyWorldsHeading(templates.length) : undefined;
   return <div ref={dialog} className="wb-overlay wb-gallery-overlay" role="dialog" aria-modal="true" aria-label={L('Scenarios and projects', '场景与项目')}
     onKeyDown={event => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (guide) setGuide(undefined); else onClose?.(); }
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (guide) setGuide(undefined); else if (pluginsOpen) setPluginsOpen(false); else onClose?.(); }
       if (event.key !== 'Tab') return;
       const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')];
       const first = controls[0], last = controls.at(-1);
@@ -91,24 +114,32 @@ export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, 
       {guide ? <ScenarioGuide api={api} template={guide} onBack={() => setGuide(undefined)} onCreate={onCreate} /> : <>
         <div className="wb-hero">
           <div style={{ flex: 1 }}>
-            <h1>{heading ? L(heading.en, heading.zh) : L('Ready-made worlds', '现成的低空世界')}</h1>
+            <h1>{heading ? L(heading.en, heading.zh) : L('Ready-made worlds', '现成场景')}</h1>
             <p>{L('Start with a ready-made scenario, or skip this step and configure a blank project yourself. Manual setup does not require a model.', '可以从现成场景开始，也可以跳过这一步，从空白项目手动配置。手动操作无需连接模型。')}</p>
           </div>
           <button className="wb-btn primary" disabled={creating} onClick={() => void createBlank()} data-testid="wb-create-blank">{creating ? L('Creating…', '正在创建…') : L('Skip, create manually', '跳过，手动创建')}</button>
+          <button className="wb-btn" aria-pressed={pluginsOpen} aria-expanded={pluginsOpen} aria-controls="wb-plugin-inventory" onClick={() => setPluginsOpen(open => !open)} data-testid="wb-plugin-toggle">{L('Plugins', '插件')}</button>
           <GalleryLanguage />
           {onClose && <button className="wb-btn" onClick={onClose}>{L('Back to the scene', '返回场景')} <span className="wb-kbd">Esc</span></button>}
         </div>
+        {pluginsOpen && <div id="wb-plugin-inventory">
+          {pluginResult && pluginResult.ok
+            ? <PluginInventory inventory={pluginResult.inventory} onClose={() => setPluginsOpen(false)} />
+            : <div className="wb-plugins" data-testid="wb-plugin-inventory" role="status">
+              <p className="hint">{pluginResult ? L('Plugin inventory is unavailable on this server.', '此服务器不提供插件清单。') : L('Loading plugin inventory…', '正在加载插件清单…')}</p>
+            </div>}
+        </div>}
         {error && <div className="wb-issues" role="alert">{error}</div>}
         {onDescribe && <DescribeCard onStart={onDescribe} imageSrc={`${import.meta.env.BASE_URL}assistant/describe-card.webp`} />}
         <div className="wb-cards">
           {(templates ?? []).map(template => {
-            const category = categoryMetadata(template.category, locale);
+            const category = categoryMetadata(template.category, locale), provenance = provenanceOf(template);
             return <button key={template.id} className="wb-card" data-testid={`wb-template-${template.id}`} onClick={() => setGuide(template)} aria-label={L(`Open the guide for ${titleOf(template)}`, `打开“${titleOf(template)}”指南`)}>
               {template.thumbnail_url ? <img alt="" src={new URL(template.thumbnail_url, api.base + '/').href} loading="lazy" /> : <img alt="" />}
               <div className="wb-card-body">
                 <h4>{titleOf(template)}</h4>
                 <p>{localized(template, 'summary', locale) ?? template.summary}</p>
-                <div className="wb-card-meta"><span className="wb-tag" style={{ background: category.color + '22', color: category.color }}>{category.label}</span><span className="wb-tag">{difficultyLabel(template.difficulty, locale)}</span><span className="wb-tag">{durationLabel(template.duration_s, locale)}</span><span className="wb-tag wb-mono">{template.id}</span></div>
+                <div className="wb-card-meta">{provenance && <span className="wb-tag wb-card-prov" title={provenance.title} data-testid={`wb-template-provider-${template.id}`}>{provenance.label}</span>}<span className="wb-tag" style={{ background: category.color + '22', color: category.color }}>{category.label}</span><span className="wb-tag">{difficultyLabel(template.difficulty, locale)}</span><span className="wb-tag">{durationLabel(template.duration_s, locale)}</span><span className="wb-tag wb-mono">{template.id}</span></div>
               </div>
             </button>;
           })}

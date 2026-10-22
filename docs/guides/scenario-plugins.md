@@ -229,6 +229,14 @@ installed `example-patrol` and the separate `lowalt` provider. `templates`
 should include the new id. The server exposes the same catalog through
 [`GET /v1/plugins`](../reference/http-api.md).
 
+In the console, open the scenario gallery and choose **Plugins / 插件**. The
+panel lists every discovered scenario plugin, including hook-only providers,
+with its origin (`built-in` or `entry-point`), distribution, template ids and
+hook names; a template card also carries a small badge naming the built-in or
+distribution that declares its template id. Matching is by id only, so a
+configured template root can register the same id — read the badge as declared
+provenance, not proof of which directory the running server loaded.
+
 Without `--headless`, open the template in Studio. Interactive mode waits for
 operator time advances/events; use the console and Stop, not an unattended
 headless check. The example retains its scheduled investigation at 55 seconds
