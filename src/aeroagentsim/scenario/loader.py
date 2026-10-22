@@ -52,6 +52,7 @@ from aeroagentsim.integrations.aerograph import (
     compile_registry,
     read_snapshot,
 )
+from aeroagentsim.preparation_api import PreparedScenario
 
 from .paths import source_path
 from .subjects import declarations
@@ -180,6 +181,7 @@ class Scenario:
     ingress: dict[str, EngineIngress] = dataclass_field(default_factory=dict)
     ingress_streams: tuple[IngressStream, ...] = ()
     provenance: str = "lean"
+    preparation: PreparedScenario | None = None
 
 
 def load_registry(
@@ -352,9 +354,14 @@ def load_registry(
 
 
 def load_scenario(
-    source: Path | str | dict[str, Any], *, base: Path | None = None
+    source: Path | str | dict[str, Any], *, base: Path | None = None,
+    final_seed: int | None = None,
 ) -> Scenario:
-    """Read a file or YAML body; never infer domain kinds or missing observations."""
+    """Prepare authored v1/v2 input, then admit registry and authority contracts.
+
+    Resolve an explicit final_seed (including zero) before preparation. Reading
+    historical run evidence is a separate path; this API prepares a new run.
+    """
     try:
         if isinstance(source, dict):
             document = source
@@ -365,7 +372,7 @@ def load_scenario(
             source_text = path.read_text()
             document = obj(yaml.load(source_text, Loader=UniqueLoader), "scenario")
             directory = path.parent
-        return _compile(document, source_text, directory)
+        return _compile(document, source_text, directory, final_seed=final_seed)
     except ScenarioError:
         raise
     except (KeyError, TypeError, ValueError, OSError, yaml.YAMLError) as exc:
@@ -374,27 +381,15 @@ def load_scenario(
         ) from exc
 
 
-def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
-    document = copy.deepcopy(document)
-    _finite(document, "scenario")
-    # Cooperation and per-vehicle task kinds also expand at load time; the expansion may read the
-    # registry snapshot, which is relative to the scenario file.
-    task_extensions = any(
-        isinstance(engine, dict) and engine.get("plugin") == "lowalt_tasks"
-        and any(key in (engine.get("config") or {}) for key in ("cooperation", "vehicle_task_kinds"))
-        for engine in (document.get("engines") or {}).values()
-    )
-    if "algorithms" in document or "generators" in document or task_extensions:
-        from aeroagentsim.packs.lowalt.template import expand
+def _compile(
+    document: dict[str, Any], source: str, base: Path, *, final_seed: int | None = None,
+) -> Scenario:
+    from .preparation import prepare_scenario
 
-        snapshot = (document.get("registry") or {}).get("snapshot")
-        if task_extensions and snapshot is not None:
-            document["registry"]["snapshot"] = str(source_path(text(snapshot, "registry.snapshot"), base))
-        try:
-            expand(document)
-        finally:
-            if task_extensions and snapshot is not None:
-                document["registry"]["snapshot"] = snapshot
+    prepared = prepare_scenario(document, final_seed=final_seed, base=base)
+    # Engine/behaviour admission may elaborate further; do not mutate the
+    # detached preparation result retained as contribution evidence.
+    document = copy.deepcopy(prepared.document)
     behaviour_engines = [
         name
         for name, item in document.get("engines", {}).items()
@@ -438,39 +433,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             bindings["lifecycle"].append(
                 {"controller": engine_id, "type": TYPE, "ids": "behaviour:*"}
             )
-    allowed = {
-        "format",
-        "id",
-        "registry",
-        "entities",
-        "bindings",
-        "engines",
-        "presentation",
-        "run",
-        "outputs",
-        "origin",
-        "clock_mappings",
-        "ingress_streams",
-        "behaviours",
-        "provenance",
-        "algorithms",
-        "generators",
-        "event_narratives",
-        "city",
-    }
-    if extra := set(document) - allowed:
-        raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
-    if "city" in document and document["city"] != "huangpu":
-        raise ScenarioError("city: expected huangpu")
-    if document.get("format") != FORMAT:
-        raise ScenarioError(f"format: expected {FORMAT}")
-    if "algorithms" in document:
-        algorithms = obj(document["algorithms"], "algorithms")
-        slots = {"allocation", "path_planning", "conflict_resolution", "charging"}
-        if set(algorithms) - slots:
-            raise ScenarioError("algorithms: unknown algorithm slot")
-        for slot, algorithm in algorithms.items():
-            text(algorithm, f"algorithms.{slot}")
     if "event_narratives" in document:
         from aeroagentsim.services.narratives import validate_declarations
 
@@ -501,14 +463,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             ) from exc
         refs.append(EntityRef(run_id, "0", entity_id, 0, type_id))
         initial[entity_id] = obj(item["facts"], f"entities[{index}].facts")
-        if (
-            "vehicle_class" in item
-            and "lowalt.vehicle_class" in initial[entity_id]
-            and item["vehicle_class"] != initial[entity_id]["lowalt.vehicle_class"]
-        ):
-            raise ScenarioError(
-                f"entities[{index}].vehicle_class: must agree with lowalt.vehicle_class"
-            )
         for field, value in initial[entity_id].items():
             path = f"entities.{entity_id}.facts.{field}"
             try:
@@ -947,4 +901,5 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         ingress,
         tuple(streams.values()),
         provenance,
+        prepared,
     )

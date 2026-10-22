@@ -2,23 +2,35 @@
 
 A scenario is the single authored input to the runtime. The loader in
 [`src/aeroagentsim/scenario/loader.py`](../../src/aeroagentsim/scenario/loader.py)
-compiles it into a pinned registry, a binding manifest, and engine configs
-before any kernel or engine starts. This page lists the accepted fields and
-shapes. Authoring errors are reported with their paths at load; engine and external-service errors can also occur during execution.
+resolves the final seed, prepares the document, then compiles its registry,
+binding manifest and engine configs before any kernel or engine starts.
+Authoring errors are reported at load; engine and external-service errors can
+also occur during execution.
 
 ## Top-level document
 
-Format identifier: `format: aeroagentsim.scenario/v1` (exact string required).
+The exact `format` string selects preparation admission; it is independent of
+the preparation plugin API version:
+
+| Format | Preparation selection |
+| --- | --- |
+| `aeroagentsim.scenario/v1` | Existing closed field set and fixed builtin `lowalt-legacy/v1` compatibility. No `preparation` key or installed-preparer selection. |
+| `aeroagentsim.scenario/v2` | Requires `preparation: {plugin, api_version: 1, config: {}}`; optional `preparation.resources` declares additional input files. Selection uses the `aeroagentsim.preparers` family. |
+
+See [preparation plugins](preparation-plugins.md) for the callable contract,
+resource bytes and evidence boundaries. The following fields describe the
+prepared scenario; a preparer may elaborate authored shorthand into this shape.
 
 | Key | Required | Shape / notes |
 | --- | --- | --- |
-| `format` | yes | Must equal `aeroagentsim.scenario/v1`. |
+| `format` | yes | Exact admitted v1 or v2 format above; preparation preserves it. |
+| `preparation` | v2 only, required | `{plugin, api_version, config}` + optional `resources`; rejected in v1. Not an engine declaration. |
 | `id` | yes | Nonempty string; scenario identity. |
 | `registry` | yes | Mapping; exactly one of `snapshot` or `compile` (below). |
-| `entities` | yes | List of `{id, type, facts}` + optional `label`, `business`, `vehicle_class`; unique ids; `type` must be a registered type; each fact validated against its field schema and must apply to the type. Optional metadata fields, when present, must be nonempty strings and are exposed verbatim in the pinned scenario and the viewer header; nothing is invented for entities that omit them. |
+| `entities` | yes | List of `{id, type, facts}` + optional `label`, `label_zh`, `business`, `vehicle_class`; unique ids; `type` must be a registered type; each fact validated against its field schema and must apply to the type. Optional metadata fields, when present, must be nonempty strings and are exposed verbatim in the pinned scenario and the viewer header; nothing is invented for entities that omit them. |
 | `bindings` | yes | `{lifecycle}` required; optional `rules`, `exact`, `commands`, `cohorts`, `relations`, `obligations`, `samples`, `cancel_sources`, `lifecycle_participants` (table below). |
 | `engines` | yes | Mapping of engine id → `{plugin, config}`, optional `ingress`. Configs are plugin-specific. |
-| `run` | yes | `{pacing, seed, until_ns, advance_ns}`; `pacing` is `fast` or `realtime`; seed/`until_ns` are integers, `advance_ns >= 1`. |
+| `run` | yes | `{pacing, seed, until_ns, advance_ns}`; `pacing` is `fast` or `realtime`; seed/`until_ns` are integers ≥ 0, `advance_ns >= 1`. Authored `run` is required before preparation. |
 | `outputs` | yes | `{durability}`; `flush` or `fsync`. |
 | `presentation` | no | List of viewer bindings; see below. |
 | `origin` | no | `{lat, lon, alt}`; required when any presentation uses `wgs84`. |
@@ -26,11 +38,56 @@ Format identifier: `format: aeroagentsim.scenario/v1` (exact string required).
 | `ingress_streams` | no | Named stream declarations; see below. |
 | `behaviours` | no | Behaviour-package specs; requires exactly one `behaviour` engine. |
 | `provenance` | no | `lean` (default) or `full`. |
+| `algorithms`, `generators` | no | Legacy pack shorthand interpreted by `lowalt-legacy`; the builtin `explicit` preparer rejects these keys. |
+| `event_narratives` | no | Authored event display declarations; see [viewer feed](viewer-feed.md#kpis-and-business-narratives). |
+| `city` | no | Display metadata; supported values are preparer/presentation policy, not generic loader dispatch. |
 
 Unknown top-level keys are rejected. The YAML loader is YAML-1.2-style for
 booleans (`yes`/`no`/`on`/`off` are strings, `true`/`false` are booleans),
 rejects duplicate keys and non-string mapping keys, and rejects any
 non-finite numeric value anywhere in the document.
+
+## Preparation and final seed
+
+`load_scenario(source, *, base=None, final_seed=None)` loads a new run or preview.
+`None` uses authored `run.seed`; an explicit `0` is a real override. The final
+seed must be an actual nonnegative integer, not a boolean, and is resolved before
+any preparer samples entities or expands configuration. For a mapping input,
+`base` resolves resource paths; file inputs use their parent directory.
+
+### Opt-in scenario/v2
+
+For v2, select a preparer explicitly:
+
+```yaml
+# Fragment; retain the scenario's registry, entities, bindings, engines and run.
+format: aeroagentsim.scenario/v2
+preparation:
+  plugin: explicit
+  api_version: 1
+  config: {}
+```
+
+The builtin `explicit` preparer is an identity, not lowalt inference. To opt into
+the historical expansion policy in v2, select `plugin: lowalt-legacy` with the
+same API version and empty config. V1 instead uses the fixed builtin adapter,
+even if an installed entry point replaces that name for v2 discovery. Generic
+compilation does not dispatch by lowalt plugin names, city or vehicle class;
+pack-specific compatibility checks belong to the selected preparer.
+
+[`TemplateRegistry.apply`](../../src/aeroagentsim/authoring/templates.py) validates
+a disposable preview but returns a `PreparedTemplate` whose `.document` remains
+the authored, knob-applied input. `.prepare(final_seed=0)` returns a new `Scenario`
+without replacing that input. Prepare each replicate from the authored document;
+changing only the seed of an already sampled preview does not regenerate its
+fleet. Existing experiment cells apply seed/horizon overrides before loading.
+
+The returned `Scenario.preparation` retains preparation output, contribution
+selection evidence and resource hashes separately from `Scenario.document`.
+Generic behaviour/registry compilation may elaborate the latter further. This
+in-memory evidence is **not yet a common durable run lock**; see the
+[evidence limits](preparation-plugins.md#evidence-and-persistence-boundary).
+Historical run reading does not call preparers.
 
 ## Numeric strictness
 
@@ -46,8 +103,9 @@ exactly to nonnegative integer nanoseconds (see
 
 | Key | Shape |
 | --- | --- |
-| `snapshot` | Path to a registry snapshot (relative to the scenario file). Snapshots work without a private AeroGraph checkout; the run pins the compiled types/fields/messages/relations it contains. |
-| `compile` | `{root, types}` + optional `fields, relations, policy`; compiles from an AeroGraph source tree at load. |
+| `snapshot` | Path to a registry snapshot (relative to the scenario file). Snapshots work without a private AeroGraph checkout; existing run artifacts retain its compiled descriptors. Its input bytes are also supplied to preparation as `registry.snapshot`. |
+| `compile` | `{root, types}` + optional `fields, relations, policy`; compiles from an AeroGraph source tree at load. Compilation is after preparation, not part of a preparer's resource manifest. |
+| `digest` | Accepted legacy claim; currently **not compared** against the loaded/effective registry digest. Preparation resource hashes do not add enforcement of this field. |
 | `types[]` | `{id, parents, abstract}` with an explicit bool `abstract`. |
 | `fields[]` | `{id, type, schema, metadata}`; `type` is the declaring type id. |
 | `messages[]` | `{id, kind, schema}` + optional `result_schema, feedback_schema, cancel_support, subjects`. |
@@ -100,22 +158,23 @@ explicit valid value.
 
 ## Fleet generators
 
-When `generators` is present (currently only the low-altitude fleet declaration
-`generators.fleet`), the loader expands it into concrete entities before normal
-validation. Required keys are `count`, `prefix`, `type`, `facts`, `starts`,
-`spacing_m`. Optional metadata keys are:
+The `lowalt-legacy` preparer expands the historical low-altitude fleet declaration
+`generators.fleet` into concrete entities before generic validation. This policy
+applies implicitly to v1 or by explicit v2 selection; it is not an expansion
+performed by the builtin `explicit` preparer. Required keys are `count`, `prefix`,
+`type`, `facts`, `starts`, `spacing_m`. Optional metadata keys are:
 
 | Key | Notes |
 | --- | --- |
-| `label` | Nonempty format string; `{index}` (the only substituted field) is the 1-based position, e.g. `"Drone P{index}"` → `Drone P1`, `Drone P2`, … |
+| `label`, `label_zh` | Nonempty format strings; `{index}` (the only substituted field) is the 1-based position, e.g. `"Drone P{index}"` → `Drone P1`, `Drone P2`, … |
 | `business` | Nonempty string copied verbatim to every generated entity. |
 | `vehicle_class` | Nonempty string copied verbatim to every generated entity; it must agree with the authored `lowalt.vehicle_class` fact, which remains the authoritative motion/energy class. |
 
 Generated entities carry `id` (`prefix` + 1-based index), `type`, the expanded
 `facts`, and any provided metadata field. No metadata value is defaulted or
 invented; an entity without the key stays without it in the pinned scenario and
-the viewer header (`entities` array: `id`, `type`, and `label`/`business`/
-`vehicle_class` only when authored).
+the viewer header (`entities` array: `id`, `type`, and `label`/`label_zh`/
+`business`/`vehicle_class` only when authored).
 
 ## Presentation
 
@@ -139,7 +198,16 @@ engine are appended automatically. See
 
 A started run directory (`runs/<name>/`) contains `journal.jsonl` (the WAL),
 `manifest.json` (status, ids), `index.json`, `scenario.yaml`/`scenario.json`,
-`registry.snapshot.json` and `runtime.registry.json` — saved for this run. The journal is the execution record; configuration alone does not reconstruct live external inputs. See [HTTP API](http-api.md) and [CLI](cli.md).
+`registry.snapshot.json` and `runtime.registry.json` — saved for this run.
+Existing source/effective-document persistence is unchanged: storage writes
+`Scenario.source` to `scenario.yaml` and the runtime `Scenario.document` to
+`scenario.json`. Host transformations such as capture-storage scoping can replace
+the source, so the YAML is not a universal byte-for-byte copy of the original file.
+
+Preparation does not currently persist a separate contribution/resource lock in
+these artifacts; durable common-lock wiring is a follow-up. The journal remains
+the execution record, and configuration alone does not reconstruct live external
+inputs. See [HTTP API](http-api.md) and [CLI](cli.md).
 
 ## Example
 
@@ -162,12 +230,16 @@ engines:
       capabilities: {}
 ```
 
-Optional `city: huangpu` selects the shared city display in local ENU metres.
-It does not change entity positions, field ownership or simulation physics.
+The shipped presentation convention `city: huangpu` selects the shared city
+display in local ENU metres. It does not change entity positions, field ownership
+or simulation physics. The `lowalt-legacy` preparer retains the historical
+`huangpu`-only check; the generic loader does not impose that pack policy.
 See [visualization](../guides/visualization.md#shared-huangpu-city).
 
-For lowalt entities, authored `vehicle_class` must agree with the authoritative
-`facts.lowalt.vehicle_class`; metadata cannot change the vehicle physics class.
+The same compatibility preparer requires authored `vehicle_class` to agree with
+`facts.lowalt.vehicle_class` when both are present. This is a lowalt policy, not
+selection of physics by generic metadata; other preparers must define their own
+domain checks and still pass generic schema/ownership admission.
 
 ## Low-altitude operational rules
 
