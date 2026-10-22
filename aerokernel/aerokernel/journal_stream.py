@@ -1,19 +1,27 @@
-"""Streaming strict JSONL admission with legacy truncated-tail recovery."""
+"""Streaming decode-only JSONL admission with legacy truncated-tail recovery."""
 
 from __future__ import annotations
 
 import io
-import sys
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, BinaryIO, cast
+from typing import Any, BinaryIO
 
-from .errors import KernelError, ResourceLimit
-from .values import ResourceBudget, parse_json
+from .errors import ResourceLimit
+from .journal_codec import (
+    JournalHeaderError,
+    JournalTruncatedError,
+    decode_journal_line,
+)
+from .values import ResourceBudget
 
 
 class RecordReader(Iterator[dict[str, Any]]):
-    """Own one bounded reader; retain only the current decoded record."""
+    """Decode/admit wire records, not semantic effects; retain only one record.
+
+    This reads disk, not a live acknowledged cut. Use journal.replay for semantic
+    verification; neither operation authenticates the source or proves success.
+    """
 
     def __init__(
         self,
@@ -56,69 +64,20 @@ class RecordReader(Iterator[dict[str, Any]]):
         if not line:
             self.finished = True
             if self.header is None:
-                raise KernelError("JOURNAL_HEADER", "missing complete journal header")
+                raise JournalHeaderError("missing complete journal header")
             raise StopIteration
         if not line.endswith(b"\n"):
             self.finished = True
             self.incomplete = True
             if not self.recover_truncated:
-                raise KernelError("JOURNAL_TRUNCATED", "last record lacks LF")
+                raise JournalTruncatedError()
             if self.header is None:
-                raise KernelError("JOURNAL_HEADER", "missing complete journal header")
+                raise JournalHeaderError("missing complete journal header")
             raise StopIteration
-        if self.header is None and self.budget is None:
-            digit_limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
-            bootstrap = ResourceBudget(
-                digit_limit or max(4096, len(line)), len(line), sys.getrecursionlimit()
-            )
-            tree = parse_json(line, bootstrap)
-            if not isinstance(tree, dict) or not isinstance(tree.get("budget"), dict):
-                raise KernelError("JOURNAL_HEADER", "header lacks resource budgets")
-            try:
-                self.budget = ResourceBudget(**cast(dict[str, Any], tree["budget"]))
-            except (TypeError, KeyError) as exc:
-                raise KernelError(
-                    "JOURNAL_HEADER", "malformed resource budgets"
-                ) from exc
-        frame_budget = self.budget
-        if self.header is not None and self.header.get("provenance") == "lean":
-            assert frame_budget is not None
-            frame_budget = ResourceBudget(
-                frame_budget.integer_digits,
-                frame_budget.frame_bytes,
-                frame_budget.nesting_depth * 2 + 2,
-            )
-        record = parse_json(line, frame_budget)
+        record, self.budget = decode_journal_line(line, self.budget, self.header)
         self.last_line = line
-        if not isinstance(record, dict):
-            raise KernelError("JOURNAL_RECORD", "record must be an object")
         if self.header is None:
-            if record.get("major") == 2:
-                from .journal_codec import CODEC, LEAN_CODEC
-
-                if (
-                    type(record["major"]) is not int
-                    or type(record.get("minor")) is not int
-                    or record["minor"] not in {0, 1}
-                    or record.get("codec")
-                    != (CODEC if record["minor"] == 0 else LEAN_CODEC)
-                    or type(record.get("semantic_version")) is not int
-                    or (
-                        record["semantic_version"] not in {2, 3}
-                        if record["minor"] == 0
-                        else record["semantic_version"] != 4
-                        or record.get("provenance") != "lean"
-                    )
-                ):
-                    raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
             self.header = record
-        elif self.header.get("major") == 2:
-            from .journal_codec import decode_frame
-
-            assert self.budget is not None
-            record = decode_frame(
-                record, self.budget, lean=self.header.get("provenance") == "lean"
-            )
         return record
 
     def close(self) -> None:
@@ -139,7 +98,7 @@ def iter_records(
     recover_truncated: bool = False,
     budget: ResourceBudget | None = None,
 ) -> Iterator[dict[str, Any]]:
-    """Expand and validate one wire record at a time; no engine calls."""
+    """Decode/admit one wire record at a time, without semantic replay checks."""
     with RecordReader(
         data, recover_truncated=recover_truncated, budget=budget
     ) as reader:

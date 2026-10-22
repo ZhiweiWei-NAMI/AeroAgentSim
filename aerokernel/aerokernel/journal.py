@@ -1,4 +1,4 @@
-"""JSONL WAL and engine-free 1.1/1.2/1.3 replay, including partial live cuts."""
+"""JSONL WAL, decode-only readers and engine-free semantic prefix replay."""
 
 from __future__ import annotations
 
@@ -6,14 +6,13 @@ import builtins
 import io
 import json
 import os
-import sys
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, BinaryIO, cast
 
 from .errors import KernelError
-from .journal_stream import iter_records
-from .values import ResourceBudget, canonical_json, normalize, parse_json
+from .journal_stream import RecordReader, iter_records
+from .values import ResourceBudget, canonical_json, normalize
 
 __all__ = ["Journal", "iter_records", "read_records", "replay", "prefixes"]
 
@@ -263,82 +262,25 @@ def read_records(
     recover_truncated: bool = False,
     budget: ResourceBudget | None = None,
 ) -> tuple[list[dict[str, Any]], bool]:
-    """Never skip a corrupt complete line; recover only an incomplete final line."""
-    initial_budget = ResourceBudget() if budget is None else budget
-    incomplete = bool(data and not data.endswith(b"\n"))
-    if incomplete and not recover_truncated:
-        raise KernelError("JOURNAL_TRUNCATED", "last record lacks LF")
-    lines = data.splitlines(keepends=True)
-    if incomplete:
-        lines.pop()
-    records: list[dict[str, Any]] = []
-    active_budget = initial_budget
-    for line in lines:
-        if not line.endswith(b"\n"):
-            raise KernelError("JOURNAL_FRAME", "record must be LF-terminated")
-        if not records and budget is None:
-            # Discover only the bootstrap policy; then validate the entire header
-            # again under that policy. CPython's active decimal/recursion limits
-            # remain untouched, matching supported in-process configurations.
-            digit_limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
-            bootstrap = ResourceBudget(
-                digit_limit or max(4096, len(line)), len(line), sys.getrecursionlimit()
-            )
-            header_tree = parse_json(line, bootstrap)
-            if not isinstance(header_tree, dict) or not isinstance(
-                header_tree.get("budget"), dict
-            ):
-                raise KernelError("JOURNAL_HEADER", "header lacks resource budgets")
-            try:
-                active_budget = ResourceBudget(
-                    **cast(dict[str, Any], header_tree["budget"])
-                )
-            except (TypeError, KeyError) as exc:
-                raise KernelError(
-                    "JOURNAL_HEADER", "malformed resource budgets"
-                ) from exc
-        frame_budget = active_budget
-        if records and records[0].get("provenance") == "lean":
-            frame_budget = ResourceBudget(
-                active_budget.integer_digits,
-                active_budget.frame_bytes,
-                active_budget.nesting_depth * 2 + 2,
-            )
-        record = parse_json(line, frame_budget)
-        if not isinstance(record, dict):
-            raise KernelError("JOURNAL_RECORD", "record must be an object")
-        if records and records[0].get("major") == 2:
-            from .journal_codec import decode_frame
+    """Eager decode-only facade; not semantic verification (use replay for that).
 
-            record = decode_frame(
-                record, active_budget, lean=records[0].get("provenance") == "lean"
-            )
-        records.append(record)
-        if len(records) == 1 and record.get("major") == 2:
-            from .journal_codec import CODEC, LEAN_CODEC
-
-            if record.get("codec") != (
-                LEAN_CODEC if record.get("minor") == 1 else CODEC
-            ):
-                raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
-        if len(records) == 1 and budget is None:
-            raw_budget = record.get("budget")
-            if not isinstance(raw_budget, dict):
-                raise KernelError("JOURNAL_HEADER", "header lacks resource budgets")
-            active_budget = ResourceBudget(
-                cast(int, raw_budget["integer_digits"]),
-                cast(int, raw_budget["frame_bytes"]),
-                cast(int, raw_budget["nesting_depth"]),
-            )
-    if not records:
-        raise KernelError("JOURNAL_HEADER", "missing complete journal header")
-    return records, incomplete
+    Never skip a corrupt complete line; recover only an incomplete final line.
+    The returned boolean describes truncation, not semantic prefix settlement.
+    """
+    with RecordReader(
+        data, recover_truncated=recover_truncated, budget=budget
+    ) as reader:
+        records = list(reader)
+        return records, reader.incomplete
 
 
 def replay(data: bytes | Path, *, recover_truncated: bool = False) -> Kernel:
-    """Reconstruct a read-only valid prefix without engines, clocks or RNG calls."""
+    """Admit wire records and semantically verify/reconstruct their recorded prefix.
+
+    No engines, clocks or RNG calls; no live ACK, authentication or run-success
+    claim. Recovery may adopt complete disk records whose ACK was lost.
+    """
     from .coordinator import Kernel
-    from .journal_stream import RecordReader
 
     with RecordReader(data, recover_truncated=recover_truncated) as reader:
         result = Kernel._from_header(next(reader))
