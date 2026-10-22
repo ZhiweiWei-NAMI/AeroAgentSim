@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop, dev/lowalt]
+    branches: [main]
   pull_request:
-    branches: [main, develop, dev/lowalt]
+    branches: [main]
   workflow_dispatch:
   workflow_call:
 
@@ -55,11 +55,14 @@ jobs:
         run: |
           # Canonical-source compatibility cases run in the AeroGraph job below.
           python -m pytest tests/platform tests/integrations/aerograph/test_compiler.py \
-            tests/adapters tests/agents/test_provider.py tests/assistant tests/behaviours \
-            tests/observations tests/packs tests/authoring/test_snapshot_catalog.py \
+            tests/adapters tests/agents tests/assistant tests/behaviours \
+            tests/observations tests/packs tests/services tests/authoring \
+            --ignore=tests/authoring/test_contracts.py \
+            --ignore=tests/authoring/test_replay_scene.py \
             tests/demos/traffic_accident/test_public_demo.py \
             tests/demos/traffic_accident/test_packaging.py \
             --deselect=tests/observations/test_artifact_service.py::test_service_output_scope_without_mutating_input \
+            --deselect=tests/authoring/test_portable_yaml.py::test_region_roundtrip_preserves_parameters_geometry_crop_and_real_network \
             --deselect=tests/assistant/test_blank_projects.py::test_blank_centre_charging_station_compiles_validates_and_applies[aerograph] \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=${{ runner.temp }}/platform/tests
@@ -71,6 +74,8 @@ jobs:
         run: |
           python -m pip check
           aeroagentsim serve --help
+          aeroagentsim plugins > /dev/null
+          python tools/docs/check_links.py
           python -c "from aeroagentsim import Simulation; import sys; assert not any(m.startswith(('airfogsim', 'aero_bench', 'simpy')) for m in sys.modules)"
 
   # Source-dependent suites use the pinned real AeroGraph files (read-only).
@@ -116,6 +121,7 @@ jobs:
         run: |
           python -m pytest tests/platform tests/agents tests/integrations/aerograph \
             tests/assistant/test_blank_projects.py \
+            tests/authoring/test_contracts.py tests/authoring/test_replay_scene.py \
             tests/behaviours tests/observations \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=${{ runner.temp }}/platform-graph/tests
