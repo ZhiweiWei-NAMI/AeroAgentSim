@@ -132,6 +132,7 @@ class RunStorage:
         *,
         error: str | None = None,
         waiting: dict[str, Any] | None = None,
+        acknowledged_prefix: tuple[int, int] | None = None,
     ) -> None:
         result = self.metadata()
         result["status"] = status
@@ -146,8 +147,12 @@ class RunStorage:
             "interrupted",
             "input_timeout",
         }:
-            self.index()
-            prefix = committed_prefix(self.directory)
+            # A session supplies the kernel ACK even without a worker sidecar.
+            prefix = (
+                {"bytes": acknowledged_prefix[0], "index": acknowledged_prefix[1]}
+                if acknowledged_prefix is not None else committed_prefix(self.directory)
+            )
+            self.index(through_bytes=prefix["bytes"] if prefix is not None else None)
             result["final_cursor"] = max(
                 1, prefix["index"] + 1 if prefix is not None
                 else self.entries[-1]["index"] + 1 if self.entries else 1
