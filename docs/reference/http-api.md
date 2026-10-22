@@ -49,11 +49,17 @@ Terminal statuses are `completed`, `stopped`, `faulted`, `interrupted`,
 
 | Endpoint | Method | Semantics |
 | --- | --- | --- |
-| `/v1/plugins` | GET | Plugin catalog: `{api_version, scenarios: [{name, origin, distribution, templates, apply_hooks}], engines, algorithms, models}`. `api_version` is `1`. |
+| `/v1/plugins` | GET | Plugin catalog: `{api_version, scenarios, engines, algorithms, models}`. `api_version` is `1`. Every row has `{name, origin, distribution, status}`; scenario rows add `templates` and `apply_hooks`, and duplicate rows add `conflict`. |
 
 Scenario entries describe discovered builtins and installed plugins in
-`aeroagentsim.scenarios`. Installed names take precedence over matching builtins;
-duplicate installed names are errors. The CLI counterpart is
+`aeroagentsim.scenarios`. Installed names take precedence over matching builtins.
+Installed engine, algorithm, model and scenario names are grouped; a duplicated
+name is listed once with `status: "duplicate"` and `conflict` holding every
+distribution name, while every other row has `status: "ok"`. Runtime discovery
+rejects duplicate installed names. Because scenario discovery fails before
+loading duplicates, the inventory then builds the scenario section from
+entry-point metadata with empty `templates`/`apply_hooks` and keeps builtins
+listed. The CLI counterpart is
 [`aeroagentsim plugins`](cli.md#aeroagentsim-plugins). See
 [plugin contracts](plugin-contracts.md) for the plugin APIs.
 

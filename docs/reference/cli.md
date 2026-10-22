@@ -30,10 +30,14 @@ aeroagentsim plugins
 ```
 
 Prints the plugin catalog as JSON: `{api_version, scenarios, engines,
-algorithms, models}`. `api_version` is `1`; each scenario entry has
-`{name, origin, distribution, templates, apply_hooks}`. Scenario discovery merges
+algorithms, models}`. `api_version` is `1`. Every row has
+`{name, origin, distribution, status}`; scenario rows add `templates` and
+`apply_hooks`, and duplicate rows add `conflict`. Scenario discovery merges
 builtins with installed `aeroagentsim.scenarios` entries; installed names take
-precedence and duplicate installed names are errors. See
+precedence and runtime discovery rejects duplicate installed names. The inventory
+reports a duplicated name once with `status: "duplicate"` and `conflict` (all
+distribution names) instead of collapsing it; scenario rows then use entry-point
+metadata with empty `templates`/`apply_hooks` and builtins stay listed. See
 [plugin contracts](plugin-contracts.md) and the matching
 [`GET /v1/plugins` response](http-api.md#plugin-catalog).
 
