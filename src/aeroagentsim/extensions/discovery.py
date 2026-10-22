@@ -63,6 +63,7 @@ class DiscoveryResult(Generic[T]):
 
     ``providers`` is empty in metadata-only mode. ``contributions`` retains
     shadowed builtins and every duplicate, in installation order within a name.
+    ``conflicts`` follows second-declaration order, matching legacy duplicate errors.
     ``resolve`` supports lazy catalogs; callable engine factories are loaded,
     not invoked. Executable objects are not copied or sandboxed; their contracts
     remain responsible for snapshotting any mutable declaration data.
@@ -177,9 +178,13 @@ def discover(
         raise TypeError("discovery expected_type is required when loading")
     builtin_values = dict(builtins)
     installed: dict[str, list[Any]] = {}
+    duplicate_positions: dict[str, int] = {}
     declared = entry_points(group=group) if entries is None else entries
-    for entry in declared:
-        installed.setdefault(entry.name, []).append(entry)
+    for position, entry in enumerate(declared):
+        declarations = installed.setdefault(entry.name, [])
+        declarations.append(entry)
+        if len(declarations) == 2:
+            duplicate_positions[entry.name] = position
     # Metadata diagnostics must survive malformed declarations. Real entry-point
     # names are text; the key also lets runtime admission diagnose non-text names.
     names = tuple(sorted(set(builtin_values) | set(installed), key=str))
@@ -192,6 +197,9 @@ def discover(
         contributions.extend(records)
         if len(records) > 1:
             conflicts.append(EntryPointConflict(group, name, records))
+    # Keep sorted provider/inventory rows, but report the first duplicate seen.
+    # Collect all evidence before rejection, including declarations after the second.
+    conflicts.sort(key=lambda conflict: duplicate_positions[conflict.name])
 
     def resolve(name: str) -> T:
         # Enumeration is permissive, but even lazy resolution admits the name

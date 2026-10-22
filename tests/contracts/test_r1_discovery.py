@@ -207,6 +207,44 @@ def test_metric_fingerprint_keeps_exact_legacy_duplicate_error(
     assert isinstance(error.value.__cause__, DuplicateEntryPointError)
 
 
+@pytest.mark.parametrize(("family", "fingerprint"), [
+    ("scenarios", False), ("metrics", False), ("metrics", True),
+])
+@pytest.mark.parametrize("names", [
+    ("zulu", "zulu", "alpha", "alpha"),
+    ("alpha", "zulu", "zulu", "alpha", "zulu"),
+])
+def test_multiple_conflicts_report_exact_first_encountered_legacy_error(
+    monkeypatch: pytest.MonkeyPatch, family: str, fingerprint: bool,
+    names: tuple[str, ...],
+) -> None:
+    _builtins(monkeypatch, family, {"aaa-builtin": _forbidden})
+    loads: list[str] = []
+    entries = tuple(
+        _entry(name, _forbidden, distribution=f"dist-{position}", loads=loads)
+        for position, name in enumerate(names)
+    )
+    _install(monkeypatch, family, *entries)
+    with pytest.raises(ValueError) as error:
+        if fingerprint:
+            metrics_api.metric_plugin_fingerprint(())
+        else:
+            _discover(family)
+    assert type(error.value) is ValueError
+    assert str(error.value) == {
+        "scenarios": "Duplicate aeroagentsim.scenarios entry point name: 'zulu'",
+        "metrics": "Duplicate aeroagentsim.metrics entry point name: 'zulu'",
+    }[family]
+    cause = error.value.__cause__
+    assert isinstance(cause, DuplicateEntryPointError)
+    assert cause.conflict.group == f"aeroagentsim.{family}"
+    assert cause.conflict.name == "zulu"
+    assert tuple(record.distribution for record in cause.conflict.entries) == tuple(
+        entry.dist.name for entry in entries if entry.name == "zulu"
+    )
+    assert loads == []
+
+
 @pytest.mark.parametrize("family", FAMILIES)
 @pytest.mark.parametrize("value", [None, object(), 1, True])
 def test_wrong_type_fails_without_builtin_fallback(
@@ -409,6 +447,44 @@ def test_metadata_mode_keeps_all_conflicts_without_loading(name: str) -> None:
     assert loads == []
 
 
+@pytest.mark.parametrize("names", [
+    ("zulu", "zulu", "alpha", "alpha", "zulu"),
+    ("alpha", "zulu", "zulu", "alpha", "zulu"),
+])
+def test_conflicts_follow_second_occurrences_while_metadata_stays_sorted(
+    names: tuple[str, ...],
+) -> None:
+    loads: list[str] = []
+    entries = tuple(
+        _entry(name, _forbidden, distribution=f"dist-{position}", loads=loads)
+        for position, name in enumerate((*names, "MixedCase"))
+    )
+    result = discover(
+        "aeroagentsim.scenarios", {"middle": _forbidden},
+        entries=iter(entries), expected_type=ScenarioPlugin, load=False,
+    )
+    assert result.names == ("MixedCase", "alpha", "middle", "zulu")
+    assert result.providers == ()
+    assert tuple(record.name for record in result.contributions) == (
+        "MixedCase", "alpha", "alpha", "middle", "zulu", "zulu", "zulu",
+    )
+    assert tuple(conflict.name for conflict in result.conflicts) == ("zulu", "alpha")
+    for conflict in result.conflicts:
+        assert tuple(record.distribution for record in conflict.entries) == tuple(
+            entry.dist.name for entry in entries if entry.name == conflict.name
+        )
+    with pytest.raises(DuplicateEntryPointError) as error:
+        result.require_unique()
+    assert error.value.conflict == result.conflicts[0]
+    with pytest.raises(DuplicateEntryPointError) as error:
+        discover(
+            "aeroagentsim.scenarios", {"middle": _forbidden},
+            entries=iter(entries), expected_type=ScenarioPlugin,
+        )
+    assert error.value.conflict == result.conflicts[0]
+    assert loads == []
+
+
 @pytest.mark.parametrize("name", ["MixedCase", "contains.dot", "", None, True])
 def test_metadata_mode_retains_malformed_names_but_resolution_rejects_them(
     name: Any,
@@ -588,13 +664,17 @@ for prefix in (
 
 
 @pytest.mark.parametrize("family", (*FAMILIES, "algorithms", "models"))
+@pytest.mark.parametrize("names", [
+    ("external", "external", "external"),
+    ("zulu", "zulu", "alpha", "alpha", "zulu"),
+])
 def test_inventory_preserves_every_duplicate_distribution(
-    monkeypatch: pytest.MonkeyPatch, family: str,
+    monkeypatch: pytest.MonkeyPatch, family: str, names: tuple[str, ...],
 ) -> None:
-    entries = (
-        _entry("external", _forbidden, distribution="first-dist"),
-        _entry("external", _forbidden, distribution="second-dist"),
-        _entry("external", _forbidden, distribution=None),
+    distributions = ("first-dist", "second-dist", None, "second-dist", "first-dist")
+    entries = tuple(
+        _entry(name, _forbidden, distribution=distribution)
+        for name, distribution in zip(names, distributions)
     )
     _builtins(monkeypatch, "scenarios", {})
 
@@ -604,10 +684,13 @@ def test_inventory_preserves_every_duplicate_distribution(
     monkeypatch.setattr(inventory_service, "entry_points", query)
     monkeypatch.setattr(plugin_api, "entry_points", query)
     rows = inventory_service.plugin_inventory()[family]
-    matches = [row for row in rows if row["name"] == "external"]
-    assert len(matches) == 1
-    assert matches[0]["status"] == "duplicate"
-    assert matches[0]["conflict"] == ["first-dist", "second-dist", None]
+    for name in set(names):
+        matches = [row for row in rows if row["name"] == name]
+        assert len(matches) == 1
+        assert matches[0]["status"] == "duplicate"
+        assert matches[0]["conflict"] == [
+            entry.dist.name for entry in entries if entry.name == name
+        ]
     assert [row["name"] for row in rows] == sorted(row["name"] for row in rows)
 
 
