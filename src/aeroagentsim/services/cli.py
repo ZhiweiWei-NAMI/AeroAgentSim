@@ -242,6 +242,7 @@ def main() -> None:
     demo.add_argument("--provenance", choices=["lean", "full"])
     templates = sub.add_parser("templates", help="List scenario templates")
     templates.add_argument("--templates-root", type=Path)
+    sub.add_parser("plugins", help="List installed plugins and their contributions")
     run_template = sub.add_parser("run-template", help="Run or open a template")
     run_template.add_argument("template")
     run_template.add_argument(
@@ -318,6 +319,13 @@ def main() -> None:
     elif args.command == "templates":
         try:
             print(json.dumps(template_list(args.templates_root), indent=2))
+        except (ValueError, FileNotFoundError, OSError) as exc:
+            parser.error(str(exc))
+    elif args.command == "plugins":
+        from .plugins import plugin_inventory
+
+        try:
+            print(json.dumps(plugin_inventory(), indent=2))
         except (ValueError, FileNotFoundError, OSError) as exc:
             parser.error(str(exc))
     elif args.command == "run-template":

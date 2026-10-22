@@ -23,6 +23,7 @@ from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import Scenario, load_scenario
 
 from .comparison import configuration_differences
+from .plugins import plugin_inventory
 from .projector import header
 from .security import LOCAL_ORIGIN, RequestBoundary
 from .storage import RunStorage, committed_prefix
@@ -576,6 +577,10 @@ def create_app(
         from .feed_index import kpi_result as project_run
 
         return {**project_run(directory(run_id)), "run_id": run_id}
+
+    @app.get("/v1/plugins")
+    def plugins() -> dict[str, Any]:
+        return plugin_inventory()
 
     @app.get("/v1/templates")
     def template_list() -> list[dict[str, Any]]:
