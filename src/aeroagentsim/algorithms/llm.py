@@ -131,7 +131,7 @@ def engine_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
         "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
     }
     provider = (
-        cfg["provider"]
+        ({"mode": "live", **cfg["provider"]} if set(cfg["provider"]) == {"profile"} else cfg["provider"])
         if "provider" in cfg
         else {
             "mode": "stub",
