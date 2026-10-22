@@ -32,6 +32,21 @@ BUILTIN_HOOKS = {
     "rescue.participation", "rescue.observation", "rescue.radio_port",
     "rescue.radio", "rescue.deadline_s", "rescue.fleet_variation",
 }
+HOOK_PLUGIN_IDS = {"lowalt", "rescue", "traffic"}
+HOOK_OWNERS = {
+    "lowalt.operator_mode": "lowalt",
+    "traffic.accident_time": "traffic",
+    "traffic.decision_mode": "traffic",
+    "traffic.physics_hz": "traffic",
+    "traffic.wind_east": "traffic",
+    "traffic.wind_north": "traffic",
+    "rescue.participation": "rescue",
+    "rescue.observation": "rescue",
+    "rescue.radio_port": "rescue",
+    "rescue.radio": "rescue",
+    "rescue.deadline_s": "rescue",
+    "rescue.fleet_variation": "rescue",
+}
 
 
 def _entry_point(name: str, loaded: Any) -> SimpleNamespace:
@@ -120,16 +135,22 @@ def test_public_descriptors_have_versioned_defaults_and_are_frozen(tmp_path: Pat
 def test_builtin_discovery_preserves_all_ids_hooks_and_separate_provenance() -> None:
     plugins = discover_scenario_plugins()
     assert isinstance(plugins, tuple)
-    assert [plugin.name for plugin in plugins] == [
-        "builtin-templates", "lowalt", "rescue", "traffic",
-    ]
-    assert all(not plugin.templates for plugin in plugins if plugin.name != "builtin-templates")
+    assert [plugin.name for plugin in plugins] == sorted(BUILTIN_IDS | HOOK_PLUGIN_IDS)
+    by_name = {plugin.name: plugin for plugin in plugins}
+    for identifier in BUILTIN_IDS:
+        assert len(by_name[identifier].templates) == 1
+        assert by_name[identifier].apply_hooks == {}
+    for name in HOOK_PLUGIN_IDS:
+        assert by_name[name].templates == ()
+    assert {
+        hook: plugin.name for plugin in plugins for hook in plugin.apply_hooks
+    } == HOOK_OWNERS
     registry = TemplateRegistry()
     metadata = registry.list()
     assert [item["id"] for item in metadata] == sorted(BUILTIN_IDS)
     assert set(registry.hooks) == BUILTIN_HOOKS
     for item in metadata:
-        assert registry.plugin_of(item["id"]) == "builtin-templates"
+        assert registry.plugin_of(item["id"]) == item["id"]
         assert registry.get(item["id"]) == item
         assert not {"plugin", "plugin_name", "provenance"} & item.keys()
 
@@ -137,6 +158,14 @@ def test_builtin_discovery_preserves_all_ids_hooks_and_separate_provenance() -> 
     root_registry = TemplateRegistry(root, plugins=plugins)
     assert {item["id"] for item in root_registry.list()} == BUILTIN_IDS
     assert all(root_registry.plugin_of(identifier) is None for identifier in BUILTIN_IDS)
+
+
+def test_builtins_are_exactly_the_hook_and_template_plugins() -> None:
+    from aeroagentsim.scenarios import BUILTINS
+
+    assert set(BUILTINS) == BUILTIN_IDS | HOOK_PLUGIN_IDS
+    assert len(BUILTINS) == 13
+    assert all(callable(factory) for factory in BUILTINS.values())
 
 
 def test_explicit_empty_plugins_disable_builtin_templates_and_hooks() -> None:
@@ -321,9 +350,9 @@ def test_discovery_loads_instances_and_factories_and_installed_plugin_wins(
     )
     plugins = discover_scenario_plugins()
     assert isinstance(plugins, tuple)
-    assert [plugin.name for plugin in plugins] == sorted({
-        "a-external", "builtin-templates", "lowalt", "rescue", "traffic", "z-external",
-    })
+    assert [plugin.name for plugin in plugins] == sorted(
+        BUILTIN_IDS | HOOK_PLUGIN_IDS | {"a-external", "z-external"}
+    )
     by_name = {plugin.name: plugin for plugin in plugins}
     assert by_name["lowalt"] is replacement
     assert by_name["z-external"] is instance
@@ -338,6 +367,22 @@ def test_duplicate_installed_names_are_not_treated_as_builtin_overrides(
     _entry_points(monkeypatch, _entry_point("lowalt", plugin), _entry_point("lowalt", plugin))
     with pytest.raises(ValueError, match="(?i)duplicate.*lowalt"):
         discover_scenario_plugins()
+
+
+def test_installed_entry_point_replaces_builtin_flood_rescue_template(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    source = _template(tmp_path / "installed" / "flood-rescue", "flood-rescue")
+    replacement = ScenarioPlugin("flood-rescue", templates=(TemplateSource(source),))
+    _entry_points(monkeypatch, _entry_point("flood-rescue", replacement))
+    plugins = discover_scenario_plugins()
+    assert len(plugins) == len(BUILTIN_IDS | HOOK_PLUGIN_IDS)
+    by_name = {plugin.name: plugin for plugin in plugins}
+    assert by_name["flood-rescue"] is replacement
+    registry = TemplateRegistry(plugins=plugins)
+    assert registry.plugin_of("flood-rescue") == "flood-rescue"
+    assert registry.directory_of("flood-rescue") == source.resolve()
+    assert registry.apply("flood-rescue").document["id"] == "flood-rescue"
 
 
 @pytest.mark.parametrize(
