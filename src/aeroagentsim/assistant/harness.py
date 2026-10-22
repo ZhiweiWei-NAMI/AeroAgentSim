@@ -313,20 +313,14 @@ class Harness:
                 result = result[:5200] + ("\n\n更多记录见详情。" if zh else "\n\nMore records are available in details.")
             return result + details, "platform"
         if isinstance(self.tools, ToolRunner) and question.strip() in {"What should I watch for when I run it?", "运行时我应该关注什么？"}:
-            from .scene import expectations
+            from .catalogue import callbacks
 
             document, scene = self.tools._scene(identifier)
             selected = session["plan_version"]
             saved = any(r["plan_version"] == selected for r in session["applied"])
             lines = [("按当前已保存场景观察：" if saved else "按当前选中方案观察：") if zh else ("Watch the current saved scene:" if saved else "Watch the selected proposal:")]
-            total = sum(f["count"] for f in scene["fleets"] if f.get("vehicle_class") != "aas:TrafficRoadVehicle")
-            lines.append(f"无人机总数：{total}。" if zh else f"Total UAVs: {total}.")
-            for fleet in scene["fleets"]:
-                lines.append(f"- {fleet['id']}: {fleet['count']} × {fleet['label_zh'] if zh else fleet['label']}")
-            for place in scene["places"]:
-                if place["role"] == "charging_pad":
-                    lines.append(f"- {place['id']}: " + ("容量 " if zh else "capacity ") + str(place["details"]["lowalt.site_capacity"]) + ", ENU " + json.dumps(place["position"]))
-            lines.extend("- " + row["text_zh" if zh else "text"] for row in expectations(document, scene)[:12])
+            for callback in callbacks("watch_scene"):
+                lines.extend(callback(document, scene, zh=zh))
             lines.append("这些步骤取决于运行时条件，完成情况以事件记录为准。" if zh else "These steps depend on runtime conditions; recorded events establish the outcome.")
             return "\n\n".join(lines), "platform"
         if isinstance(self.tools, ToolRunner) and re.search(r"saved draft|current position|changed.*Form|已保存|表单.*修改", question, re.I):
@@ -364,7 +358,7 @@ class Harness:
                     wind = evidence["wind"]
                 else:
                     _, scene = self.tools._scene(identifier)
-                    wind = scene["environment"]["wind"]
+                    wind = scene.get("environment", {}).get("wind", {"profiles": {}})
                 corrected = ground_wind_prose(text, wind, zh=zh)
                 if corrected != text:
                     source = "platform"
@@ -374,9 +368,9 @@ class Harness:
             # Render status from the store, replacing the provider's status prose.
             # New plans retain the original model prose only for audit. Legacy
             # plans are recognized by a prerequisite missing from their recipe.
-            expanded = "_model_prose" in plan or any(op["op"] == "add_lowalt_components" and
-                not any(requested["op"] == "add_lowalt_components" for requested in plan["operations"])
-                for op in plan["compile"].get("operations", []))
+            requested_ids = {operation.get("id") for operation in plan["operations"]}
+            expanded = "_model_prose" in plan or any(operation.get("id") not in requested_ids
+                for operation in plan["compile"].get("operations", []))
             workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
             authoritative_workflow = workspace is not None and any(record["plan_version"] == plan["version"] for record in session["applied"])
             if not used_grounded_facts:

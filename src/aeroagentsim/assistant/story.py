@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import ast
 import json
-import math
 import threading
 from collections import Counter, OrderedDict, defaultdict
 from dataclasses import dataclass, field
@@ -21,11 +20,13 @@ from aerokernel.values import thaw
 from aeroagentsim.services.narratives import NarrativeProjector, _entity_id
 from aeroagentsim.services.storage import RunStorage
 
+from .catalogue import OperationCatalogue, metadata
+
 TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
 @dataclass
 class StoryIndex:
     projector: NarrativeProjector
-    cooperation: list[dict]
+    contexts: dict[str, Any]
     cursor: int = 0
     last_ns: int | None = None
     events: list[dict] = field(default_factory=list)
@@ -46,7 +47,7 @@ def _pinned_facts(run_dir: Path, identities: tuple) -> dict:
 
     document = json.loads((run_dir / "scenario.json").read_text())
     summary = summarize(document, directory=run_dir)
-    return {"expectations": expectations(document, summary), "wind": summary["environment"]["wind"]}
+    return {"expectations": expectations(document, summary), "wind": summary.get("environment", {}).get("wind", {"speed_mps": None, "gusts": [], "profiles": {}})}
 
 
 def pinned_expectations(run_dir: Path) -> list[dict]:
@@ -85,19 +86,15 @@ def _index(run_dir: Path, storage: RunStorage) -> tuple[tuple, StoryIndex]:
         if indexed is None:
             document = json.loads((run_dir / "scenario.json").read_text())
             projector = NarrativeProjector.from_directory(run_dir)
-            coop = [e["config"]["cooperation"] for e in document.get("engines", {}).values()
-                    if e["plugin"] == "lowalt_tasks" and "cooperation" in e["config"]]
-            if coop:
-                from aeroagentsim.packs.lowalt.cooperation import EVENTS
-                for schema, declaration in EVENTS.items():
-                    projector._declarations[schema] = {
-                        "template": declaration.get("template", declaration.get("text")),
-                        "template_zh": declaration.get("template_zh", declaration.get("text_zh")),
-                        "category": declaration.get("category", "emergency"),
-                        "severity": declaration.get("severity", "info"), "entities": declaration.get("entities", []),
-                        **({"position": declaration["position"]} if "position" in declaration else {}),
-                    }
-            indexed = StoryIndex(projector, coop)
+            contexts = {}
+            catalogue = OperationCatalogue()
+            for plugin in catalogue.plugins:
+                setup = plugin.read._callbacks.get("story_setup") if plugin.read is not None else None
+                if setup is not None:
+                    contribution = setup(copy.deepcopy(document))
+                    contexts[plugin.name] = contribution.get("context")
+                    projector._declarations.update(contribution.get("declarations", {}))
+            indexed = StoryIndex(projector, contexts)
             _INDEXES[key] = indexed
         _INDEXES.move_to_end(key)
         while len(_INDEXES) > 8:
@@ -106,6 +103,7 @@ def _index(run_dir: Path, storage: RunStorage) -> tuple[tuple, StoryIndex]:
 
 
 def _extend(storage: RunStorage, indexed: StoryIndex) -> None:
+    catalogue = OperationCatalogue()
     end = storage.entries[-1]["index"] + 1 if storage.entries else 0
     while indexed.cursor < end:
         records = storage.records(indexed.cursor, min(500, end - indexed.cursor))
@@ -119,22 +117,13 @@ def _extend(storage: RunStorage, indexed: StoryIndex) -> None:
             narration = {row["message_id"]: row for row in indexed.projector.consume_decoded(record)}
             for item in record.get("items", []):
                 proposal = item.get("proposal")
-                if isinstance(proposal, FactWrite) and proposal.key[1] == "lowalt.position":
-                    position = thaw(proposal.value)
-                    if not isinstance(position, list) or len(position) != 3:
-                        raise ValueError("Recorded lowalt position is not an ENU vector / 记录的低空位置不是 ENU 向量")
-                    for coop in indexed.cooperation:
-                        if proposal.key[0].id not in coop["watchers"]["vehicles"]:
-                            continue
-                        for incident in coop["incidents"]:
-                            at_ns = proposal.valid.start.ns
-                            if at_ns < round(incident["at_s"] * 1e9):
-                                continue
-                            distance = math.dist(position[:2], incident["position"][:2])
-                            previous = indexed.approaches.get(incident["id"])
-                            if previous is None or distance < previous["distance_m"]:
-                                indexed.approaches[incident["id"]] = {"vehicle": proposal.key[0].id, "distance_m": distance,
-                                    "at_ns": at_ns, "cut": record["index"], "notice_radius_m": coop["watchers"]["notice_radius_m"]}
+                if isinstance(proposal, FactWrite):
+                    fact = {"field": proposal.key[1], "entity": proposal.key[0].id, "value": thaw(proposal.value),
+                            "at_ns": proposal.valid.start.ns, "cut": record["index"]}
+                    for plugin in catalogue.plugins:
+                        observe = plugin.read._callbacks.get("observe_fact") if plugin.read is not None else None
+                        if observe is not None and plugin.name in indexed.contexts:
+                            indexed.approaches = observe(indexed.contexts[plugin.name], fact, indexed.approaches)
                 message = item.get("message")
                 if not isinstance(proposal, Emit) or proposal.kind != "event" or not isinstance(message, Message) or message.kind != "event" or message.id in indexed.seen:
                     continue
@@ -211,13 +200,13 @@ def failure_summary(failures: list[dict], *, limit: int = 6) -> list[dict]:
     groups: dict[str, list[dict]] = defaultdict(list)
     for event in failures:
         groups[event["schema"]].append(event)
-    ordered = sorted(groups, key=lambda schema: (0 if schema == "traffic.capture.failed" else 2 if schema.endswith(".conflict") else 1, schema))
+    priorities = metadata("failure_priority", {})
+    captions = metadata("failure_labels", {})
+    ordered = sorted(groups, key=lambda schema: (priorities.get(schema, 2 if schema.endswith(".conflict") else 1), schema))
     result = []
     for schema in ordered[:limit]:
         rows = groups[schema]
         last = max(rows, key=lambda row: row["at_ns"])
-        captions = {"lowalt.airspace.conflict": ("Airspace conflicts", "空域冲突"),
-                    "traffic.capture.failed": ("Capture failures", "拍摄失败")}
         label, label_zh = captions.get(schema, ("Recorded conflicts", "记录的冲突") if schema.endswith(".conflict") else ("Recorded failures", "记录的失败"))
         pairs: dict[tuple[str, str], list[dict]] = defaultdict(list)
         for row in rows:
@@ -240,52 +229,11 @@ def failure_summary(failures: list[dict], *, limit: int = 6) -> list[dict]:
 
 
 def _missing(expectation: dict, events: list[dict], approaches: dict[str, dict], terminal: bool, last_ns: int | None) -> dict:
-    where = expectation["match"]["where"]
-    schema = expectation["match"]["schema"]
-    related = [e for e in events if _related(e, where)]
-    decision_failures = [e for e in related if e["schema"] == "lowalt.incident.decision_failed"]
-    if decision_failures:
-        failure = decision_failures[-1]
-        return _explanation("Recorded decision failure: " + failure["payload"]["reason"],
-                            "记录到决策失败：" + failure["payload"]["reason"], [failure])
-    if schema == "lowalt.incident.noticed" and where.get("incident") in approaches:
-        approach = approaches[where["incident"]]
-        return _explanation(f"No notice event recorded. Closest recorded watcher approach: {approach['vehicle']}, {approach['distance_m']:.1f} m at {approach['at_ns'] / 1e9:g} s (notice radius {approach['notice_radius_m']:g} m). Sampled positions do not prove what happened between records.",
-                            f"未记录发现事件。观察机最近记录接近：{approach['vehicle']}，在 {approach['at_ns'] / 1e9:g} 秒距事件 {approach['distance_m']:.1f} 米（观察半径 {approach['notice_radius_m']:g} 米）。采样位置不能证明记录之间发生的情况。", [approach])
-    if schema.startswith("lowalt.handoff."):
-        refusals = [e for e in related if e["schema"] == "lowalt.handoff.declined" or e["schema"] == "lowalt.handoff.offer" and e["payload"].get("accepted") is False]
-        if refusals:
-            reason = "; ".join(str(e["payload"]["reason"]) for e in refusals if "reason" in e["payload"])
-            return _explanation("Recorded handoff refusal" + (": " + reason if reason else "; no reason recorded"),
-                                "记录到交接拒绝" + ("：" + reason if reason else "；未记录原因"), refusals)
-        if schema == "lowalt.handoff.declined":
-            accepted = [e for e in related if e["schema"] == "lowalt.handoff.accepted"]
-            if accepted:
-                return _explanation("An acceptance was recorded; the conditional decline branch has no recorded event.", "记录到接受；条件性拒绝分支没有记录事件。", accepted)
-        transferred = [e for e in related if e["schema"] == "lowalt.handoff.transferred" and "point" in e["payload"] and e["payload"]["point"] is None]
-        if schema == "lowalt.handoff.dropped" and transferred:
-            return _explanation("The task was transferred directly with point: null; no parcel drop was recorded.", "任务通过 point: null 直接转交；未记录包裹放下事件。", transferred)
-    decisions = [e for e in related if e["schema"] == "lowalt.incident.decision"]
-    if decisions and schema != "lowalt.incident.decision":
-        decision = decisions[-1]
-        payload = decision["payload"]
-        details = {k: payload[k] for k in ("mode", "choice", "reason", "allowed", "blocked") if k in payload}
-        return _explanation("Recorded responder decision: " + json.dumps(details, ensure_ascii=False) + ". No matching event for this step was recorded.",
-                            "记录的响应决策：" + json.dumps(details, ensure_ascii=False) + "。此步骤没有匹配的记录事件。", [decision])
-    failures = [e for e in related if e["schema"] == "lowalt.task.failed"]
-    if failures:
-        reason = failures[-1]["payload"].get("reason")
-        return _explanation("Recorded task failure" + (": " + str(reason) if reason is not None else "; no reason recorded"),
-                            "记录到任务失败" + ("：" + str(reason) if reason is not None else "；未记录原因"), [failures[-1]])
-    # A later capture failure cannot explain an earlier award/bid/detection.
-    failure_schemas = ({"traffic.capture.failed"} if schema.startswith("traffic.capture.") else
-                       {"traffic.decision.failed", "traffic.award.conflict"} if schema == "traffic.award.committed" else set())
-    traffic_failures = [e for e in related if e["schema"] in failure_schemas]
-    if traffic_failures:
-        failure = traffic_failures[-1]
-        reason = failure_reason(failure["payload"])
-        return _explanation(failure["text"] + (": " + reason if reason else ""),
-                            (failure.get("text_zh") or failure["text"]) + ("：" + reason if reason else ""), [failure])
+    for plugin in OperationCatalogue().plugins:
+        if plugin.read is not None and plugin.read.missing is not None:
+            result = plugin.read.missing(expectation, events, approaches, terminal, last_ns)
+            if result is not None:
+                return result
     approx = expectation.get("approx_s")
     if terminal and approx is not None and last_ns is not None and last_ns < round(approx * 1e9):
         return _explanation(f"The committed run ends at {last_ns / 1e9:g} s, before the configured step at {approx:g} s. No recorded event.",

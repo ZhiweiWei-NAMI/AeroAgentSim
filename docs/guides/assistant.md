@@ -6,6 +6,11 @@ proposes concrete plans, shows what it assumed, and changes nothing until you
 confirm a plan once. It is an authoring surface: confirming saves a project
 version, not a running mission, and mission agents are configured separately.
 
+Developers can add semantic operations through [assistant operation families
+v1](../reference/assistant-operations.md), including their prerequisites,
+parameter schemas and conditional expectations, without adding a host compiler
+branch.
+
 ## Connect a model
 
 The assistant uses any OpenAI-compatible chat endpoint. Open the assistant

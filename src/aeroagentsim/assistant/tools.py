@@ -12,7 +12,7 @@ from urllib.parse import quote
 from aeroagentsim.services.storage import RunStorage
 
 from .connection import now
-from .operations import PLACE_TYPES, OperationError, enum, validate_parameters
+from .operations import OperationError, enum, validate_parameters
 from .operations import obj as object_schema
 from .sessions import SessionStore
 
@@ -33,8 +33,9 @@ def validate_arguments(schema: dict[str, Any], value: Any, path: str = "argument
 
 
 def operation_catalog() -> tuple[dict[str, Any], str]:
-    from .operations import OPERATION_SPECS as OPERATIONS
+    from .catalogue import OperationCatalogue
 
+    OPERATIONS = OperationCatalogue().display(namespaced=True)
     lines = []
     branches = []
     for name, spec in OPERATIONS.items():
@@ -46,7 +47,11 @@ def operation_catalog() -> tuple[dict[str, Any], str]:
 
 
 def tool_schemas() -> list[dict[str, Any]]:
-    from .capabilities import CAPABILITY_TOPICS
+    from .capabilities import capability_topics
+    from .catalogue import metadata
+
+    CAPABILITY_TOPICS = capability_topics()
+    place_types = metadata("PLACE_TYPES", {})
 
     operations, catalogue = operation_catalog()
     revision = object_schema({
@@ -59,7 +64,7 @@ def tool_schemas() -> list[dict[str, Any]]:
         ("list_starting_points", "List every scenario template with its control defaults. Use describe_starting_point for control ranges, options and the template scene.", object_schema({})),
         ("describe_starting_point", "Read a template's actual participants and controls.", object_schema({"template_id": STRING}, ("template_id",))),
         ("list_capabilities", "Read supported operations, parameter limits, configured region extracts and installed algorithms.", object_schema({"topic": enum(CAPABILITY_TOPICS)})),
-        ("find_places", "Find named catalogue places near an existing participant/place id or an ENU position. Catalogue coordinates belong to the shipped Huangpu frame.", object_schema({"query": STRING, "near": {"anyOf": [STRING, {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}]}, "role": enum(PLACE_TYPES)})),
+        ("find_places", metadata("places_description", "Find named catalogue places near an existing participant/place id or an ENU position."), object_schema({"query": STRING, "near": {"anyOf": [STRING, {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}]}, "role": enum(place_types) if place_types else STRING})),
         ("lookup_contract", "Search real AeroGraph types, fields, relations and ancestry.", object_schema({"term": STRING}, ("term",))),
         ("draft_plan", "Compile a proposed plan now. Operations use {id?, op, params}; ids are assigned by the server. Never applies.\n" + catalogue, object_schema({"base": BASE, "title": STRING, "summary": STRING, "operations": operations, "assumptions": STRINGS, "open_questions": QUESTIONS, "note": STRING}, ("base", "title", "summary", "operations"))),
         ("revise_plan", "Compile a minimal revision. update contains full operations with existing op ids; remove accepts op ids or unambiguous target object/workload ids. Failed compilations retain operations: edit them instead of adding again. open_questions replaces all questions; add_questions/resolve_questions edit them.\n" + catalogue, revision),
@@ -178,51 +183,16 @@ def operation_summary(operations: list[dict], locale: str = "en") -> str:
 
 
 def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Apply only changed arrangements to an already-confirmed real workspace."""
-    from .operations import OPERATION_SPECS as OPERATIONS
+    from .catalogue import callbacks
 
-    old = {op["id"]: op for op in baseline}
-    new = {op["id"]: op for op in operations}
-    result = []
-    replacements = {"add_place": ("update_place", "place"), "add_fleet": ("set_fleet", "fleet"), "add_orders": ("set_orders", "orders"), "add_incident": ("set_incident", "incident")}
-    removals = {"add_place": ("remove_place", "place"), "add_fleet": ("remove_fleet", "fleet"), "add_orders": ("remove_orders", "orders"), "add_incident": ("remove_incident", "incident"), "set_cooperation": ("remove_cooperation", None)}
-
-    def translate(op: dict[str, Any], target: str, subject: str | None, changes: dict[str, Any]) -> dict[str, Any]:
-        spec = OPERATIONS[target]
-        properties = spec["parameters"].get("properties", {})
-        params = copy.deepcopy(changes)
-        if subject is not None:
-            key = subject if subject in properties else "id" if "id" in properties else None
-            if key is None:
-                raise ValueError(f"{op['id']}: {target} does not declare the entity selector / 操作未声明对象选择字段")
-            params[key] = op["params"]["id"]
-        validate_arguments(spec["parameters"], params, op["id"])
-        return {"id": op["id"], "op": target, "params": params}
-
-    for op in operations:
-        previous = old.get(op["id"])
-        if previous == op:
-            continue
-        if previous is not None and op["op"] == previous["op"] and op["op"] in replacements:
-            if op["params"].get("id") != previous["params"].get("id"):
-                raise ValueError(f"{op['id']}: keep an applied entity's id when revising it / 修改已确认对象时须保留对象标识")
-            changed = {k: v for k, v in op["params"].items() if k != "id" and (k not in previous["params"] or previous["params"][k] != v)}
-            if previous["params"].keys() - op["params"].keys():
-                raise ValueError(f"{op['id']}: specify replacement values for removed parameters / 请明确提供被移除参数的替代值")
-            target, subject = replacements[op["op"]]
-            result.append(translate(op, target, subject, changed))
-        elif previous is not None and previous["op"].startswith("add_"):
-            raise ValueError(f"{op['id']}: revise an applied addition with the same operation kind / 请保留已确认新增对象的操作类型")
-        else:
-            result.append(copy.deepcopy(op))
-    for op in baseline:
-        if op["id"] in new:
-            continue
-        if op["op"] not in removals:
-            raise ValueError(f"{op['id']}: removing this already-applied arrangement needs an explicit supported replacement / 移除此已确认安排需要明确的受支持替代操作")
-        target, subject = removals[op["op"]]
-        result.insert(0, translate(op, target, subject, {}))
-    return result
+    for callback in callbacks("workspace_operations"):
+        result = callback(copy.deepcopy(operations), copy.deepcopy(baseline))
+        if result is not None:
+            return result
+    old = {row["id"]: row for row in baseline}
+    if old.keys() - {row["id"] for row in operations}:
+        raise ValueError("Removing an applied operation needs an explicit replacement / 移除已应用操作需要明确替代操作")
+    return [copy.deepcopy(row) for row in operations if old.get(row["id"]) != row]
 
 
 class ToolRunner:
@@ -386,31 +356,13 @@ class ToolRunner:
 
         session = self.sessions.get(identifier)
         previous = session["plans"].get(str(session["plan_version"]))
-        # Older failed revisions may already have replaced their creation with
-        # set_orders. Recover only that same retained op's real ancestor recipe.
-        recipes = {}
-        ancestor = session["plans"].get(str(parent))
-        visited = set()
-        while ancestor is not None and ancestor["version"] not in visited:
-            visited.add(ancestor["version"])
-            for operation in ancestor["operations"]:
-                if operation["op"] == "add_orders":
-                    recipes.setdefault(operation["id"], (operation, ancestor["version"]))
-            ancestor = session["plans"].get(str(ancestor.get("parent")))
+        from .catalogue import callbacks
+
         recovery_notes = []
         operations = copy.deepcopy(operations)
-        for index, operation in enumerate(operations):
-            recipe = recipes.get(operation.get("id"))
-            if operation["op"] != "set_orders" or recipe is None:
-                continue
-            creation, source_version = recipe
-            target = creation["params"]["id"]
-            if operation["params"]["id"] not in {target, creation["id"]}:
-                continue
-            if any(op["op"] == "add_orders" and op["params"]["id"] == target for op in operations):
-                continue
-            operations[index] = {"id": operation["id"], "op": "add_orders", "params": {**copy.deepcopy(creation["params"]), **operation["params"], "id": target}}
-            recovery_notes.append(f"Retained the creation of workload {target!r} from plan v{source_version} while editing its parameters / 修改工作量 {target!r} 时保留方案 v{source_version} 的真实创建配置")
+        for callback in callbacks("recover_operations"):
+            operations, recovered = callback(operations, session["plans"], parent)
+            recovery_notes.extend(recovered)
         if recovery_notes:
             summary = operation_summary(operations, session["locale"])
         ctx = self.context(identifier)
@@ -536,15 +488,10 @@ class ToolRunner:
             unknown = ", ".join(sorted(set(remove) - known))
             raise ValueError(f"Cannot remove unknown operations {unknown}. Current ids: {current} / 无法移除不存在的操作 {unknown}；当前标识：{current}")
         by_id = {op["id"]: copy.deepcopy(op) for op in updates}
-        # Revising a retained workload creation edits its recipe. Replacing the
-        # creation by set_orders would leave nothing to edit on recompilation.
-        for original in result["operations"]:
-            update = by_id.get(original["id"])
-            if original["op"] == "add_orders" and update is not None and update["op"] == "set_orders":
-                if update["params"]["id"] not in {original["params"]["id"], original["id"]}:
-                    raise ValueError(f"{original['id']}: workload is {original['params']['id']!r}; retain that target / 请保留该工作量标识")
-                params = {**copy.deepcopy(original["params"]), **update["params"], "id": original["params"]["id"]}
-                by_id[original["id"]] = {"id": original["id"], "op": "add_orders", "params": params}
+        from .catalogue import callbacks
+
+        for callback in callbacks("revise_operations"):
+            by_id = callback(result["operations"], by_id)
         result["operations"] = [copy.deepcopy(by_id.get(op["id"], op)) for op in result["operations"] if op["id"] not in remove]
         for op in changes.get("add", []):
             added = copy.deepcopy(op)

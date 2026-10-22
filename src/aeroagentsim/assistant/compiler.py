@@ -3,39 +3,35 @@
 from __future__ import annotations
 
 import copy
-import difflib
 import hashlib
-import importlib
 import json
-import math
-import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from aeroagentsim.authoring.templates import TemplateRegistry, _knob_value, _pointer
+from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.authoring.workspace import (
     WorkspaceStore,
     validate_configuration,
     validation_failure,
 )
-from aeroagentsim.packs.lowalt.overlay import overlay
-from aeroagentsim.packs.lowalt.rules import WIND_LIMITS
-from aeroagentsim.packs.lowalt.tasks import FOOD_FIELDS
 from aeroagentsim.scenario import load_scenario
-from aeroagentsim.scenario.loader import UniqueLoader
 
-from .operations import PLACE_TYPES, ROLES, OperationError, validate_operation
-from .places import place_catalogue
+from aeroagentsim.assistant_api import CompileContext as OperationContext
+from aeroagentsim.assistant_api import CompileResult as OperationResult
+from aeroagentsim.assistant_api import thaw
+
+from .catalogue import OperationCatalogue
+from .operations import OperationError, validate_operation
 
 SECOND = 1_000_000_000
 
 
 @dataclass
 class CompileContext:
+    """Host staging services; never passed to an OperationSpec compiler."""
+
     store: WorkspaceStore
     templates: TemplateRegistry
     agent_profile: str | None
@@ -67,9 +63,11 @@ class CompileResult:
     expectations: list[dict[str, Any]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     operations: list[dict[str, Any]] = field(default_factory=list)
+    contributions: dict[str, Any] = field(default_factory=dict)
 
     def to_data(self) -> dict[str, Any]:
-        return copy.deepcopy({**{k: v for k, v in self.__dict__.items() if k != "document"}, "files_dir": str(self.files_dir)})
+        return copy.deepcopy({**{k: v for k, v in self.__dict__.items()
+                                 if k != "document" and (k != "contributions" or v)}, "files_dir": str(self.files_dir)})
 
 
 class PlanConflict(ValueError):
@@ -161,1105 +159,156 @@ def _fail(field: str, en: str, zh: str) -> None:
     raise OperationError(field, en + " / " + zh)
 
 
-def _engine(document: dict, plugin: str) -> tuple[str, dict]:
-    engines = [(k, v["config"]) for k, v in document.get("engines", {}).items() if v.get("plugin") == plugin]
-    if len(engines) != 1:
-        _fail("base", f"Starting scene needs exactly one {plugin} engine", f"起点场景需要一个 {plugin} 引擎")
-    return engines[0]
-
-
-def _closest(identity: Any, candidates: list[str]) -> tuple[str, str]:
-    # Models guess plausible ids ("vertiport-a", "meal-fleet"); naming the real ones lets them repair in one step.
-    close = difflib.get_close_matches(str(identity), candidates, n=5, cutoff=0.45)
-    return (f". Closest existing ids: {', '.join(close)}", "。相近的现有标识：" + "、".join(close)) if close else ("", "")
-
-
-def _entity(document: dict, identity: str, field_name: str) -> dict:
-    found = next((e for e in document["entities"] if e["id"] == identity), None)
-    if found is None:
-        en, zh = _closest(identity, [e["id"] for e in document["entities"]])
-        _fail(field_name, f"Entity {identity!r} does not exist{en}", f"该实体不存在{zh}")
-    return found
-
-
-def _position(document: dict, value: Any, field_name: str) -> list[float]:
-    if isinstance(value, list):
-        return [float(v) for v in value]
-    # Explicit scene ids take precedence over place catalogue ids.
-    entity = next((e for e in document["entities"] if e["id"] == value), None)
-    if entity is not None:
-        for key in ("lowalt.site_position", "lowalt.position", "lowalt.incident_position"):
-            if key in entity["facts"]:
-                return list(entity["facts"][key])
-        _fail(field_name, f"{value} has no lowalt position", "此对象没有低空空间坐标")
-    if value.casefold() in {"center", "centre", "middle", "region_center", "enu_origin", "中间", "中心"}:
-        # compile_scene centres its ENU frame on the selected region. With no
-        # geodetic region this is still the authored local ENU origin.
-        return [0.0, 0.0, 0.0]
-    for engine in document.get("engines", {}).values():
-        cooperation = engine.get("config", {}).get("cooperation", {})
-        point = next((p for p in cooperation.get("handoff_points", []) + cooperation.get("incidents", []) if p["id"] == value), None)
-        if point is not None:
-            return list(point["position"])
-    place = next((p for p in place_catalogue() if p["key"] == value), None)
-    if place is None:
-        en, zh = _closest(value, [p["key"] for p in place_catalogue()] + [e["id"] for e in document["entities"]])
-        _fail(field_name, f"Unknown place {value!r}; use find_places{en}", f"地点不存在，请使用 find_places 查找{zh}")
-    return list(place["position"])
-
-
-def _unique(document: dict, identity: str, field_name: str = "id") -> None:
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]*", identity):
-        _fail(field_name, "Use a stable alphanumeric identifier", "请使用稳定的字母数字标识")
-    if any(e["id"] == identity for e in document["entities"]):
-        _fail(field_name, f"Identifier {identity!r} is already used", "此标识已被使用")
-    if _fleet_entities(document, identity):
-        _fail(field_name, "Identifier is already used by a fleet", "此标识已被机群使用")
-    cooperation = next((e["config"].get("cooperation") for e in document.get("engines", {}).values() if e["plugin"] == "lowalt_tasks"), None)
-    if cooperation and any(p["id"] == identity for p in cooperation.get("handoff_points", []) + cooperation.get("incidents", [])):
-        _fail(field_name, "Identifier is already used by cooperation", "此标识已被协同配置使用")
-    fleet = document.get("generators", {}).get("fleet")
-    if fleet and identity.startswith(fleet["prefix"]):
-        _fail(field_name, "Identifier overlaps the generated base fleet prefix", "此标识与基础机群生成前缀冲突")
-
-
-def _overlay(document: dict) -> None:
-    for category, rows in overlay().items():
-        selected = document["registry"].setdefault(category, [])
-        known = {row["id"] for row in selected}
-        selected.extend(copy.deepcopy(row) for row in rows if row["id"] not in known)
-
-
-def _rule_package(document: dict, directory: Path) -> dict:
-    for spec in document.get("behaviours", []):
-        package = spec
-        if "path" in spec:
-            path = (directory / spec["path"]).resolve()
-            if not path.is_relative_to(directory.resolve()):
-                _fail("rule", "Rule package escapes scene files", "规则包超出场景文件范围")
-            package = yaml.load(path.read_bytes(), Loader=UniqueLoader)
-        if package.get("id") == "lowalt.rules":
-            if package is not spec:
-                document["behaviours"][document["behaviours"].index(spec)] = package
-            return package
-    _fail("rule", "Starting scene has no lowalt operational rule package", "起点场景没有低空运行规则包")
-
-
-def _fleet_entities(document: dict, identity: str) -> list[dict]:
-    """A plan fleet is its members `<fleet>-<n>` (generated base-fleet members are not a plan fleet)."""
-    pattern = re.compile(rf"^{re.escape(identity)}-\d+$")
-    generator = document.get("generators", {}).get("fleet")
-    return [e for e in document["entities"] if e["type"] == "lowalt:UAV" and pattern.match(e["id"])
-            and not (generator and e["id"].startswith(generator["prefix"]))]
-
-
-def _vehicles(document: dict, values: list[str], field_name: str) -> list[str]:
-    result: list[str] = []
-    for value in values:
-        members = _fleet_entities(document, value)
-        base = document.get("generators", {}).get("fleet")
-        if base and value in {"fleet", base["prefix"].rstrip("-.")}:
-            ids = [base["prefix"] + str(i + 1) for i in range(base["count"])]
-        elif members:
-            ids = [e["id"] for e in members]
+def apply_patches(document: dict, patches) -> dict:
+    """Apply bounded JSON Pointer proposals to an isolated in-memory candidate."""
+    result = copy.deepcopy(document)
+    for frozen in patches:
+        patch = thaw(frozen)
+        path, action = patch["path"], patch["op"]
+        if path == "":
+            if action == "remove" or not isinstance(patch.get("value"), dict):
+                _fail("patch", "A scenario proposal must remain an object", "场景提案须保持对象结构")
+            result = copy.deepcopy(patch["value"])
+            continue
+        parts = path[1:].split("/")
+        if any("~" in part.replace("~1", "").replace("~0", "") for part in parts):
+            _fail("patch", "Invalid JSON Pointer escape", "JSON Pointer 转义无效")
+        parts = [part.replace("~1", "/").replace("~0", "~") for part in parts]
+        node = result
+        for token in parts[:-1]:
+            node = node[_list_index(token, len(node))] if isinstance(node, list) else node[token]
+        token = parts[-1]
+        if isinstance(node, list):
+            index = len(node) if token == "-" and action == "add" else _list_index(token, len(node), append=action == "add")
+            if action == "add":
+                node.insert(index, copy.deepcopy(patch["value"]))
+            elif action == "replace":
+                node[index] = copy.deepcopy(patch["value"])
+            else:
+                del node[index]
+        elif isinstance(node, dict):
+            if action != "add" and token not in node:
+                _fail("patch", f"Missing patch target {path}", "补丁目标不存在")
+            if action == "remove":
+                del node[token]
+            else:
+                node[token] = copy.deepcopy(patch["value"])
         else:
-            entity = _entity(document, value, field_name)
-            if entity["type"] != "lowalt:UAV":
-                _fail(field_name, f"{value} is not a lowalt UAV", "此实体不是低空无人机")
-            ids = [value]
-        for identity in ids:
-            if identity not in result:
-                result.append(identity)
+            _fail("patch", "Patch parent must be an object or array", "补丁父节点须为对象或列表")
     return result
 
 
-def _cooperation_module() -> Any:
-    try:
-        return importlib.import_module("aeroagentsim.packs.lowalt.cooperation")
-    except ImportError as exc:
-        raise OperationError("cooperation", "Cooperation capability is not installed; integrate packs/lowalt/cooperation.py / 协同能力尚未安装，请集成 cooperation.py") from exc
+def _list_index(token: str, length: int, *, append: bool = False) -> int:
+    if not token.isdigit() or str(int(token)) != token or int(token) >= length + int(append):
+        _fail("patch", "Invalid array index", "列表索引无效")
+    return int(token)
 
 
-def _cooperation(document: dict) -> dict:
-    _cooperation_module()
-    _, tasks = _engine(document, "lowalt_tasks")
-    if "cooperation" not in tasks:
-        tasks["cooperation"] = {
-            "handoff_points": [], "incidents": [],
-            "watchers": {"vehicles": [], "notice_radius_m": 150.0},
-            "responder": {"mode": "prescribed", "order": ["respond_now", "request_handoff", "finish_then_respond", "report_only"],
-                          "rules": {"protected_task_kinds": ["medical"], "require_replacement": True,
-                                    "min_battery_pct": 30.0, "max_response_distance_m": 600.0}},
-            "helpers": {"vehicles": [], "ask_radius_m": 500.0, "mode": "prescribed",
-                        "rules": {"accept_when": "idle", "min_battery_pct": 25.0}, "selection": "nearest"},
-            "photograph": {"dwell_s": 5.0, "altitude_m": 35.0},
-        }
-    return tasks["cooperation"]
+def compile_operations(context: OperationContext, operations: list[dict], *, catalogue: OperationCatalogue) -> OperationResult:
+    """Pure, no-discovery entry point for data-only families and their prerequisites.
+
+    Resource loading/staging and whole-scenario validation are deliberately not
+    performed here. ``compile_plan`` provides those host responsibilities.
+    """
+    operations, _, warnings = catalogue.prerequisites(context, operations)
+    document, resources, controls = thaw(context.document), dict(context.resources), thaw(context.controls)
+    patches, proposals, issues, effective, effects, references, expected = [], {}, [], [], [], [], []
+    issues.extend({"severity": "warning", **warning} for warning in warnings)
+    for index in _operation_order(operations, document, catalogue, []):
+        operation = operations[index]
+        current = OperationContext(document, resources=resources, data=context.data, controls=controls,
+                                   operation_id=operation.get("id", f"op-{index + 1}"),
+                                   agent_profile=context.agent_profile, locale=context.locale)
+        result = catalogue.compile(current, operation)
+        issues.extend(thaw(result.issues))
+        if any(issue["severity"] == "error" for issue in result.issues):
+            break
+        document = apply_patches(document, result.patches)
+        patches.extend(result.patches)
+        for resource in result.resources:
+            proposals[resource.path] = resource
+            if resource.content is None:
+                resources.pop(resource.path, None)
+            else:
+                resources[resource.path] = resource.content
+        if result.controls is not None:
+            controls = thaw(result.controls)
+        effective.extend(thaw(result.effective_operations) or [copy.deepcopy(operation)])
+        effects.extend(result.effects)
+        references.extend(result.references)
+        expected.extend(result.expectations)
+    return OperationResult(patches=tuple(patches), resources=tuple(proposals.values()), issues=tuple(issues),
+                           effective_operations=tuple(effective), effects=tuple(effects), references=tuple(references),
+                           expectations=tuple(expected), controls=controls)
 
 
-def _check_incident_time(incident: dict, document: dict, field_name: str) -> None:
-    """Validate every final merged incident against rounded integer nanoseconds."""
-    end_ns = round(incident["end_s"] * SECOND) if "end_s" in incident else None
-    start_ns = round(incident.get("at_s", 0) * SECOND)
-    until_ns = document["run"]["until_ns"]
-    if end_ns is not None and end_ns <= start_ns:
-        _fail(field_name, "Incident end must follow its start", "事件结束必须晚于开始")
-    if end_ns is not None and end_ns > until_ns:
-        _fail(field_name, f"Incident end is beyond the {until_ns / SECOND:g} s run", f"事件结束超出 {until_ns / SECOND:g} 秒运行")
+def _resource_inputs(directory: Path) -> tuple[dict[str, bytes], dict[str, str]]:
+    resources, names = {}, {}
+    root = directory.resolve()
+    for path in sorted(directory.rglob("*")):
+        if not path.is_file():
+            continue
+        if not path.resolve().is_relative_to(root):
+            _fail("resources", "Resource escapes plan files", "资源超出计划文件范围")
+        name = path.relative_to(directory).as_posix()
+        resources[name] = path.read_bytes()
+        names[str(path)] = name
+        names[str(path.resolve())] = name
+    return resources, names
 
 
-def _drop_generated(document: dict, coop: dict) -> None:
-    ids = {("lowalt:HandoffPoint", point["id"]) for point in coop.get("handoff_points", [])}
-    for incident in coop.get("incidents", []):
-        ids |= {("lowalt:Incident", incident["id"]), ("lowalt:Handoff", "handoff-" + incident["id"])}
-    document["entities"] = [e for e in document["entities"] if (e["type"], e["id"]) not in ids]
-    bindings = document.get("bindings", {})
-    for key in ("rules", "lifecycle"):
-        if key in bindings:
-            bindings[key] = [row for row in bindings[key] if (row.get("type"), row.get("ids")) not in ids]
-
-
-def _merge(target: dict, changes: dict) -> None:
-    for key, value in changes.items():
-        if isinstance(value, dict) and isinstance(target.get(key), dict):
-            _merge(target[key], value)
+def _stage_resources(files: Path, proposals) -> list[dict]:
+    changes = []
+    for resource in proposals:
+        path = files / resource.path
+        if not path.resolve().is_relative_to(files.resolve()):
+            _fail("resources", "Resource escapes plan files", "资源超出计划文件范围")
+        previous = path.read_bytes() if path.is_file() else None
+        if previous == resource.content:
+            continue
+        group = "removed" if resource.content is None else "added" if previous is None else "changed"
+        if resource.content is None:
+            path.unlink(missing_ok=True)
         else:
-            target[key] = copy.deepcopy(value)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(resource.content)
+        changes.append({"group": group, "kind": "resource", "id": resource.path,
+                        "label": resource.path, "label_zh": resource.path})
+    return changes
 
 
-def _group_id(group: dict) -> str:
-    if "id" in group:
-        return group["id"]
-    tasks = group["tasks"]
-    if len(tasks) > 1 and all(re.sub(r"[-.]\d+$", "", t) == re.sub(r"[-.]\d+$", "", tasks[0]) for t in tasks):
-        return re.sub(r"[-.]\d+$", "", tasks[0])
-    return tasks[0] if tasks else group["kind"]
-
-
-def _group(tasks: dict, identity: str) -> dict:
-    matches = [g for g in tasks["generators"] if _group_id(g) == identity]
-    if len(matches) != 1:
-        _fail("id", f"Workload {identity!r} is absent or ambiguous; valid workload ids: {[_group_id(g) for g in tasks['generators']]}. Keep its add_orders creation and edit it with revise_plan.update, or add a set_orders edit after it", "工作量不存在或有歧义；请保留创建该工作量的 add_orders 操作并修改该操作，或在其后添加 set_orders")
-    return matches[0]
-
-
-def _arrivals(release: dict, count: int, duration_ns: int) -> dict:
-    if release["mode"] == "scheduled":
-        times = release["times_s"]
-        if len(times) != count or times != sorted(times):
-            _fail("release.times_s", "Provide one nondecreasing release time per task", "每个任务需要一个非递减释放时间")
-        return {"mode": "scheduled", "times_ns": [round(t * SECOND) for t in times]}
-    start = round(release.get("start_s", 0) * SECOND)
-    end = round(release.get("end_s", duration_ns / SECOND) * SECOND)
-    if end <= start:
-        _fail("release.end_s", "Release end must follow start", "释放结束必须晚于开始")
-    return {"mode": "poisson", "rate_per_s": float(release["rate_per_s"]), "start_ns": start, "end_ns": end,
-            **({"burst_size": release["burst_size"]} if "burst_size" in release else {})}
-
-
-def _endpoints(document: dict, values: list[str], field_name: str, food: bool = False) -> None:
-    for identity in values:
-        entity = _entity(document, identity, field_name)
-        if "lowalt.site_position" not in entity["facts"]:
-            _fail(field_name, f"{identity} is not a facility; add_place first", "此实体不是设施，请先使用 add_place")
-        if food and entity["type"] != "lowalt:Restaurant":
-            _fail(field_name, f"Meal origin {identity} must be a kitchen", "餐食起点必须是厨房")
-
-
-def _food_bindings(document: dict, owner: str) -> None:
-    for type_id, fields in (("lowalt:Restaurant", ["lowalt.food_preparation_s"]),
-                            ("lowalt:FoodOrder", [f for f in FOOD_FIELDS if f != "lowalt.food_preparation_s"])):
-        rule = next((r for r in document["bindings"]["rules"] if r["writer"] == owner and r["type"] == type_id), None)
-        if rule is None:
-            document["bindings"]["rules"].append({"writer": owner, "type": type_id, "fields": fields})
-        else:
-            rule["fields"] = list(dict.fromkeys([*rule["fields"], *fields]))
-
-
-def _idle_kitchens(document: dict, warnings: list[dict]) -> None:
-    """Explain inert kitchens while retaining their authored preparation settings."""
-    if not any(e["type"] == "lowalt:Restaurant" for e in document["entities"]):
-        return
-    _, tasks = _engine(document, "lowalt_tasks")
-    if any(g["kind"] == "food" for g in tasks.get("generators", [])):
-        return
-    idle = [e for e in document["entities"] if e["type"] == "lowalt:Restaurant"]
-    if not idle:
-        return
-    names = ", ".join(e["id"] for e in idle)
-    warnings.append({"op_id": None, "field": "kitchens", "message": f"Kitchen {names} has no meal orders; preparation settings are retained; add orders with kind food to cook / 厨房 {names} 没有餐食订单，已保留准备参数；请添加 food 类型订单"})
-
-
-def _add_orders(document: dict, p: dict) -> None:
-    owner, tasks = _engine(document, "lowalt_tasks")
-    if any(_group_id(g) == p["id"] for g in tasks["generators"]):
-        _fail("id", "Workload id is already used", "工作量标识已被使用")
-    kind = p["kind"]
-    if kind not in {"parcel", "food", "medical", "passenger"} and kind not in tasks.get("work_routes", {}):
-        _fail("kind", f"{kind} needs a matching work route already authored in the base", "此任务类型需要起点场景中已有匹配作业路线")
-    _endpoints(document, p["from"], "from", food=kind == "food")
-    _endpoints(document, p["to"], "to")
-    if any(not any(a != b for b in p["to"]) for a in p["from"]):
-        _fail("to", "Every origin needs a distinct destination", "每个起点需要不同的目的地")
-    group = {"id": p["id"], "kind": kind, "tasks": [f"{p['id']}-{i + 1}" for i in range(p["count"])],
-             "origins": p["from"], "destinations": p["to"], "priority": p.get("priority", 1),
-             "payload_kg": float(p.get("payload_kg", 1)), "arrivals": _arrivals(p["release"], p["count"], document["run"]["until_ns"])}
-    if kind == "food":
-        group["delivery_window_s"] = float(p.get("delivery_window_s", 240))
-        _overlay(document)
-        _food_bindings(document, owner)
-    for i, identity in enumerate(group["tasks"]):
-        _unique(document, identity)
-        document["entities"].append({"id": identity, "type": "lowalt:FoodOrder" if kind == "food" else "lowalt:Task",
-            "label": f"{kind.title()} order {i + 1}", "label_zh": f"{_task_label_zh(kind)} {i + 1}",
-            "facts": {"lowalt.task_state": "unreleased", "lowalt.task_kind": kind, "lowalt.task_priority": group["priority"],
-                      "lowalt.task_origin": p["from"][0], "lowalt.task_destination": p["to"][0], "lowalt.task_created_ns": 0,
-                      "lowalt.task_vehicle": "", "lowalt.task_payload_kg": group["payload_kg"]}})
-    tasks["generators"].append(group)
-
-
-def _task_label_zh(kind: str) -> str:
-    from aeroagentsim.services.narratives import TASK_NOUN_ZH
-    return TASK_NOUN_ZH[kind]
-
-
-def _allocation_provider(ctx: CompileContext, document: dict) -> None:
-    if document.get("algorithms", {}).get("allocation") != "llm":
-        return
-    if ctx.agent_profile is None:
-        _fail("value", "Agent decisions need a connected model", "智能体决策需要已连接模型")
-    from aeroagentsim.algorithms.llm import engine_config
-    _, tasks = _engine(document, "lowalt_tasks")
-    configuration = {"provider": {"profile": ctx.agent_profile}}
-    tasks.setdefault("algorithm_config", {})["allocation"] = configuration
-    document["engines"]["lowalt_allocation"] = {"plugin": "langgraph", "config": engine_config(configuration)}
-
-
-def _sync_base_fleet(document: dict) -> None:
-    fleet = document.get("generators", {}).get("fleet")
-    if fleet is None:
-        return
-    _, tasks = _engine(document, "lowalt_tasks")
-    overrides = tasks.get("vehicle_task_kinds", {})
-    ids = {fleet["prefix"] + str(i + 1) for i in range(fleet["count"])}
-    removed = {identity for identity in overrides if identity.startswith(fleet["prefix"]) and identity not in ids}
-    cooperation = tasks.get("cooperation", {})
-    referenced = set(cooperation.get("watchers", {}).get("vehicles", []) + cooperation.get("helpers", {}).get("vehicles", []))
-    if any(identity.startswith(fleet["prefix"]) and identity not in ids for identity in referenced):
-        _fail("count", "Removed base-fleet members are referenced by cooperation; revise responsibilities first", "待删除的基础机群成员被协同配置引用，请先修改责任")
-    for identity in removed:
-        overrides.pop(identity)
-    kinds = tasks.get("vehicle_kinds", {}).get(fleet["facts"]["lowalt.vehicle_class"])
-    if "vehicle_task_kinds" in tasks and kinds is not None:
-        for identity in ids:
-            overrides.setdefault(identity, list(kinds))
-
-
-def _refresh_controls(ctx: CompileContext, scene: BaseScene, document: dict, warnings: list[dict]) -> None:
-    if scene.template_id is None:
-        return
-    for knob in ctx.templates.get(scene.template_id)["knobs"]:
-        if "pointer" in knob:
-            node: Any = document
-            try:
-                for part in knob["pointer"][1:].split("/"):
-                    part = part.replace("~1", "/").replace("~0", "~")
-                    node = node[int(part)] if isinstance(node, list) else node[part]
-                scene.controls[knob["id"]] = copy.deepcopy(node)
-            except (KeyError, IndexError, ValueError, TypeError):
-                scene.controls.pop(knob["id"], None)
-                warnings.append({"op_id": None, "field": "control", "message": f"Control {knob['id']} has no remaining target after these edits / 修改后控件 {knob['id']} 已无对应目标"})
-        elif knob.get("apply") == "lowalt.operator_mode":
-            streams = [s for s in document.get("ingress_streams", []) if s["id"] == "operator"]
-            if streams:
-                scene.controls[knob["id"]] = "interactive" if streams[0]["initial_watermark_ns"] == 0 else "scheduled"
-
-
-def _admit_task_kind(document: dict, kind: str) -> None:
-    """Older starting points declare a narrower task-kind enum; admit a supported kind in canonical order."""
-    from aeroagentsim.packs.lowalt.overlay import TASK_KINDS
-
-    for row in document.get("registry", {}).get("fields", []):
-        enum = row.get("schema", {}).get("enum") if row.get("id") == "lowalt.task_kind" else None
-        if isinstance(enum, list) and kind not in enum and kind in TASK_KINDS:
-            row["schema"]["enum"] = [value for value in TASK_KINDS if value in enum or value == kind]
-
-
-def _wind_vector(speed: float, from_deg: float, key: str) -> list:
-    """ENU vector of the wind coming FROM from_deg (meteorological, clockwise from north)."""
-    east, north = -speed * math.sin(math.radians(from_deg)), -speed * math.cos(math.radians(from_deg))
-    east = 0.0 if abs(east) < speed * 1e-12 else east
-    north = 0.0 if abs(north) < speed * 1e-12 else north
-    return [east, north, 0.0] if key == "lowalt.wind" else [[east, north]]
-
-
-def _sync_initial_wind(document: dict, profiles: list[tuple[str, str, dict]]) -> None:
-    """An authored initial wind must equal its profile at t=0, including a zero-start gust."""
-    for identity, key, profile in profiles:
-        entity = _entity(document, identity, "speed_mps")
-        if key in entity["facts"]:
-            value = next((g["value"] for g in profile.get("gusts", []) if g["start_ns"] <= 0 < g["end_ns"]), profile["value"])
-            entity["facts"][key] = copy.deepcopy(value)
-
-
-def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
-                     directory: Path, warnings: list[dict], op_id: str) -> list[dict] | None:
-    if name == "set_region":
-        if not ctx.allow_region:
-            _fail("op", "set_region is an assistant proposal operation. Use the Region map's /region preview/apply endpoint for form edits / set_region 用于助手方案；表单请使用区域地图的 /region 预览和应用接口")
-        from .regions import preview
-
-        record = preview(ctx, document, p, directory)
-        warnings.append({"op_id": op_id, "field": "bounds", "message": f"Region origin changes from {record['previous_origin']} to {record['scene']['origin']}; ENU coordinates remain authored relative to the new origin; the road network is invalidated / 区域原点改变，已有 ENU 坐标将相对于新原点解释，道路网络失效"})
-        return
-    if name == "add_lowalt_components":
-        from aeroagentsim.packs.lowalt.template import install_components
-
-        install_components(document, directory=directory)
-        return
-    if name == "set_control":
-        if scene.template_id is None:
-            _fail("control", "This workspace has no template controls", "此工作区没有模板控件")
-        knobs = {k["id"]: k for k in ctx.templates.get(scene.template_id)["knobs"]}
-        if p["control"] not in knobs:
-            _fail("control", f"Choose a declared control: {list(knobs)}", "请选择此起点已声明的控件")
-        knob = knobs[p["control"]]
+def _operation_order(operations: list[dict], document: dict, catalogue: OperationCatalogue, adapters: list) -> list[int]:
+    dependencies = {index: set() for index in range(len(operations))}
+    for adapter in adapters:
+        for index, required in adapter.dependencies(operations, document).items():
+            dependencies[index].update(required)
+    canonical = []
+    for operation in operations:
         try:
-            _knob_value(knob, p["value"])
-            value = float(p["value"]) if knob["type"] == "number" else p["value"]
-            if "pointer" in knob:
-                _pointer(document, knob["pointer"], value)
-            else:
-                ctx.templates.hooks[knob["apply"]](document, directory, value)
-        except (KeyError, ValueError, TypeError) as exc:
-            raise OperationError("value", f"{exc} / 模板控件校验失败") from exc
-        scene.controls[p["control"]] = value
-        if knob.get("pointer") == "/algorithms/allocation":
-            _allocation_provider(ctx, document)
-        return
-    if name == "set_duration":
-        document["run"]["until_ns"] = round(p["seconds"] * SECOND)
-        if document["run"]["until_ns"] < 1:
-            _fail("seconds", "Duration must be at least one nanosecond", "时长必须至少为一纳秒")
-        for stream in document.get("ingress_streams", []):
-            if stream["initial_watermark_ns"] != 0:
-                stream["initial_watermark_ns"] = document["run"]["until_ns"]
-        for tasks in [e["config"] for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"]:
-            for incident in tasks.get("cooperation", {}).get("incidents", []):
-                _check_incident_time(incident, document, "seconds")
-        return
-    if name == "set_run_mode":
-        streams = document.get("ingress_streams", [])
-        if not any(stream["id"] == "operator" for stream in streams):
-            _fail("mode", "Starting scene has no interactive ingress stream", "起点场景没有交互输入流")
-        for stream in streams:
-            if stream["id"] == "operator":
-                stream["initial_watermark_ns"] = 0 if p["mode"] == "interactive" else document["run"]["until_ns"]
-                stream.pop("timeout_s", None)
-        return
-    if name in {"set_wind", "add_gust", "remove_gust"}:
-        profiles = [(identity, key, value) for e in document["engines"].values() if e["plugin"] == "environment"
-                    for identity, profile in e["config"].get("profiles", {}).items() for key, value in profile.items()
-                    if key in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
-        if not profiles:
-            _fail("params" if name == "remove_gust" else "speed_mps", "Starting scene has no lowalt wind profile", "起点场景没有低空风场配置")
-        if name == "remove_gust":
-            selector = "index" if "index" in p else "start_s"
-            matches = []
-            for _, _, profile in profiles:
-                gusts = profile.get("gusts", [])
-                indices = ([p["index"]] if p["index"] < len(gusts) else []) if selector == "index" else [
-                    index for index, gust in enumerate(gusts) if gust["start_ns"] == round(p["start_s"] * SECOND)]
-                if len(indices) > 1:
-                    _fail(selector, "Gust start is ambiguous; select its index", "阵风开始时间不唯一，请使用索引")
-                if indices:
-                    matches.append((profile, indices[0]))
-            if not matches:
-                _fail(selector, "No configured gust matches this selection", "没有匹配此选择的已配置阵风")
-            for profile, index in matches:
-                del profile["gusts"][index]
-                if not profile["gusts"]:
-                    profile.pop("gusts")
-                    profile["mode"] = "constant"
-            _sync_initial_wind(document, profiles)
-            return
-        if name == "add_gust" and p["end_s"] <= p["start_s"]:
-            _fail("end_s", "Gust end must follow start", "阵风结束必须晚于开始")
-        if name == "add_gust" and round(p["end_s"] * SECOND) <= round(p["start_s"] * SECOND):
-            _fail("end_s", "Gust interval must span at least one nanosecond", "阵风间隔必须至少一纳秒")
-        for _, key, profile in profiles:
-            if name == "set_wind" and "from_deg" in p:
-                vector = _wind_vector(p["speed_mps"], p["from_deg"], key)
-            else:
-                from aeroagentsim.assistant.wind import from_deg
-
-                current = profile["value"] if key == "lowalt.wind" else profile["value"][0]
-                direction = from_deg(current[0], current[1])
-                vector = _wind_vector(p["speed_mps"], 270 if direction is None else direction, key)
-            if name == "set_wind":
-                profile["value"] = vector
-            else:
-                if any(p["start_s"] * SECOND < g["end_ns"] and p["end_s"] * SECOND > g["start_ns"] for g in profile.get("gusts", [])):
-                    _fail("start_s", "Gust overlaps an existing interval; choose a separate interval", "阵风与已有时段重叠，请选择独立时段")
-                profile["mode"] = "gust"
-                profile.setdefault("gusts", []).append({"start_ns": round(p["start_s"] * SECOND), "end_ns": round(p["end_s"] * SECOND), "value": vector})
-        _sync_initial_wind(document, profiles)
-        return
-    if name == "set_weather":
-        # Visual-only presentation journaled on the existing lowalt:Environment
-        # entity that already carries wind (spec §6): AeroGraph's
-        # oo:PrecipitationField is a separate field-type entity and visibility
-        # has no environmental-field declaration, so no second weather entity.
-        _overlay(document)
-        environments_with_profiles = [(name, engine["config"]) for name, engine in document["engines"].items()
-                                      if engine["plugin"] == "environment"]
-        environments = [e for e in document["entities"] if e["type"] == "lowalt:Environment"]
-        configured = [(name, config) for name, config in environments_with_profiles
-                      if any(e["id"] in config.get("profiles", {}) for e in environments)]
-        if not configured:
-            _fail("base", "Starting scene has no lowalt weather entity", "起点场景没有低空气象实体")
-        owner, config = configured[0]
-        environments = [e for e in environments if e["id"] in config["profiles"]]
-        values = {}
-        if "precipitation_mm_h" in p:
-            values["lowalt.precipitation"] = float(p["precipitation_mm_h"]) / 3600  # kg m-2 s-1
-        if "visibility_m" in p:
-            values["lowalt.visibility"] = 50000.0 if p["visibility_m"] is None else float(p["visibility_m"])
-        if "light" in p:
-            values["lowalt.light"] = p["light"]
-        for key, value in values.items():
-            if key not in config["produces"]:
-                config["produces"].append(key)
-            for environment in environments:
-                config["profiles"].setdefault(environment["id"], {})[key] = {"mode": "constant", "value": value}
-                environment["facts"][key] = copy.deepcopy(value)
-            rule = next((r for r in document["bindings"].setdefault("rules", []) if r.get("writer") == owner and r.get("type") == "lowalt:Environment"), None)
-            if rule is None:
-                document["bindings"].setdefault("rules", []).append({"writer": owner, "type": "lowalt:Environment", "fields": [key]})
-            elif key not in rule["fields"]:
-                rule["fields"].append(key)
-        return
-    if name == "set_algorithm":
-        from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
-        installed = discover_algorithm_catalog()
-        if p["value"] not in {a["id"] for a in installed[p["slot"]]}:
-            _fail("value", f"Valid algorithms for slot {p['slot']}: {[a['id'] for a in installed[p['slot']]]}", "请选择此槽已安装的算法")
-        if "algorithms" not in document:
-            _fail("slot", "Starting scene has no lowalt algorithm slots", "起点场景没有低空算法槽")
-        if p["value"] == "llm" and ctx.agent_profile is None:
-            _fail("value", "Agent decisions need a connected model", "智能体决策需要已连接模型")
-        document["algorithms"][p["slot"]] = p["value"]
-        if p["value"] == "llm":
-            _allocation_provider(ctx, document)
-        return
-    if name == "set_rule":
-        value, rule = p["value"], p["rule"]
-        if rule == "medical_preemption":
-            if type(value) is not bool:
-                _fail("value", "medical_preemption requires true or false", "医疗抢占规则需要布尔值")
-            _engine(document, "lowalt_tasks")[1][rule] = value
-            return
-        if type(value) not in (int, float) or (rule == "battery_reserve_pct" and not 0 <= value <= 100) or (rule == "safety_distance_m" and value <= 0):
-            _fail("value", "Use a valid numeric rule value (reserve 0–100; distance > 0)", "请使用有效规则数值（预留电量 0–100；间隔大于 0）")
-        predicates = _rule_package(document, directory)["predicates"]
-        if rule == "battery_reserve_pct":
-            predicates["battery_below_reserve"]["parameters"]["reserve_percent"] = float(value)
-        elif rule == "safety_distance_m":
-            predicates["closer_than_safety_distance"]["parameters"]["horizontal_m"] = float(value)
-        else:
-            parameters = predicates["wind_above_limit"]["parameters"]
-            for key in parameters:
-                parameters[key] = float(value)
-        return
-    if name in {"add_place", "update_place", "remove_place"}:
-        if name == "add_place":
-            _engine(document, "lowalt_tasks")
-            _unique(document, p["id"])
-            if "preparation_s" in p and p["role"] != "kitchen":
-                _fail("preparation_s", "Preparation time applies only to kitchens", "准备时间只适用于厨房")
-            if "power_w" in p and p["role"] != "charging_pad":
-                _fail("power_w", "Charging power applies only to charging pads", "充电功率只适用于充电位")
-            if p["role"] == "handoff_point":
-                if "capacity" in p:
-                    _fail("capacity", "Handoff storage capacity is not modeled", "交接储物容量尚未建模")
-                coop = _cooperation(document)
-                coop["handoff_points"].append({"id": p["id"], "position": _position(document, p["at"], "at"),
-                    "label": p.get("label", p["id"]), "label_zh": p.get("label_zh", "交接点 " + p["id"])})
-                return
-            _overlay(document)
-            # The role is the contract type (lowalt:Restaurant, lowalt:Customer…); a separate role fact would
-            # need a writer binding the simulator does not have.
-            facts = {"lowalt.site_position": _position(document, p["at"], "at"), "lowalt.site_open": True, "lowalt.site_capacity": p.get("capacity", 1)}
-            if p["role"] == "kitchen":
-                facts["lowalt.food_preparation_s"] = float(p.get("preparation_s", 30))
-                # A base without meals has no writer for kitchen facts until one is declared.
-                _food_bindings(document, _engine(document, "lowalt_tasks")[0])
-            if p["role"] == "charging_pad":
-                facts["lowalt.pad_power_w"] = float(p.get("power_w", 5000))
-            document["entities"].append({"id": p["id"], "type": "lowalt:" + PLACE_TYPES[p["role"]],
-                "label": p.get("label", p["id"]), "label_zh": p.get("label_zh", p["id"]), "facts": facts})
-            return
-        _, tasks = _engine(document, "lowalt_tasks")
-        handoffs = tasks.get("cooperation", {}).get("handoff_points", [])
-        point = next((r for r in handoffs if r["id"] == p["id"]), None)
-        if point is not None:
-            for key in ("capacity", "preparation_s", "power_w"):
-                if key in p:
-                    _fail(key, "This setting is not modeled on handoff points", "交接点不模拟此设置")
-            if name == "remove_place":
-                if tasks["cooperation"].get("incidents"):
-                    _fail("id", "Handoff point is used by cooperation; revise cooperation first", "交接点正被协同配置使用，请先修改协同配置")
-                handoffs.remove(point)
-            else:
-                if "at" in p:
-                    point["position"] = _position(document, p["at"], "at")
-                for key in ("label", "label_zh"):
-                    if key in p:
-                        point[key] = p[key]
-            return
-        entity = _entity(document, p["id"], "id")
-        if "lowalt.site_position" not in entity["facts"]:
-            _fail("id", "Select a facility", "请选择设施")
-        if name == "remove_place":
-            # Search authored references outside the entity being removed.
-            rest = copy.deepcopy(document)
-            rest["entities"].remove(next(e for e in rest["entities"] if e["id"] == p["id"]))
-            def referenced(value: Any) -> bool:
-                if isinstance(value, dict):
-                    return any(referenced(v) for v in value.values())
-                if isinstance(value, list):
-                    return any(referenced(v) for v in value)
-                return value == p["id"]
-            if referenced(rest):
-                _fail("id", "Place is referenced by tasks, rules or events; revise those first", "地点被任务、规则或事件引用，请先修改引用")
-            document["entities"].remove(entity)
-        else:
-            if "at" in p:
-                entity["facts"]["lowalt.site_position"] = _position(document, p["at"], "at")
-            for key in ("label", "label_zh"):
-                if key in p:
-                    entity[key] = p[key]
-            for key, fact in (("capacity", "lowalt.site_capacity"), ("preparation_s", "lowalt.food_preparation_s"), ("power_w", "lowalt.pad_power_w")):
-                if key in p:
-                    if key == "preparation_s" and entity["type"] != "lowalt:Restaurant" or key == "power_w" and entity["type"] != "lowalt:ChargingPad":
-                        _fail(key, "Parameter does not belong to this facility type", "此参数不属于该设施类型")
-                    entity["facts"][fact] = p[key] if key == "capacity" else float(p[key])
-        return
-    if name == "add_fleet":
-        _, tasks = _engine(document, "lowalt_tasks")
-        if _fleet_entities(document, p["id"]):
-            _fail("id", "Fleet id already used", "机群标识已被使用")
-        _unique(document, p["id"])
-        _overlay(document)
-        vehicle_class, kinds, label, label_zh = ROLES[p["role"]]
-        template = document.get("generators", {}).get("fleet")
-        from aeroagentsim.packs.lowalt.template import vehicle_facts
-
-        initial = template["facts"] if template is not None else vehicle_facts()
-        base_kinds = tasks.setdefault("vehicle_kinds", {}).get(initial["lowalt.vehicle_class"], list(kinds))
-        overrides = tasks.setdefault("vehicle_task_kinds", {})
-        for i in range(template["count"] if template is not None else 0):
-            overrides.setdefault(template["prefix"] + str(i + 1), list(base_kinds))
-        tasks["vehicle_kinds"].setdefault(vehicle_class, list(kinds))
-        tasks.setdefault("cruise_altitudes", {}).setdefault(vehicle_class, 125.0)
-        for i in range(p["count"]):
-            identity = f"{p['id']}-{i + 1}"
-            _unique(document, identity)
-            facts = copy.deepcopy(initial)
-            facts.update({"lowalt.position": _position(document, p["start"], "start"), "lowalt.vehicle_class": vehicle_class,
-                          "lowalt.wind_limit_mps": WIND_LIMITS[vehicle_class]})
-            if "battery_pct" in p:
-                facts["lowalt.soc"] = p["battery_pct"] / 100
-                facts["lowalt.motion_energy_j"] = facts["lowalt.capacity_j"] * facts["lowalt.soc"]
-            facts["lowalt.payload_capacity_kg"] = float(p.get("payload_capacity_kg", 150 if vehicle_class == "passenger" else initial["lowalt.payload_capacity_kg"]))
-            document["entities"].append({"id": identity, "type": "lowalt:UAV", "label": f"{label} {i + 1}", "label_zh": f"{label_zh} {i + 1}", "vehicle_class": vehicle_class, "facts": facts})
-            overrides[identity] = list(p.get("task_kinds", kinds))
-        return
-    if name == "remove_fleet":
-        from aeroagentsim.authoring.removal import FleetRemovalPlan
-
-        fleet = document.get("generators", {}).get("fleet")
-        generated = fleet is not None and p["fleet"] in {"fleet", fleet["prefix"].rstrip("-.")}
-        members = ({fleet["prefix"] + str(i + 1) for i in range(fleet["count"])} if generated
-                   else {entity["id"] for entity in _fleet_entities(document, p["fleet"])})
-        if not members:
-            _fail("fleet", "Fleet does not exist; use its summary id", "机群不存在，请使用摘要中的标识")
-        cleaned, dependencies = FleetRemovalPlan(document, members, directory, generated=generated).build()
-        document.clear()
-        document.update(cleaned)
-        return [{**row, "id": row.get("id", row["path"]), "label": row["detail"], "op_id": op_id} for row in dependencies]
-    if name in {"set_fleet", "set_vehicle"}:
-        _, tasks = _engine(document, "lowalt_tasks")
-        fleet = document.get("generators", {}).get("fleet")
-        if name == "set_fleet" and fleet and p["fleet"] in {"fleet", fleet["prefix"].rstrip("-.")}:
-            if "count" in p:
-                fleet["count"] = p["count"]
-                old_overrides = tasks.get("vehicle_task_kinds", {})
-                base_kinds = tasks.get("vehicle_kinds", {}).get(fleet["facts"]["lowalt.vehicle_class"])
-                if base_kinds is not None:
-                    for i in range(fleet["count"]):
-                        old_overrides.setdefault(fleet["prefix"] + str(i + 1), list(base_kinds))
-            if "battery_pct" in p:
-                fleet["facts"]["lowalt.soc"] = p["battery_pct"] / 100
-                fleet["facts"]["lowalt.motion_energy_j"] = fleet["facts"]["lowalt.capacity_j"] * p["battery_pct"] / 100
-            if "start" in p:
-                fleet["starts"] = [_position(document, p["start"], "start")]
-            return
-        if name == "set_vehicle":
-            if fleet and p["vehicle"].startswith(fleet["prefix"]):
-                _fail("vehicle", "Base fleet members are regenerated from one prototype; adjust set_fleet or add an explicit fleet for individual states", "基础机群成员由单一原型重新生成；请调整 set_fleet 或添加显式机群以设置单机状态")
-            members = [_entity(document, p["vehicle"], "vehicle")]
-            if members[0]["type"] != "lowalt:UAV":
-                _fail("vehicle", "Select a lowalt UAV", "请选择低空无人机")
-        else:
-            members = _fleet_entities(document, p["fleet"])
-            if not members:
-                prefixes = sorted({re.sub(r"-\d+$", "", e["id"]) for e in document["entities"] if e.get("type") == "lowalt:UAV"})
-                en, zh = _closest(p["fleet"], prefixes)
-                _fail("fleet", f"Fleet does not exist; use its summary id{en}", f"机群不存在，请使用摘要中的标识{zh}")
-            count = p.get("count", len(members))
-            if count > len(members):
-                prototype = members[0]
-                for i in range(len(members), count):
-                    identity = f"{p['fleet']}-{i + 1}"
-                    _unique(document, identity)
-                    entity = copy.deepcopy(prototype)
-                    entity["id"] = identity
-                    # Members are named "<role label> <n>"; new members continue the numbering.
-                    entity.update(label=re.sub(r"\s*\d+$", "", prototype.get("label", p["fleet"])) + f" {i + 1}",
-                                  label_zh=re.sub(r"\s*\d+$", "", prototype.get("label_zh", p["fleet"])) + f" {i + 1}")
-                    document["entities"].append(entity)
-                    members.append(entity)
-                    tasks.setdefault("vehicle_task_kinds", {})[identity] = list(tasks["vehicle_task_kinds"][prototype["id"]])
-            elif count < len(members):
-                removed = {e["id"] for e in members[count:]}
-                coop = tasks.get("cooperation", {})
-                if removed & set(coop.get("watchers", {}).get("vehicles", []) + coop.get("helpers", {}).get("vehicles", [])):
-                    _fail("count", "Removed vehicles are referenced by cooperation; revise responsibilities first", "待删除无人机被协同配置引用，请先调整责任")
-                document["entities"] = [e for e in document["entities"] if e["id"] not in removed]
-                for identity in removed:
-                    tasks.get("vehicle_task_kinds", {}).pop(identity, None)
-                members = members[:count]
-        for entity in members:
-            if "battery_pct" in p:
-                entity["facts"]["lowalt.soc"] = p["battery_pct"] / 100
-                entity["facts"]["lowalt.motion_energy_j"] = entity["facts"]["lowalt.capacity_j"] * p["battery_pct"] / 100
-            if "start" in p:
-                entity["facts"]["lowalt.position"] = _position(document, p["start"], "start")
-        return
-    if name == "add_orders":
-        _admit_task_kind(document, p["kind"])
-        _add_orders(document, p)
-        return
-    if name in {"set_orders", "remove_orders"}:
-        _, tasks = _engine(document, "lowalt_tasks")
-        group = _group(tasks, p["id"])
-        if name == "remove_orders":
-            from aeroagentsim.services.narratives import _entity_id
-            task_ids = set(group["tasks"])
-            if any(_entity_id(c.get("payload", {}).get("payload", {}).get("task")) in task_ids for c in document["bindings"].get("commands", [])):
-                _fail("id", "Workload is referenced by a scheduled operator event", "工作量被预设操作事件引用")
-            document["entities"] = [e for e in document["entities"] if e["id"] not in task_ids]
-            tasks["generators"].remove(group)
-            return
-        if "delivery_window_s" in p and group["kind"] != "food":
-            _fail("delivery_window_s", "Delivery windows apply only to meal workloads", "配送时间窗只适用于餐食工作量")
-        release = p.get("release")
-        if release is None:
-            arrivals = group["arrivals"]
-            release = {"mode": arrivals["mode"]}
-            if arrivals["mode"] == "scheduled":
-                release["times_s"] = [t / SECOND for t in arrivals["times_ns"]]
-            else:
-                release.update(rate_per_s=arrivals["rate_per_s"], start_s=arrivals["start_ns"] / SECOND)
-                if "end_ns" in arrivals:
-                    release["end_s"] = arrivals["end_ns"] / SECOND
-                if "burst_size" in arrivals:
-                    release["burst_size"] = arrivals["burst_size"]
-        new = {"id": p["id"], "kind": group["kind"], "count": p.get("count", len(group["tasks"])),
-               "from": p.get("from", group["origins"]), "to": p.get("to", group["destinations"]), "release": release,
-               "priority": p.get("priority", group["priority"]), "payload_kg": p.get("payload_kg", group["payload_kg"])}
-        if group["kind"] == "food":
-            new["delivery_window_s"] = p.get("delivery_window_s", group["delivery_window_s"])
-        old_ids = set(group["tasks"])
-        old_entities = {e["id"]: copy.deepcopy(e) for e in document["entities"] if e["id"] in old_ids}
-        document["entities"] = [e for e in document["entities"] if e["id"] not in old_ids]
-        tasks["generators"].remove(group)
-        _add_orders(document, new)
-        for i, entity in enumerate(document["entities"]):
-            if entity["id"] in old_entities:
-                original = old_entities[entity["id"]]
-                for parameter, fact in (("priority", "lowalt.task_priority"), ("payload_kg", "lowalt.task_payload_kg"),
-                                        ("from", "lowalt.task_origin"), ("to", "lowalt.task_destination")):
-                    if parameter in p:
-                        original["facts"][fact] = entity["facts"][fact]
-                document["entities"][i] = original
-        return
-    if name == "set_task":
-        _, tasks = _engine(document, "lowalt_tasks")
-        entity = _entity(document, p["task"], "task")
-        group = next((g for g in tasks["generators"] if p["task"] in g["tasks"]), None)
-        if group is None:
-            _fail("task", "Select a lowalt task from a workload", "请选择工作量中的低空任务")
-        group.setdefault("id", _group_id(group))
-        single = copy.deepcopy(group)
-        index = group["tasks"].index(p["task"])
-        single["tasks"] = [p["task"]]
-        single["id"] = p["task"]
-        if group["arrivals"]["mode"] == "scheduled":
-            time_ns = group["arrivals"]["times_ns"].pop(index)
-            single["arrivals"] = {"mode": "scheduled", "times_ns": [time_ns]}
-        elif "release_s" not in p:
-            _fail("release_s", "A single task in a rate workload needs an explicit release time when edited", "修改速率工作量中的单个任务需要明确释放时间")
-        if "release_s" in p:
-            single["arrivals"] = {"mode": "scheduled", "times_ns": [round(p["release_s"] * SECOND)]}
-        if "destination" in p:
-            _endpoints(document, [p["destination"]], "destination")
-            if p["destination"] in single["origins"]:
-                _fail("destination", "Destination must differ from every possible origin", "目的地必须不同于所有可能起点")
-            single["destinations"] = [p["destination"]]
-            entity["facts"]["lowalt.task_destination"] = p["destination"]
-        if "priority" in p:
-            single["priority"] = p["priority"]
-            entity["facts"]["lowalt.task_priority"] = p["priority"]
-        group["tasks"].remove(p["task"])
-        if not group["tasks"]:
-            tasks["generators"].remove(group)
-        tasks["generators"].append(single)
-        return
-    if name in {"add_incident", "set_incident", "remove_incident"}:
-        coop = _cooperation(document)
-        incident = next((r for r in coop["incidents"] if r["id"] == p["id"]), None)
-        if name == "add_incident":
-            if incident is not None:
-                _fail("id", "Incident id already used", "事件标识已被使用")
-            _unique(document, p["id"])
-            incident = {"id": p["id"], "kind": p["kind"],
-                        "label": p.get("label", "Building fire" if p["kind"] == "fire" else "Person fell on the street"),
-                        "label_zh": p.get("label_zh", "建筑火情" if p["kind"] == "fire" else "行人在街道跌倒")}
-            incident.setdefault("radius_m", 30 if p["kind"] == "fire" else 6)
-            coop["incidents"].append(incident)
-        elif incident is None:
-            _fail("id", "Incident does not exist", "事件不存在")
-        if name == "remove_incident":
-            coop["incidents"].remove(incident)
-            _drop_generated(document, {**coop, "incidents": [incident], "handoff_points": []})
-            return
-        if "at" in p:
-            incident["position"] = _position(document, p["at"], "at")
-        if "time_s" in p:
-            incident["at_s"] = float(p["time_s"])
-        for key in ("kind", "label", "label_zh", "radius_m"):
-            if key in p:
-                incident[key] = p[key]
-        if "end_s" in p:
-            if p["end_s"] is None:
-                # An explicit null removes the end; the incident becomes open-ended.
-                incident.pop("end_s", None)
-            else:
-                end = float(p["end_s"])
-                if end <= incident.get("at_s", 0):
-                    _fail("end_s", "Incident end must follow its start", "事件结束必须晚于开始")
-                if round(end * SECOND) > document["run"]["until_ns"]:
-                    _fail("end_s", f"Incident end is beyond the {document['run']['until_ns'] / SECOND:g} s run", f"事件结束超出 {document['run']['until_ns'] / SECOND:g} 秒运行")
-                incident["end_s"] = end
-        _check_incident_time(incident, document, "end_s" if "end_s" in p else "at_s")
-        # Generated incident and handoff rows follow the configuration: drop the owned
-        # ones so expansion rebuilds them with the edited values.
-        _drop_generated(document, coop)
-        return
-    if name == "set_cooperation":
-        coop = _cooperation(document)
-        for key in ("watchers", "helpers"):
-            if "vehicles" in p.get(key, {}):
-                p[key]["vehicles"] = _vehicles(document, p[key]["vehicles"], f"{key}.vehicles")
-        if "handoff_points" in p:
-            points = []
-            for point in p["handoff_points"]:
-                if isinstance(point, str):
-                    existing = next((r for r in coop["handoff_points"] if r["id"] == point), None)
-                    if existing:
-                        points.append(copy.deepcopy(existing))
-                        continue
-                    existing_site = next((e for e in document["entities"] if e["id"] == point), None)
-                    point_id = "handoff-" + point if existing_site is not None and existing_site["type"] != "lowalt:HandoffPoint" else point
-                    if point_id != point:
-                        warnings.append({"op_id": op_id, "field": "handoff_points", "message": f"Handoff at {point} uses a separate point entity {point_id} at the same position / 在 {point} 交接使用同位置的独立交接点实体 {point_id}"})
-                    point = {"id": point_id, "at": point}
-                point = copy.deepcopy(point)
-                if "at" in point and "position" in point:
-                    _fail("handoff_points", "Supply at or position, not both", "仅提供 at 或 position 其中一个")
-                if "at" in point:
-                    point["position"] = _position(document, point.pop("at"), "handoff_points.at")
-                elif "position" not in point:
-                    _fail("handoff_points", "Provide at or position for each handoff point", "每个交接点需要 at 或 position")
-                else:
-                    point["position"] = _position(document, point["position"], "handoff_points.position")
-                point.setdefault("label", point["id"])
-                point.setdefault("label_zh", "交接点 " + point["id"])
-                points.append(point)
-            p["handoff_points"] = points
-        # Generated points and incidents follow the configuration: drop the old ones so expansion rebuilds them.
-        _drop_generated(document, coop)
-        _merge(coop, p)
-        if any(coop.get(k, {}).get("mode") == "agent" for k in ("responder", "helpers")):
-            if ctx.agent_profile is None:
-                _fail("mode", "Agent decisions need a connected model", "智能体决策需要已连接模型")
-            coop["provider"] = {"profile": ctx.agent_profile}
-        return
-    if name == "remove_cooperation":
-        _cooperation_module()
-        _engine(document, "lowalt_tasks")[1].pop("cooperation", None)
-        removed_types = {"lowalt:Incident", "lowalt:Handoff", "lowalt:HandoffPoint"}
-        document["entities"] = [e for e in document["entities"] if e["type"] not in removed_types]
-        bindings = document["bindings"]
-        bindings["rules"] = [r for r in bindings.get("rules", []) if r["type"] not in removed_types]
-        bindings["lifecycle"] = [r for r in bindings.get("lifecycle", []) if r["type"] not in removed_types]
-        for rule in bindings["rules"]:
-            rule["fields"] = [f for f in rule["fields"] if not f.startswith(("lowalt.incident_", "lowalt.handoff_"))]
-        removed_engines = {identity for identity, engine in document["engines"].items()
-                           if engine["plugin"] == "langgraph" and engine["config"].get("factory", "").startswith("aeroagentsim.packs.lowalt.cooperation:")}
-        for identity in removed_engines:
-            del document["engines"][identity]
-        return
-    if name == "schedule_event":
-        _schedule_event(document, p, directory)
-        return
-    _fail("op", f"Unsupported operation {name}", "此操作尚未实现")
-
-
-def _schedule_event(document: dict, p: dict, directory: Path) -> None:
-    from aerokernel.ids import EntityRef
-
-    from aeroagentsim.packs.lowalt.everyday import _operators
-
-    from .operations import validate_parameters
-    from .scene import _registry_types
-    points: dict[str, str] = {}
-    specs = document.get("behaviours", [])
-    for spec in specs:
-        package = yaml.load((directory / spec["path"]).read_bytes(), Loader=UniqueLoader) if "path" in spec else spec
-        points.update({r["id"]: r["emits"] for r in package.get("injection_points", [])})
-    point_id = p["event"]
-    standard = {n: "lowalt.operator." + n for n in ("close_vertiport", "add_urgent_order", "restaurant_delay", "change_dropoff", "prioritize_medical", "investigate")}
-    schema_id = points.get(point_id, standard.get(point_id))
-    if schema_id is None:
-        _fail("event", "Choose a base injection point or standard lowalt operator event", "请选择起点注入点或标准低空操作事件")
-    if point_id not in points:
-        _engine(document, "lowalt_tasks")
-        _overlay(document)
-        package = next((s for s in specs if s.get("id") == "lowalt.operator"), None)
-        if package is not None:
-            package["injection_points"].append({"id": point_id, "stream_id": "operator", "command": "aas.runtime.inject_event", "target": "behaviour", "emits": schema_id, "topic": "lowalt.events"})
-        else:
-            _operators(document, {point_id: schema_id}, [])
-    descriptor = next((m for m in document["registry"].get("messages", []) if m["id"] == schema_id), None)
-    if descriptor is None:
-        _fail("event", "Injection schema is not declared in the scene registry", "场景注册表没有声明此注入模式")
-    def json_schema(schema: dict) -> dict:
-        kind = schema["type"]
-        if kind == "record":
-            return {"type": "object", "properties": {k: json_schema(v) for k, v in schema["members"].items()}, "required": schema["required"], "additionalProperties": schema.get("extra", False)}
-        if kind == "ref":
-            return {"type": "string", "minLength": 1}
-        if kind == "vector":
-            return {"type": "array", "minItems": schema["length"], "maxItems": schema["length"], "items": json_schema(schema["items"])}
-        return copy.deepcopy(schema)
-    validate_parameters(p["params"], json_schema(descriptor["schema"]), "params")
-    for key in ("site", "task", "origin", "destination", "restaurant"):
-        if key in p["params"]:
-            _entity(document, p["params"][key], f"params.{key}")
-    types = _registry_types(document, directory)
-    def typed_payload(value: Any, schema: dict, field_name: str) -> Any:
-        kind = schema["type"]
-        if kind == "ref":
-            entity = _entity(document, value, field_name)
-            remaining = [entity["type"]]
-            seen = set()
-            while remaining:
-                current = remaining.pop()
-                if current == schema["target_type"]:
-                    return {"$ref": EntityRef(document["id"], "0", entity["id"], 0, entity["type"]).to_data()}
-                if current not in seen:
-                    seen.add(current)
-                    remaining.extend(types.get(current, {}).get("parents", []))
-            _fail(field_name, f"Select an entity of type {schema['target_type']}", "请选择符合目标契约类型的实体")
-        if kind == "number":
-            return float(value)
-        if kind == "record":
-            return {k: typed_payload(v, schema["members"][k], field_name + "." + k) for k, v in value.items()}
-        if kind in {"array", "vector"}:
-            return [typed_payload(v, schema["items"], field_name + "[]") for v in value]
-        return value
-    payload = typed_payload(p["params"], descriptor["schema"], "params")
-    document["bindings"].setdefault("commands", []).append({"schema": "aas.runtime.inject_event", "target": "behaviour", "at_ns": round(p["at_s"] * SECOND), "payload": {"injection_point": point_id, "payload": payload}})
-
-
-def _operation_order(operations: list[dict], document: dict) -> list[int]:
-    """Stable dependency order; authored operation ids/order remain unchanged."""
-    creators: dict[str, int] = {}
-    existing = {e["id"] for e in document.get("entities", [])}
-    existing.update(_group_id(group) for spec in document.get("engines", {}).values() if spec.get("plugin") == "lowalt_tasks"
-                    for group in spec["config"].get("generators", []))
-    for i, operation in enumerate(operations):
-        if not isinstance(operation, dict) or not isinstance(operation.get("params"), dict):
-            continue
-        p, name = operation["params"], operation.get("op")
-        if name in {"add_place", "add_fleet", "add_orders", "add_incident"} and isinstance(p.get("id"), str):
-            creators.setdefault(p["id"], i)
-            if name in {"add_fleet", "add_orders"} and type(p.get("count")) is int and 0 < p["count"] <= 1000:
-                for member in range(1, p["count"] + 1):
-                    creators.setdefault(f"{p['id']}-{member}", i)
-        if name == "set_cooperation":
-            for point in p.get("handoff_points", []):
-                if isinstance(point, dict) and isinstance(point.get("id"), str):
-                    creators.setdefault(point["id"], i)
-
-    selectors = {"at", "start", "from", "to", "fleet", "vehicle", "task", "destination", "vehicles", "handoff_points", "site", "origin", "restaurant"}
-    def references(value, key=""):
-        if isinstance(value, dict):
-            return set().union(*(references(v, k) for k, v in value.items())) if value else set()
-        if isinstance(value, list):
-            return set().union(*(references(v, key) for v in value)) if value else set()
-        return {value} if key in selectors and isinstance(value, str) else set()
-
-    deps: dict[int, set[int]] = {i: set() for i in range(len(operations))}
-    installers = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "add_lowalt_components"]
-    regions = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_region"]
-    durations = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_duration"]
-    workloads = {o.get("id"): o["params"]["id"] for o in operations if isinstance(o, dict) and o.get("op") == "add_orders" and isinstance(o.get("params"), dict) and "id" in o["params"]}
-    for i, operation in enumerate(operations):
-        if not isinstance(operation, dict):
-            continue
-        params = operation.get("params", {})
-        refs = references(params)
-        if operation.get("op") in {"update_place", "remove_place", "set_orders", "remove_orders", "set_incident", "remove_incident"} and isinstance(params, dict):
-            target = params.get("id")
-            refs.add(workloads.get(target, target) if operation.get("op") in {"set_orders", "remove_orders"} and isinstance(target, str) and target not in existing else target)
-        deps[i].update(creators[r] for r in refs if r not in existing and r in creators and creators[r] != i)
-        if installers and i not in installers:
-            deps[i].add(installers[0])
-        if regions and i not in regions and i not in installers:
-            deps[i].add(regions[-1])
-        # Release defaults use the final requested horizon, regardless of list order.
-        if operation.get("op") in {"add_orders", "set_orders", "set_task", "add_gust", "add_incident", "set_incident", "schedule_event"}:
-            deps[i].update(durations)
+            canonical.append(catalogue.resolve(operation.get("op")).id if isinstance(operation, dict) else None)
+        except OperationError:
+            canonical.append(None)
+    for index, identity in enumerate(canonical):
+        if identity is not None:
+            for prerequisite in catalogue.operations[identity].prerequisites:
+                dependencies[index].update(i for i, other in enumerate(canonical) if other == prerequisite.operation and i != index)
     ordered = []
-    while deps:
-        ready = next((i for i in sorted(deps) if not deps[i]), None)
+    while dependencies:
+        ready = next((i for i in sorted(dependencies) if not dependencies[i]), None)
         if ready is None:
-            ids = [operations[i].get("id", f"op-{i + 1}") for i in deps]
+            ids = [operations[i].get("id", f"op-{i + 1}") for i in dependencies]
             _fail("operations", f"Circular creation references between {ids}; give one creation an explicit position", "创建操作存在循环引用，请为一个创建操作提供明确坐标")
         ordered.append(ready)
-        deps.pop(ready)
-        for waiting in deps.values():
+        dependencies.pop(ready)
+        for waiting in dependencies.values():
             waiting.discard(ready)
     return ordered
 
 
-def _time_bounds(document: dict, operations: list[dict], errors: list[dict], warnings: list[dict]) -> None:
-    """Check final inputs, after duration edits; never extend the experiment implicitly."""
-    duration_ns = document["run"]["until_ns"]
-    duration_s = duration_ns / SECOND
-    authored: set[tuple[str, int]] = set()
-
-    def check(value: float, field_name: str, op_id: str | None, *, ns: int | None = None) -> None:
-        at_ns = round(value * SECOND) if ns is None else ns
-        authored.add((field_name, at_ns))
-        if at_ns <= duration_ns:
-            return
-        message = (f"{field_name} is {value:g} s, beyond the {duration_s:g} s run. Move it inside the run or set the run duration to at least {value:g} s / "
-                   f"{field_name} 为 {value:g} 秒，超出 {duration_s:g} 秒运行。请移至运行范围内，或将运行时长设为至少 {value:g} 秒")
-        row = {"op_id": op_id, "field": field_name, "code": "RUN_HORIZON", "message": message}
-        (errors if op_id is not None else warnings).append(row)
-
-    task_engines = [spec["config"] for spec in document["engines"].values() if spec["plugin"] == "lowalt_tasks"]
-    groups = {_group_id(group): group for tasks in task_engines for group in tasks.get("generators", [])}
-    incidents = {incident["id"]: incident for tasks in task_engines for incident in tasks.get("cooperation", {}).get("incidents", [])}
-    workload_ids = {o["id"]: o["params"]["id"] for o in operations if o["op"] == "add_orders" and "id" in o}
-    release_owners = {}
-    incident_owners = {}
-    task_owners = {}
-    for operation in operations:
-        name, params = operation["op"], operation["params"]
-        if name in {"add_orders", "set_orders"} and "release" in params:
-            identity = params["id"] if params["id"] in groups else workload_ids.get(params["id"], params["id"])
-            release_owners[identity] = operation
-        if name in {"add_incident", "set_incident"} and "time_s" in params:
-            incident_owners[params["id"]] = operation
-        if name == "set_task" and "release_s" in params:
-            task_owners[params["task"]] = operation
-    gusts = {(g["start_ns"], g["end_ns"]) for spec in document["engines"].values() if spec["plugin"] == "environment"
-             for profiles in spec["config"].get("profiles", {}).values() for profile in profiles.values() for g in profile.get("gusts", [])}
-    task_times = {task: group["arrivals"]["times_ns"][index] for group in groups.values() if group["arrivals"]["mode"] == "scheduled"
-                  for index, task in enumerate(group["tasks"])}
-    for operation in operations:
-        name, params, op_id = operation["op"], operation["params"], operation.get("id")
-        if name == "add_gust" and (round(params["start_s"] * SECOND), round(params["end_s"] * SECOND)) in gusts:
-            for key in ("start_s", "end_s"):
-                check(params[key], "params." + key, op_id)
-        if name in {"add_incident", "set_incident"} and incidents.get(params["id"]) and incident_owners.get(params["id"]) is operation:
-            incident = incidents[params["id"]]
-            check(incident["at_s"], "params.time_s", op_id)
-            if "end_s" in incident:
-                check(incident["end_s"], "params.end_s", op_id)
-        # An end removed by a later set_incident end_s:null keeps every earlier end edit reachable.
-        if name == "set_incident" and params.get("end_s") is None:
-            for other in operations:
-                if other["op"] in {"add_incident", "set_incident"} and other["params"].get("id") == params["id"] and "end_s" in other["params"] and other["params"]["end_s"] is not None:
-                    check(other["params"]["end_s"], "params.end_s", other.get("id"))
-        if name == "set_duration":
-            for identity, incident in incidents.items():
-                owner_id = next((o.get("id") for o in operations if o["op"] in {"add_incident", "set_incident"} and o["params"].get("id") == identity), None)
-                if "end_s" in incident:
-                    check(incident["end_s"], f"incidents.{identity}.end_s", owner_id)
-        if name == "set_task" and task_owners.get(params["task"]) is operation and params["task"] in task_times:
-            ns = task_times[params["task"]]
-            check(ns / SECOND, "params.release_s", op_id, ns=ns)
-        if name == "schedule_event":
-            check(params["at_s"], "params.at_s", op_id)
-        if name in {"add_orders", "set_orders"}:
-            identity = params["id"] if params["id"] in groups else workload_ids.get(params["id"], params["id"])
-            group = groups.get(identity)
-            if group is not None and release_owners.get(identity) is operation:
-                release = group["arrivals"]
-                for index, value in enumerate(release.get("times_ns", [])):
-                    check(value / SECOND, f"params.release.times_s[{index}]", op_id, ns=value)
-                for key in ("start_ns", "end_ns"):
-                    if key in release:
-                        check(release[key] / SECOND, "params.release." + key.replace("_ns", "_s"), op_id, ns=release[key])
-
-    # Existing template schedules can intentionally outlast a shortened run.
-    # They remain authored, but the limitation must be visible in the proposal.
-    existing: list[tuple[str, int]] = []
-    for engine_id, spec in document["engines"].items():
-        config = spec["config"]
-        if spec["plugin"] == "environment":
-            for identity, profiles in config.get("profiles", {}).items():
-                for field_id, profile in profiles.items():
-                    for index, gust in enumerate(profile.get("gusts", [])):
-                        existing.append((f"engines.{engine_id}.profiles.{identity}.{field_id}.gusts[{index}].end_s", gust["end_ns"]))
-        if spec["plugin"] == "lowalt_tasks":
-            for group in config.get("generators", []):
-                arrivals = group["arrivals"]
-                times = arrivals.get("times_ns", []) if arrivals["mode"] == "scheduled" else [arrivals["end_ns"]] if "end_ns" in arrivals else []
-                if times:
-                    existing.append((f"workloads.{_group_id(group)}.release", max(times)))
-            for incident in config.get("cooperation", {}).get("incidents", []):
-                existing.append((f"incidents.{incident['id']}.time_s", round(incident["at_s"] * SECOND)))
-                if "end_s" in incident:
-                    existing.append((f"incidents.{incident['id']}.end_s", round(incident["end_s"] * SECOND)))
-    for command in document.get("bindings", {}).get("commands", []):
-        existing.append((f"events.{command['schema']}.at_s", command["at_ns"]))
-    explicit_times = {time for _, time in authored}
-    for field_name, at_ns in existing:
-        if at_ns not in explicit_times:
-            check(at_ns / SECOND, field_name, None, ns=at_ns)
-
-
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
-    from .scene import diff, expectations, interactions, summarize
+    from .scene import _registry_types, diff, expectations, interactions, summarize
     from .diff_display import enrich_diff
+
     out_dir = Path(out_dir)
     files = out_dir / "files"
     errors: list[dict] = []
@@ -1268,8 +317,11 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     scene: BaseScene | None = None
     base_summary: dict = {}
     notes: list[str] = []
-    base_lowalt = False
-    removed_references: list[dict] = []
+    effects: list[dict] = []
+    contributed_expectations: list[dict] = []
+    contributions: dict[str, Any] = {}
+    adapters: list = []
+    catalogue = None
     try:
         scene = resolve_base(ctx, base) if resolved is None else resolved
         if out_dir.resolve().is_relative_to(scene.directory.resolve()) or scene.directory.resolve().is_relative_to(files.resolve()):
@@ -1281,154 +333,125 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         shutil.rmtree(files)
     files.mkdir()
     try:
+        catalogue = OperationCatalogue()
         _copy_files(scene.directory, files)
         document = _rebase(scene.document, scene.directory, files)
         baseline = load_scenario(document, base=files)
-        base_summary = summarize(baseline.document, directory=files, controls=scene.controls)
-        from aeroagentsim.packs.lowalt.template import has_lowalt_components
-
-        base_lowalt = has_lowalt_components(baseline.document)
-        # Keep the authored document: loader expansion must remain repeatable.
-        from aeroagentsim.packs.lowalt.template import expand as expand_template
-
-        def ensure_contracts(target: dict) -> None:
-            """Cooperation needs the frozen AeroGraph incident/cargo-transfer contracts in the plan's snapshot."""
-            if not any(e["plugin"] == "lowalt_tasks" and "cooperation" in e.get("config", {}) for e in target["engines"].values()):
-                return
-            snapshot = target["registry"].get("snapshot")
-            if snapshot is None:
-                snapshot = "registry.plan.snapshot.json"
-                baseline.compiled.write_snapshot(files / snapshot)
-                target["registry"].pop("compile", None)
-                target["registry"]["snapshot"] = snapshot
-            path = Path(snapshot) if Path(snapshot).is_absolute() else files / snapshot
-            if not path.resolve().is_relative_to(files.resolve()):
-                _fail("registry.snapshot", "Registry snapshot must be inside plan files", "注册表快照必须位于计划文件内部")
-            _write(path, _cooperation_module().merge_contract_snapshot(json.loads(path.read_text())))
-
-        def expand(target: dict) -> None:
-            # Expansion reads the snapshot; like the loader, resolve it against the plan files.
-            ensure_contracts(target)
-            snapshot = target["registry"].get("snapshot")
-            if snapshot is not None and not Path(snapshot).is_absolute():
-                target["registry"]["snapshot"] = str(files / snapshot)
-            try:
-                expand_template(target)
-            finally:
-                if snapshot is not None:
-                    target["registry"]["snapshot"] = snapshot
-
-        if "generators" in document:
-            expand(document)
-        seen: set[str] = set()
+        base_summary = summarize(baseline.document, directory=files, controls=scene.controls, catalogue=catalogue)
+        factories = set()
+        for plugin in catalogue.plugins:
+            if plugin._host is not None and plugin._host not in factories:
+                adapters.append(plugin._host(ctx, scene, document, files, baseline, catalogue))
+                factories.add(plugin._host)
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
-        operations = copy.deepcopy(operations)
-        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "remove_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident"}
-        needs_lowalt = any(isinstance(o, dict) and (o.get("op") in lowalt_names or o.get("op") in {"set_wind", "add_gust"} and not any(e.get("plugin") == "environment" for e in document["engines"].values()) or o.get("op") == "schedule_event" and str(o.get("params", {}).get("event", "")).startswith(("lowalt", "restaurant", "close_vertiport", "add_urgent", "change_dropoff", "prioritize_medical", "investigate"))) for o in operations)
-        if needs_lowalt and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
-            used_ids = [o.get("id") for o in operations if isinstance(o, dict)]
-            automatic_id = "auto-lowalt-components"
-            while automatic_id in used_ids:
-                automatic_id += "-1"
-            operations.insert(0, {"id": automatic_id, "op": "add_lowalt_components", "params": {}})
-            message = "Prepended add_lowalt_components: standard lowalt engines, algorithm slots and rules; no places, fleets or orders; existing entities and origin preserved / 已前置 add_lowalt_components：安装标准低空引擎、算法槽和规则，不生成设施、机群或订单，保留已有实体和原点"
-            notes.append(message)
-            warnings.append({"op_id": automatic_id, "field": "operations", "message": "Required drone scene engines, decision methods and safety rules are included; review them before confirming / 已包含必需的无人机场景引擎、决策方法与安全规则，请审阅后再确认"})
-        created_by: dict[str, str] = {}
-        workload_creators = {o["id"]: o["params"]["id"] for o in operations if isinstance(o, dict) and o.get("op") == "add_orders" and
-                             isinstance(o.get("params"), dict) and isinstance(o.get("params", {}).get("id"), str) and isinstance(o.get("id"), str)}
-        ordered_indices = _operation_order(operations, document)
-        for i in ordered_indices:
-            operation = operations[i]
-            op_id = operation.get("id", f"op-{i + 1}") if isinstance(operation, dict) else f"op-{i + 1}"
-            candidate, candidate_controls = copy.deepcopy(document), copy.deepcopy(scene.controls)
+        inputs, input_names = _resource_inputs(files)
+        prerequisite_context = OperationContext(document, resources=inputs, controls=scene.controls,
+                                                data={"resource_names": input_names, "types": _registry_types(document, files),
+                                                      "template_id": scene.template_id},
+                                                agent_profile=ctx.agent_profile, locale=ctx.locale)
+        operations, notes, prerequisite_warnings = catalogue.prerequisites(prerequisite_context, operations)
+        warnings.extend(prerequisite_warnings)
+        seen: set[str] = set()
+        ordered_indices = _operation_order(operations, document, catalogue, adapters)
+        effective = {}
+        for index in ordered_indices:
+            operation = operations[index]
+            op_id = operation.get("id", f"op-{index + 1}") if isinstance(operation, dict) else f"op-{index + 1}"
+            candidate_controls = copy.deepcopy(scene.controls)
             warning_count = len(warnings)
             try:
                 if op_id in seen:
                     _fail("id", "Operation ids must be unique", "操作标识必须唯一")
                 seen.add(op_id)
-                name, params = validate_operation(operation)
-                if name in {"set_orders", "remove_orders"} and params["id"] in workload_creators:
-                    existing_workloads = {_group_id(group) for spec in candidate["engines"].values() if spec["plugin"] == "lowalt_tasks"
-                                          for group in spec["config"].get("generators", [])}
-                    if params["id"] not in existing_workloads:
-                        params = {**params, "id": workload_creators[params["id"]]}
-                removals = _apply_operation(ctx, scene, candidate, name, params, files, warnings, op_id)
-                if "generators" in candidate:
-                    _sync_base_fleet(candidate)
-                    expand(candidate)
+                name, params = validate_operation(operation, catalogue=catalogue)
+                spec = catalogue.resolve(name)
+                data = {"template_id": scene.template_id}
+                for adapter in adapters:
+                    data.update(adapter.prepare(spec, operation, document, params, warnings))
+                resources, resource_names = _resource_inputs(files)
+                data.update(resource_names=resource_names, types=_registry_types(document, files))
+                context = OperationContext(document, resources=resources, data=data, controls=scene.controls,
+                                           operation_id=op_id, agent_profile=ctx.agent_profile, locale=ctx.locale)
+                proposal = catalogue.compile(context, operation)
+                issue_errors = [row for row in thaw(proposal.issues) if row["severity"] == "error"]
+                if issue_errors:
+                    errors.extend({"op_id": op_id, **{key: value for key, value in row.items() if key != "severity"}} for row in issue_errors)
+                    continue
+                candidate = apply_patches(document, proposal.patches)
+                staged = _stage_resources(files, proposal.resources)
+                for adapter in adapters:
+                    adapter.after(candidate)
                 document = candidate
-                if removals:
-                    removed_references.extend(removals)
-                if name in {"add_place", "add_fleet", "add_orders", "add_incident"}:
-                    created_by[params["id"]] = op_id
-            except (OperationError, ValueError, TypeError, KeyError) as exc:
+                effects.extend(staged)
+                effects.extend(thaw(proposal.effects))
+                contributed_expectations.extend(thaw(proposal.expectations))
+                if proposal.effects:
+                    contributions.setdefault("effects", []).extend(thaw(proposal.effects))
+                links = thaw(proposal.references)
+                if links:
+                    contributions.setdefault("references", []).extend(links)
+                for change in staged:
+                    resource = next(row for row in proposal.resources if row.path == change["id"])
+                    contributions.setdefault("resources", []).append({
+                        "path": resource.path, "action": "remove" if resource.content is None else "write",
+                        "digest": None if resource.content is None else "sha256:" + hashlib.sha256(resource.content).hexdigest(),
+                    })
+                warnings.extend({"op_id": op_id, **{key: value for key, value in row.items() if key != "severity"}} for row in thaw(proposal.issues))
+                if proposal.controls is not None:
+                    scene.controls = thaw(proposal.controls)
+                if proposal.effective_operations:
+                    effective[index] = thaw(proposal.effective_operations)
+                for adapter in adapters:
+                    adapter.succeeded(spec, params, op_id)
+            except (OperationError, ValueError, TypeError, KeyError, IndexError) as exc:
                 scene.controls = candidate_controls
                 del warnings[warning_count:]
-                target = operation.get("params", {}).get("id") if isinstance(operation, dict) and isinstance(operation.get("params"), dict) else None
-                owner = created_by.get(target) if isinstance(target, str) else None
                 message = str(exc)
-                if owner is not None and isinstance(operation, dict) and str(operation.get("op", "")).startswith("add_"):
-                    message += f". {target!r} is already added by {owner} in THIS draft; edit {owner} with revise_plan.update instead of adding it again / 该对象已由本草稿操作 {owner} 添加，请修改该操作"
-                if isinstance(operation, dict) and operation.get("op") in {"set_orders", "remove_orders"} and getattr(exc, "field", None) == "id":
-                    message += f". Workload creation operations (op id → workload id): {workload_creators}; retain these creations / 工作量创建操作（操作标识→工作量标识），请保留创建操作"
+                for adapter in adapters:
+                    message = adapter.error(operation, exc, message)
                 errors.append({"op_id": op_id, "field": getattr(exc, "field", "params"), "message": message})
-        coop = next((e["config"].get("cooperation") for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"), None)
-        if coop is not None and not errors:
-            module = _cooperation_module()
-            ensure_contracts(document)
-            vehicles = {e["id"] for e in document["entities"] if e["type"] == "lowalt:UAV"}
-            module.validate_config(coop, vehicles=vehicles, until_ns=document["run"]["until_ns"])
-            snapshot = document["registry"]["snapshot"]
-            document["registry"]["snapshot"] = str(files / snapshot) if not Path(snapshot).is_absolute() else snapshot
-            try:
-                module.expand(document)
-            finally:
-                document["registry"]["snapshot"] = snapshot
-            if not coop.get("incidents"):
-                # Valid but inert: without an incident nothing triggers noticing, handoff or photography.
-                warnings.append({"op_id": None, "field": "incidents", "message": "Cooperation is configured but no incident is scheduled, so nobody will notice, hand over or photograph anything; add one with add_incident / 已配置协作但没有安排事件，不会触发发现、交接或拍摄；请用 add_incident 添加事件"})
-            if not any(e["plugin"] in {"lowalt_city_capture", "traffic_camera_capture"} for e in document["engines"].values()):
-                warnings.append({"op_id": None, "field": "photograph", "message": "Photograph events are recorded, but this scene has no city camera for an image artifact / 此场景可记录拍摄事件，但没有城市相机生成照片文件"})
+        for adapter in adapters:
+            adapter.finish(document, [operations[index] for index in ordered_indices], errors, warnings)
         if not errors:
-            _time_bounds(document, [operations[i] for i in ordered_indices], errors, warnings)
-        if not errors:
-            _idle_kitchens(document, warnings)
             loaded = load_scenario(document, base=files)
             document = loaded.document
             _editable_packages(document)
-            _refresh_controls(ctx, scene, document, warnings)
+            for adapter in adapters:
+                adapter.refresh(document, warnings)
+        if effective:
+            operations = [row for index, operation in enumerate(operations) for row in effective.get(index, [operation])]
     except Exception as exc:  # noqa: BLE001 - return real compiler/loader diagnostics
         errors.append({"op_id": operations[-1].get("id", f"op-{len(operations)}") if isinstance(operations, list) and operations and isinstance(operations[-1], dict) else None,
                        "field": getattr(exc, "field", getattr(exc, "path", "base")), "message": f"{type(exc).__name__}: {exc}"})
-    summary = summarize(document, directory=files, controls=scene.controls) if not errors else {}
+    summary = summarize(document, directory=files, controls=scene.controls, catalogue=catalogue) if not errors else {}
     for work in summary.get("workloads", []):
         if "note" in work["release"]:
             warnings.append({"op_id": None, "field": f"workloads.{work['id']}.release", "message": f"{work['release']['note']} / {work['release']['note_zh']}"})
+    expected = expectations(document, summary, catalogue=catalogue) if not errors else []
+    for row in contributed_expectations if not errors else []:
+        previous = next((entry for entry in expected if entry["id"] == row["id"]), None)
+        if previous is None or previous != row:
+            expected.append(row)  # Conflicting duplicate ids fail validation below.
+    from aeroagentsim.assistant_api import validate_expectations
+    try:
+        validate_expectations(expected)
+    except (TypeError, ValueError) as exc:
+        errors.append({"op_id": None, "field": "expectations", "message": str(exc)})
     result = CompileResult(not errors, errors, warnings, document, files, _digest(document, files), summary,
-                           diff(base_summary, summary) if not errors else {}, interactions(summary) if not errors else {},
-                           expectations(document, summary) if not errors else [])
+                           diff(base_summary, summary) if not errors else {}, interactions(summary, catalogue=catalogue) if not errors else {}, expected if not errors else [])
     result.notes = notes
+    result.contributions = contributions
     result.operations = copy.deepcopy(operations) if isinstance(operations, list) else []
     if result.ok:
-        result.diff_base["removed"].extend(removed_references)
-    if result.ok and not base_lowalt and has_lowalt_components(document):
-        added_engines = sorted(document["engines"].keys() - baseline.document["engines"].keys())
-        result.diff_base["added"].insert(0, {"kind": "components", "id": "lowalt_components",
-            "label": f"{len(added_engines)} required drone scene engines, decision methods and safety rules",
-            "label_zh": f"{len(added_engines)} 个必需的无人机场景引擎、决策方法与安全规则", "op": "add_lowalt_components",
-            "fields": [{"name": "engines", "before": [], "after": added_engines}]})
-    region_plan = files / "region.plan.json"
-    if result.ok and region_plan.is_file():
-        region_record = json.loads(region_plan.read_text())
-        result.summary["region"] = region_record["region"]
-        result.diff_base["changed"].append({"kind": "scene", "id": "region", "label": "Map region", "label_zh": "地图区域",
-                                           "fields": [{"name": "bounds", "after": region_record["region"]["bounds"]},
-                                                      {"name": "origin", "before": region_record["previous_origin"], "after": region_record["scene"]["origin"]}]})
-        if region_record["network_invalidated"]:
-            result.diff_base["removed"].append({"kind": "network", "id": "network.net.xml", "label": "Previous road network", "label_zh": "原道路网络"})
-    if result.ok:
+        for effect in effects:
+            row = dict(effect)
+            group = row.pop("group", "changed")
+            if group not in {"added", "changed", "removed"} or not {"kind", "id"} <= row.keys():
+                raise ValueError("Malformed assistant effect proposal")
+            result.diff_base[group].append(row)
+        for adapter in adapters:
+            adapter.decorate(result, baseline)
         enrich_diff(result.diff_base)
     _write(out_dir / "scenario.json", document)
     _write(out_dir / "compile.json", {**result.to_data(), "base": base, "base_revision": scene.revision if scene else None,
