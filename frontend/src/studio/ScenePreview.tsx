@@ -12,9 +12,11 @@ import { AtmosphereLayer } from '../viewport/atmosphere';
 import { applyWeatherMaterials } from '../viewport/scene';
 import { conditionsFromDraft, previewMoment } from '../viewport/conditions';
 import { ConditionsHud } from '../viewport/ConditionsHud';
+import { previewPositions } from './preview-positions';
 
 type LayerName = 'ground' | 'buildings' | 'roads' | 'entities' | 'airspace';
 const LAYER_NAMES: LayerName[] = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
+const EMPTY_SCENARIO: Workspace['scenario'] = {};
 
 interface Context {
   scene: THREE.Scene; abort: AbortController; groups: Record<LayerName, THREE.Group>;
@@ -34,36 +36,23 @@ function clearGroup(group: THREE.Group) { for (const child of [...group.children
  * The renderer, camera and downloaded city live for one scene identity. Layer checkboxes only
  * flip `group.visible`; cheap groups (roads, entities, airspace) rebuild when their content changes.
  */
-/** Positions authored in the draft: bound entity facts and generated fleet starts (ENU). */
-export function draftBinding(scenario: Workspace['scenario'], typeId: string) {
-  const parents = new Map((scenario.registry?.types ?? []).map((type: any) => [type.id, type.parents ?? []]));
-  const queue = [typeId], seen = new Set<string>();
-  while (queue.length) {
-    const current = queue.shift()!; if (seen.has(current)) continue; seen.add(current);
-    const binding = Array.isArray(scenario.presentation) && scenario.presentation.find((row: any) => row.typeId === current);
-    if (binding) return binding;
-    queue.push(...(parents.get(current) as string[] ?? []));
-  }
-}
+export { draftBinding } from './preview-positions';
 
+/** Positions authored in the draft, already converted to runtime ENU by `previewPositions`. */
 export function authoredPositions(scenario: Workspace['scenario']): number[][] {
   const points: number[][] = [];
+  // Areas keep their authored polygon; the conversion module deliberately leaves them areas.
   for (const entity of scenario.entities ?? []) {
     const airspace = entity.facts?.['aas.studio.airspace'];
-    if (airspace) {
-      if (Array.isArray(airspace.polygon)) for (const point of airspace.polygon) {
-        if (!Array.isArray(point) || point.length < 2 || !point.slice(0, 2).every(Number.isFinite)) continue;
-        for (const altitude of [airspace.floor_m, airspace.ceiling_m]) {
-          if (Number.isFinite(altitude)) points.push([point[0], point[1], altitude]);
-        }
+    if (!airspace) continue;
+    if (Array.isArray(airspace.polygon)) for (const point of airspace.polygon) {
+      if (!Array.isArray(point) || point.length < 2 || !point.slice(0, 2).every(Number.isFinite)) continue;
+      for (const altitude of [airspace.floor_m, airspace.ceiling_m]) {
+        if (Number.isFinite(altitude)) points.push([point[0], point[1], altitude]);
       }
-      continue;
     }
-    const binding = draftBinding(scenario, entity.type);
-    const pos = binding ? entity.facts?.[binding.positionField] : undefined;
-    if (Array.isArray(pos) && pos.length === 3 && pos.every(Number.isFinite)) points.push(pos);
   }
-  for (const generator of Object.values(scenario.generators ?? {}) as any[]) for (const start of generator?.starts ?? []) if (Array.isArray(start) && start.length === 3 && start.every(Number.isFinite)) points.push(start);
+  for (const placement of previewPositions(scenario).placements) points.push(placement.enu);
   return points;
 }
 
@@ -114,7 +103,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const sceneKey = useMemo(() => JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
     workspace.scene?.ground ?? null, workspace.scene?.origin ?? null, workspace.proposal ?? false, workspace.proposal ? workspace.scene?.geojson : null]), [workspace.id, api, city, workspace.scene, workspace.proposal]);
   const roadsKey = useMemo(() => JSON.stringify(workspace.scene?.roads ?? null), [workspace.scene?.roads]);
-  const entitiesKey = useMemo(() => JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null, workspace.scenario.generators ?? null, workspace.scenario.registry?.types ?? null]), [workspace.scenario]);
+  const entitiesKey = useMemo(() => JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null, workspace.scenario.generators ?? null, workspace.scenario.registry?.types ?? null, workspace.scenario.origin ?? null]), [workspace.scenario]);
   const layerKey = useMemo(() => LAYER_NAMES.map(name => layers.includes(name) ? 1 : 0).join(''), [layers]);
   const overlayKey = useMemo(() => JSON.stringify(overlay), [overlay]);
 
@@ -344,20 +333,13 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
           current.groups.airspace.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: '#e99c36' })));
         }
       }
-      // Area geometry is authoritative; legacy placement anchors are not point objects.
-      if (airspace) return;
-      const binding = draftBinding(scenario, entity.type);
-      const pos = binding && entity.facts?.[binding.positionField];
-      if (!Array.isArray(pos) || pos.length !== 3 || !pos.every(Number.isFinite)) return;
-      const marker = new THREE.Sprite(new THREE.SpriteMaterial({ color: binding.visual?.color ?? '#1677ff', sizeAttenuation: false, depthTest: false }));
-      marker.name = entity.id; marker.scale.set(0.01, 0.01, 1);
-      marker.position.set(pos[0], pos[2], -pos[1]); current.groups.entities.add(marker);
     });
-    // Generated fleets start at authored points; one marker per start, labelled by count in the panel.
-    for (const generator of Object.values(scenario.generators ?? {}) as any[]) for (const start of generator?.starts ?? []) {
-      if (!Array.isArray(start) || start.length !== 3 || !start.every(Number.isFinite)) continue;
-      const marker = new THREE.Sprite(new THREE.SpriteMaterial({ color: draftBinding(scenario, generator.type)?.visual?.color ?? '#50c9ff', sizeAttenuation: false, depthTest: false }));
-      marker.scale.set(0.01, 0.01, 1); marker.position.set(start[0], start[2], -start[1]); current.groups.entities.add(marker);
+    // Points use the same frame/origin conversion as a run. Unconvertible declarations add no marker.
+    for (const placement of previewPositions(scenario).placements) {
+      const color = placement.color ?? (placement.source === 'generator' ? '#50c9ff' : '#1677ff');
+      const marker = new THREE.Sprite(new THREE.SpriteMaterial({ color, sizeAttenuation: false, depthTest: false }));
+      marker.name = placement.id; marker.scale.set(0.01, 0.01, 1);
+      marker.position.fromArray(placement.world); current.groups.entities.add(marker);
     }
     if (root.current) root.current.dataset.markerPositions = JSON.stringify(current.groups.entities.children.map(marker => ({ id: marker.name, position: marker.position.toArray() })));
     current.invalidate();
@@ -368,11 +350,14 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const status = loading && <div className="studio-preview-status" role="status">{t('Loading city geometry…')}{progress && progress.total > 0 && <span> {zh ? '建筑' : 'Buildings'} {progress.loaded} / {progress.total}</span>}</div>;
   // Schematic plane vs real geography must be distinguishable at a glance (QA GEO-008).
   const hasGeography = !!city || !!workspace.scene;
-  const scenario = workspace.scenario ?? {};
-  const placesAndFleets = (scenario.entities ?? []).some((entity: any) =>
-    'lowalt.site_position' in (entity.facts ?? {}) || 'lowalt.position' in (entity.facts ?? {}) ||
-    entity.type === 'aas:StudioFacility' || entity.type === 'aas:StudioEntity') ||
-    Object.values(scenario.generators ?? {}).some((generator: any) => typeof generator?.count === 'number' && generator.count > 0);
+  const scenario = workspace.scenario ?? EMPTY_SCENARIO;
+  const spatial = useMemo(() => previewPositions(scenario), [scenario]);
+  // Drafts saved before presentation rows were authored can still carry a legacy point.
+  // It is not drawable without a binding, but it is not an empty scene either.
+  const legacyPoint = scenario.presentation === undefined
+    && (scenario.entities ?? []).some((entity: any) => Object.entries(entity?.facts ?? {})
+      .some(([field, value]) => /position/i.test(field) && Array.isArray(value) && value.length === 3 && value.every(Number.isFinite)));
+  const noObjects = hasGeography && !spatial.hasSpatialEntities && !legacyPoint && <div className="scene-preview-no-objects" data-testid="no-objects" role="note">{zh ? '还没有地点' : 'No places yet'}</div>;
   // Sits just above the "Fit scene" chip, in the same visual language.
   const planeNote = !hasGeography && <div className="scene-preview-plane-note" data-testid="plane-note" role="note">
     <div>
@@ -380,7 +365,6 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       <span>{zh ? '选择真实区域：配置面板 › 空间 › 区域。' : 'Choose a real region: Configure › Scene & space › Region'}</span>
     </div>
   </div>;
-  const noObjects = hasGeography && !placesAndFleets && <div className="scene-preview-no-objects" data-testid="no-objects" role="note">{zh ? '还没有地点' : 'No places yet'}</div>;
   if (bare) return <div className="scene-preview-canvas" ref={root} aria-label={t('Scene preview')} aria-busy={loading} data-rendered={rendered} data-testid="draft-preview" data-overlay-state={overlay?.tone ?? 'none'} data-overlay-labels="[]">
     {planeNote}
     {noObjects}
