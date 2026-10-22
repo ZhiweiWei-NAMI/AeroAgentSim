@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import multiprocessing
-import threading
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -13,7 +13,12 @@ from typing import Any
 import pytest
 from aerokernel import BindingManifest, Kernel, MemoryRegistry
 
-from aeroagentsim.services.lifecycle import WorkerFailure, WorkerLimits, WorkerRegistry
+from aeroagentsim.services.lifecycle import (
+    WorkerFailure,
+    WorkerLimits,
+    WorkerRegistry,
+    bounded_input,
+)
 from aeroagentsim.services.storage import RunStorage
 
 
@@ -62,12 +67,16 @@ class Context:
         self.fail_start = fail_start
 
     @staticmethod
-    def Event() -> threading.Event:
-        return threading.Event()
+    def Event() -> Any:
+        raise AssertionError("registry created a kill-poisonable shared Event")
 
     @staticmethod
-    def Value(kind: str, value: float) -> SimpleNamespace:
-        return SimpleNamespace(value=value)
+    def Value(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("registry created a kill-poisonable locked Value")
+
+    @staticmethod
+    def RawValue(kind: str, value: float | int) -> Any:
+        return multiprocessing.RawValue(kind, value)
 
     def Pipe(self) -> tuple[Any, Any]:
         pair = multiprocessing.Pipe()
@@ -100,6 +109,88 @@ async def released(registry: WorkerRegistry) -> None:
         while registry.active_count or registry.task_count:
             await asyncio.sleep(0.001)
     await asyncio.wait_for(wait(), 2)
+
+
+def _exit_holding_shared_locks(
+    scenario: Any, path: Path, paused: Any, stopped: Any, ingress: Any,
+    started: Any, speed: Any, ready: Any, inherited: Any, cleanup: float,
+) -> None:
+    # Always strand a real Event lock. Also poison the actual lifecycle flags
+    # and speed if a regression ever reintroduces locking implementations.
+    for flag in (scenario.legacy_flag, paused, stopped, started, ready):
+        condition = getattr(flag, "_cond", None)
+        if condition is not None:
+            condition.acquire()
+        else:
+            get_lock = getattr(getattr(flag, "_flag", flag), "get_lock", None)
+            if get_lock is not None:
+                get_lock().acquire()
+    get_lock = getattr(speed, "get_lock", None)
+    if get_lock is not None:
+        get_lock().acquire()
+    os._exit(17)  # Deliberately bypass semaphore release and normal finalizers.
+
+
+def _host_after_lock_owner_exit(path: Path, access: str) -> None:
+    async def check() -> None:
+        context = multiprocessing.get_context("fork")
+        legacy_flag = context.Event()
+        registry = WorkerRegistry(
+            path, limits(), context=context, target=_exit_holding_shared_locks,
+        )
+        worker = registry.start(
+            SimpleNamespace(pacing="realtime", legacy_flag=legacy_flag),  # type: ignore[arg-type]
+            prepared(path / "poisoned"), autostart=False,
+        )
+        # No event-loop yield until the child is dead: neither the monitor nor
+        # a timing race can release it before the host's critical flag access.
+        worker.process.join(2)
+        assert worker.process.exitcode == 17
+        assert not legacy_flag._cond.acquire(False), "child did not strand its flag lock"
+        try:
+            if access == "startup":
+                with pytest.raises(WorkerFailure) as raised:
+                    await registry.wait_started(worker)
+                assert raised.value.detail["code"] == "WORKER_EXITED"
+            elif access == "controls":
+                assert not worker.started.is_set() and not worker.paused.is_set()
+                worker.started.set()
+                worker.paused.set()
+                assert worker.started.is_set() and worker.paused.is_set()
+                worker.paused.clear()
+                worker.stopped.set()
+                assert worker.stopped.is_set() and not worker.paused.is_set()
+            elif access == "speed":
+                assert worker.speed.value == 1.0
+                worker.speed.value = 0.25
+                assert worker.speed.value == 0.25
+            else:
+                assert access == "shutdown"
+                await registry.close()
+        finally:
+            await registry.close()
+        await released(registry)
+        assert worker.released and worker.connection.closed
+        assert RunStorage(worker.path).metadata()["host_lifecycle"]["exitcode"] == 17
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize("access", ["startup", "controls", "speed", "shutdown"])
+def test_child_exit_holding_flag_locks_cannot_block_host(tmp_path: Path, access: str) -> None:
+    # An asyncio timeout cannot rescue an event loop blocked in Event.is_set().
+    # Isolate the host too, so the regression fails deterministically, not hangs.
+    context = multiprocessing.get_context("fork")
+    host = context.Process(target=_host_after_lock_owner_exit, args=(tmp_path, access))
+    host.start()
+    try:
+        host.join(5)
+        assert not host.is_alive(), f"host {access} blocked on a dead child's shared lock"
+        assert host.exitcode == 0
+    finally:
+        if host.is_alive():
+            host.kill()
+            host.join(2)
+        host.close()
 
 
 def test_worker_has_one_owner_and_completed_handles_are_released(tmp_path: Path) -> None:
@@ -294,6 +385,26 @@ def test_partially_started_process_keeps_an_owner_and_reports_uncertainty(tmp_pa
         await released(registry)
         assert context.processes[0].close_calls == 1
         assert all(connection.closed for connection in context.pipes[0])
+    asyncio.run(check())
+
+
+def test_expired_adapter_deadline_is_refused_before_executor_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(deadline: float) -> dict[str, Any]:
+        raise AssertionError("already expired input reached its callback")
+
+    def forbidden_dispatch(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("already expired input reached the executor")
+
+    monkeypatch.setattr(asyncio, "to_thread", forbidden_dispatch)
+
+    async def check() -> None:
+        with pytest.raises(WorkerFailure) as raised:
+            await bounded_input("expired", forbidden, timeout_s=1.0, deadline=-1.0)
+        assert raised.value.status_code == 504
+        assert raised.value.detail["outcome"] == "not_submitted"
+        assert raised.value.detail["retryable"] is False
     asyncio.run(check())
 
 

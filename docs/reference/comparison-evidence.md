@@ -192,11 +192,23 @@ Snapshot evidence does not contain host status: `status` stays `null`, including
 in `recorded_ends`. An ACK or a `run_stop` record is not inferred to mean success,
 terminality or `results_final`.
 
-**HTTP integration is planned, not included here.** The existing routes in
-`services/app.py` are unchanged. In particular, this Python API does not by itself
-make the existing live `/v1/runs/compare` route fixed-cut; that route still gathers
-summaries and recorded ends separately. Its existing response fields are retained,
-with the additive supplied-row evidence described above.
+**HTTP comparison uses this fixed-cut implementation.**
+`GET /v1/runs/compare?ids=a,b` captures one acknowledged reader snapshot for each
+of 2–20 distinct runs before projecting any row, then calls `compare_runs_at_cuts`.
+KPIs, exact configuration differences and recorded ends share each row's selected
+cut; later appends cannot extend them. Existing response fields are retained with
+additive `basis: "fixed_cuts"`, cut/cursor and metric compatibility evidence.
+`include_kpis=false` retains the fixed cuts, configuration differences and recorded
+ends, but omits the KPI table (including its compatibility evidence), row KPIs and
+knob/algorithm `differences` table. Alignment remains `recorded_run_end`, not a
+globally simultaneous snapshot or a common horizon. Unlike the Python
+snapshot-only API, HTTP adds separately observed host status with
+`status_basis: "host_observation"`;
+`results_cursor` / `results_final` are independent host/projection observations,
+not KPI source finality. Missing/unreadable ACK evidence or header-only runs return
+409; known metric identity conflicts return 422. See the
+[HTTP comparison reference](http-api.md#templates-and-comparisons) for fields and
+request semantics.
 
 ## Non-guarantees
 

@@ -156,10 +156,13 @@ def execute(
 
     With ``started``, the worker commits the header and t=0 state, reports
     ``initialized`` and advances simulated time only after ``started`` is set.
-    ``speed`` (shared double) is the host pacing factor: simulated seconds per
-    wall second, or 0 for as fast as possible. Pacing never changes results.
-    ``ready`` acknowledges real session initialization, including its t=0 ACK;
-    it is not engine/provider readiness or a successful-run receipt.
+    ``paused``, ``stopped`` and ``started`` are lock-free shared bytes written
+    only by the host and polled here. ``speed`` is an unlocked shared double,
+    also written only by the host: simulated seconds per wall second, or 0 for
+    as fast as possible. Pacing never changes results. The worker alone sets
+    the lock-free ``ready`` byte after real session initialization and its t=0
+    ACK; it is not engine/provider readiness or a successful-run receipt.
+    All threading Events/locks below are worker-local, never shared with the host.
     """
     forked = parent_process() is not None
     if forked:

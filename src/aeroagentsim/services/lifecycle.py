@@ -68,6 +68,69 @@ class WorkerFailure(Exception):
         }
 
 
+class _SharedFlag:
+    """Single-writer shared byte, mirroring experiments._Cancellation.
+
+    The host alone writes paused/stopped/started; the worker alone writes ready.
+    Readers never acquire a lock, wait for a writer or perform read-modify-write.
+    In particular, killing a reader or the ready writer cannot poison a semaphore.
+    These are independent signals, not a transactional snapshot or a receipt.
+    """
+
+    def __init__(self, flag: Any) -> None:
+        self._flag = flag
+
+    def set(self) -> None:
+        self._flag.value = 1
+
+    def clear(self) -> None:
+        self._flag.value = 0
+
+    def is_set(self) -> bool:
+        return bool(self._flag.value)
+
+
+async def bounded_input(
+    run_id: str,
+    call: Callable[[float], dict[str, Any]],
+    *,
+    timeout_s: float,
+    deadline: float | None = None,
+) -> dict[str, Any]:
+    """Bound executor dispatch and the entire exchange with one absolute deadline.
+
+    The synchronous callback receives that same deadline for serialization and
+    transport waits. Even if cancellation loses an executor-dispatch race, an
+    expired queued callback must not begin work, let alone submit worker input.
+    """
+    now = time.monotonic()
+    deadline = min(deadline, now + timeout_s) if deadline is not None else now + timeout_s
+    if deadline <= now:
+        raise WorkerFailure(
+            run_id, 504, "WORKER_INPUT_TIMEOUT", "Input deadline expired before submission"
+        )
+
+    def dispatch() -> dict[str, Any]:
+        if time.monotonic() >= deadline:
+            raise WorkerFailure(
+                run_id, 504, "WORKER_INPUT_TIMEOUT", "Input deadline expired before submission"
+            )
+        return call(deadline)
+
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(dispatch), timeout=max(0.0, deadline - time.monotonic())
+        )
+    except asyncio.TimeoutError as exc:
+        # A running call may already have sent input; never assert rejection.
+        raise WorkerFailure(
+            run_id, 504, "WORKER_INPUT_TIMEOUT",
+            "Host input deadline expired before its result was observed; inspect "
+            "admissions, source progress and journal; do not automatically resubmit",
+            outcome="uncertain",
+        ) from exc
+
+
 @dataclass(eq=False)
 class WorkerHandle:
     run_id: str
@@ -187,8 +250,12 @@ class WorkerRegistry:
                 json.dump({"contract": "aeroagentsim.worker-owner/v1", "id": run_id}, marker)
         except FileExistsError as exc:
             raise ValueError(f"Worker {run_id} already has an owner") from exc
-        paused, stopped, started, ready = (self.context.Event() for _ in range(4))
-        speed = self.context.Value("d", 1.0 if scenario.pacing == "realtime" else 0.0)
+        paused, stopped, started, ready = (
+            _SharedFlag(self.context.RawValue("b", 0)) for _ in range(4)
+        )
+        # The event-loop owner is the sole pacing writer; workers only read.
+        # No shared semaphore may be held by a killable child, even for a read.
+        speed = self.context.RawValue("d", 1.0 if scenario.pacing == "realtime" else 0.0)
         if autostart:
             started.set()
         host_input, worker_input = self.context.Pipe()

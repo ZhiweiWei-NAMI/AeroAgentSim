@@ -7,7 +7,6 @@ import json
 import logging
 import math
 import os
-import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import ExitStack, asynccontextmanager
@@ -21,7 +20,14 @@ from fastapi.responses import FileResponse, StreamingResponse
 from aeroagentsim.scenario import Scenario, load_scenario
 
 from .comparison import configuration_differences as configuration_differences
-from .lifecycle import TERMINAL, WorkerFailure, WorkerHandle, WorkerLimits, WorkerRegistry
+from .lifecycle import (
+    TERMINAL,
+    WorkerFailure,
+    WorkerHandle,
+    WorkerLimits,
+    WorkerRegistry,
+    bounded_input,
+)
 from .plugins import plugin_inventory
 from .projector import header
 from .security import LOCAL_ORIGIN, RequestBoundary
@@ -902,25 +908,19 @@ def create_app(
             raise HTTPException(422, reply["error"])
         return dict(reply["result"])
 
-    async def bounded_input_call(run_id: str, operation: str, body: Any) -> dict[str, Any]:
+    async def bounded_input_call(
+        run_id: str, operation: str, body: Any, *, deadline: float | None = None,
+    ) -> dict[str, Any]:
         directory(run_id)
-        deadline = time.monotonic() + workers.limits.input_timeout_s
         try:
-            return await asyncio.wait_for(
-                asyncio.to_thread(worker_input_call, run_id, operation, body, deadline=deadline),
-                timeout=max(0.0, deadline - time.monotonic()),
+            return await bounded_input(
+                run_id,
+                lambda expires: worker_input_call(run_id, operation, body, deadline=expires),
+                timeout_s=workers.limits.input_timeout_s,
+                deadline=deadline,
             )
-        except asyncio.TimeoutError as exc:
-            # Executor dispatch itself can be delayed. Cancellation plus the
-            # absolute deadline forbids a queued call from submitting later.
-            # A running call may already have sent input, so never assert rejection.
-            failure = WorkerFailure(
-                run_id, 504, "WORKER_INPUT_TIMEOUT",
-                "Host input deadline expired before its result was observed; inspect "
-                "admissions, source progress and journal; do not automatically resubmit",
-                outcome="uncertain",
-            )
-            raise HTTPException(failure.status_code, failure.detail) from exc
+        except WorkerFailure as exc:
+            raise HTTPException(exc.status_code, exc.detail) from exc
 
     @app.get("/v1/runs/{run_id}/inputs")
     async def input_progress(run_id: str) -> dict[str, Any]:
@@ -961,7 +961,11 @@ def create_app(
 
     from .artifacts import mount_artifacts
 
-    mount_artifacts(app, directory, worker_input_call)
+    mount_artifacts(
+        app, directory,
+        bounded_worker_input=bounded_input_call,
+        input_timeout_s=workers.limits.input_timeout_s,
+    )
 
     @app.get("/v1/runs/{run_id}/speed")
     async def get_speed(run_id: str) -> dict[str, Any]:

@@ -22,7 +22,7 @@ Every POST requires `Content-Type: application/json` (415 otherwise); send
 `{}` for controls without parameters. CORS permits those console origins,
 GET/POST, and Content-Type, Last-Event-ID and Authorization headers.
 
-**Non-loopback `aeroagentsim serve --host HOST` requires a nonempty
+**Non-loopback `aeroagentsim serve --host HOST` requires a nonblank
 `AEROAGENTSIM_API_TOKEN`, or the explicit `--unsafe-local-lab` override.** This
 includes wildcard listeners (`0.0.0.0`, `::`), remote IPs and non-localhost DNS
 names; hostnames are not resolved to guess whether they are local. Literal
@@ -131,13 +131,19 @@ promoted to an ACK or successful completion. Additive `host_lifecycle` metadata
 records the actual exit code, `forced`, `reason` and `termination_confirmed` only
 after exit is observed.
 
+Cross-process lifecycle signals use lock-free shared bytes: only the host writes
+pause/stop/start, and only the worker writes its initialization ACK flag. The
+host alone writes the unlocked shared pacing value. Flag and pacing accesses
+never acquire a child-owned semaphore or wait for a writer, so a child killed
+mid-access cannot strand the host event loop or prevent escalation.
+
 Operators can pass `create_app(..., worker_limits=WorkerLimits(...))`, importing
 `WorkerLimits` from `aeroagentsim.services.lifecycle`, or use these `serve` flags:
 
 | Flag | `WorkerLimits` field | Default seconds | Scope |
 | --- | --- | --- | --- |
 | `--startup-timeout` | `startup_timeout_s` | 60 | Real worker initialization and t=0 ACK. |
-| `--input-timeout` | `input_timeout_s` | 10 | One input/progress RPC: serialization wait, send and complete reply together; `/inputs`, `/ingress` and `/watermark` also include executor-dispatch delay. |
+| `--input-timeout` | `input_timeout_s` | 10 | One input/progress RPC: executor-dispatch delay, serialization wait, send and complete reply together, for `/inputs`, `/ingress`, `/watermark` and capture-artifact admission. |
 | `--shutdown-grace` | `shutdown_grace_s` | 10 | Cooperative stop, shared across all owned runs. |
 | `--terminate-grace` | `terminate_grace_s` | 2 | Terminate-to-exit wait, shared across runs. |
 | `--kill-grace` | `kill_grace_s` | 2 | Kill-to-exit/reaping wait, shared across runs. |
@@ -226,15 +232,17 @@ from the same last record. Existing `results_cursor` / `results_final` are
 independently observed projection/host state, not the source cursor/finality of
 these KPI values. An ACK, `run_stop`, terminal status or accepted input is not
 proof of mission completion. `include_kpis=false` still selects fixed cuts and
-omits both the KPI table and each row's `kpis`. Missing/unreadable ACK evidence or
-a header-only run returns 409 rather than comparing an inferred latest tail.
+retains `config_diff` and recorded ends, but omits the KPI table (including its
+compatibility evidence), each row's `kpis` and the knob/algorithm `differences`
+table. Missing/unreadable ACK evidence or a header-only run returns 409 rather
+than comparing an inferred latest tail.
 
 Missing measurements remain `null`; count metrics record zero when the selected
 prefix has no corresponding events. Current template defaults do not replace
 recorded measurements/configuration. For Python comparison and compatibility
-details see [comparison evidence](comparison-evidence.md#fixed-cut-python-comparison)
-(its planned-HTTP note predates this route integration). KPI details and
-business-event narratives are described in [the viewer feed](viewer-feed.md).
+details see [comparison evidence](comparison-evidence.md#fixed-cut-python-comparison).
+KPI details and business-event narratives are described in
+[the viewer feed](viewer-feed.md).
 
 ### Status vs. receipts
 
@@ -295,7 +303,18 @@ point's event schema.
 | `/v1/runs/{id}/artifacts` | GET | List stored capture artifacts. |
 | `/v1/runs/{id}/artifacts/{content}` | GET | Metadata for one artifact by content id, plus a download link. |
 | `/v1/runs/{id}/artifacts/{content}/download` | GET | PNG bytes (`ETag` = content id). |
-| `/v1/runs/{id}/capture-artifacts` | POST (202) | Upload a rendered capture (base64 PNG + request + timing stamps, ≤ 90 MB). Requires an active run and exactly one configured capture owner; the resulting storage event is admitted through the worker ingress path. 409/422 on mismatch. |
+| `/v1/runs/{id}/capture-artifacts` | POST (202) | Upload a rendered capture (base64 PNG + request + timing stamps, ≤ 90 MB). Requires an active run and exactly one configured capture owner; the resulting storage event uses the same bounded worker ingress adapter. 409/422 on mismatch, 504 on admission timeout. |
+
+Capture validation and PNG persistence precede admission; `--input-timeout` does
+not cap the entire upload or filesystem work. Admission captures an absolute
+deadline **before executor dispatch**, includes queue delay and never refreshes
+its budget when dispatched. Expired unsent work cannot submit later. A 504 is not
+an execution rejection or permission to retry: reconcile admissions and the
+acknowledged journal as for `/ingress`. Stored bytes remain available even when
+admission times out, and do not imply acceptance or capture success. The delivery
+sidecar is diagnostic only: it shares the remaining admission budget and may be
+absent after timeout rather than delaying the HTTP error behind a saturated
+executor. An already-running diagnostic write may finish later.
 
 Agent records: LangGraph decision messages are recorded as
 `aas.langgraph.record` events; the projector additionally derives

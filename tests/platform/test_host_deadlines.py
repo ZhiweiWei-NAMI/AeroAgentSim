@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import copy
 import json
 import multiprocessing
 import os
 import struct
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -232,7 +234,9 @@ def transport_worker(
         # poll() sees a frame header but recv() cannot finish this partial frame.
         os.write(ingress.fileno(), struct.pack("!i", 1024) + b"x")
     # Otherwise never read: a large host send blocks in the pipe transport.
-    stopped.wait(30)
+    deadline = time.monotonic() + 30
+    while not stopped.is_set() and time.monotonic() < deadline:
+        time.sleep(0.01)
     ingress.close()
 
 
@@ -309,6 +313,126 @@ def test_executor_queue_delay_is_bounded_and_cannot_submit_after_timeout(
         await asyncio.sleep(0)
         assert calls == []
     asyncio.run(check())
+
+
+@pytest.mark.parametrize("blocked_stage", ["admission", "delivery"])
+@pytest.mark.parametrize("cancellable_queue", [True, False])
+def test_capture_admission_and_delivery_share_deadline_under_executor_saturation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    cancellable_queue: bool, blocked_stage: str,
+) -> None:
+    import httpx
+
+    from aeroagentsim.observations.artifacts import ArtifactStore
+    from tests.observations.test_capture import FixtureRenderer, png, setup_capture
+
+    application = service.create_app(
+        tmp_path / "runs", worker_limits=limits(input_timeout_s=0.05),
+    )
+    path = tmp_path / "runs" / "capture-queued"
+    path.mkdir()
+    (path / "manifest.json").write_text(json.dumps({"id": path.name, "status": "running"}))
+    (path / "scenario.json").write_text(json.dumps({
+        "engines": {"camera": {"plugin": "capture", "config": {
+            "storage_result_schema": "image.upload", "ingress_stream_id": "capture",
+        }}},
+    }))
+    kernel, capture, request = setup_capture(path, FixtureRenderer(png()))
+    capture.store.register(request)
+    body = {
+        "request": request.to_data(), "png_base64": base64.b64encode(png()).decode(),
+        "at_ns": 1,
+        "source_stamp": {"clock_id": "canonical", "mapping_id": "canonical",
+                         "numerator": 1, "denominator": 1},
+    }
+    calls: list[Any] = []
+    deliveries: list[Any] = []
+    entered, release = threading.Event(), threading.Event()
+
+    def blocked() -> None:
+        entered.set()
+        assert release.wait(5), "test did not release its executor blocker"
+
+    def forbidden_delivery(*args: Any, **kwargs: Any) -> None:
+        deliveries.append((args, kwargs))
+        raise AssertionError("expired diagnostic write ran after the response")
+
+    monkeypatch.setattr(ArtifactStore, "delivery", forbidden_delivery)
+
+    async def check() -> None:
+        loop = asyncio.get_running_loop()
+        loop.set_default_executor(ThreadPoolExecutor(max_workers=1))
+        blockers: list[asyncio.Future[Any]] = []
+        dispatched: list[asyncio.Task[Any]] = []
+        original_put, original_to_thread = ArtifactStore.put, asyncio.to_thread
+
+        def occupy_executor() -> None:
+            blockers.append(loop.run_in_executor(None, blocked))
+
+        def stored(self: ArtifactStore, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            record = original_put(self, *args, **kwargs)
+            if blocked_stage == "admission":
+                # Queue the blocker before put's completion can wake the upload.
+                # Validation/storage succeed; only admission faces saturation.
+                loop.call_soon_threadsafe(occupy_executor)
+            return record
+
+        def worker_input(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            calls.append((args, kwargs))
+            if blocked_stage == "admission":
+                raise AssertionError("expired artifact admission was submitted later")
+            # An authored early RPC timeout leaves budget for diagnostics. Queue
+            # the blocker before returning the error, so delivery must use that
+            # remainder rather than awaiting executor availability indefinitely.
+            loop.call_soon_threadsafe(occupy_executor)
+            raise WorkerFailure(
+                path.name, 504, "WORKER_INPUT_TIMEOUT", "Authored RPC timeout",
+                outcome="uncertain",
+            )
+
+        monkeypatch.setattr(application.state.worker_registry, "input_call", worker_input)
+
+        async def uncancellable_dispatch(*args: Any, **kwargs: Any) -> Any:
+            # Model cancellation losing its race with executor dispatch. The
+            # queued thunk really runs after expiry and must refuse input/writes.
+            task = asyncio.create_task(original_to_thread(*args, **kwargs))
+            dispatched.append(task)
+            return await asyncio.shield(task)
+
+        monkeypatch.setattr(ArtifactStore, "put", stored)
+        if not cancellable_queue:
+            monkeypatch.setattr(asyncio, "to_thread", uncancellable_dispatch)
+        try:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=application), base_url="http://localhost",
+            ) as client:
+                response = await asyncio.wait_for(
+                    client.post(f"/v1/runs/{path.name}/capture-artifacts", json=body), 2,
+                )
+            assert len(blockers) == 1 and entered.is_set() and not release.is_set()
+            assert response.status_code == 504, response.text
+            detail = response.json()["detail"]
+            assert detail["code"] == "WORKER_INPUT_TIMEOUT"
+            assert detail["outcome"] == "uncertain" and detail["retryable"] is False
+            assert len(calls) == (1 if blocked_stage == "delivery" else 0)
+            assert deliveries == []
+        finally:
+            release.set()
+            await asyncio.gather(*blockers)
+            # Drain past all expired queued work, not just one event-loop tick.
+            await loop.run_in_executor(None, lambda: None)
+            results = await asyncio.gather(*dispatched, return_exceptions=True)
+        assert len(calls) == (1 if blocked_stage == "delivery" else 0)
+        assert deliveries == []
+        if not cancellable_queue and blocked_stage == "admission":
+            assert any(isinstance(result, WorkerFailure)
+                       and result.detail["outcome"] == "not_submitted" for result in results)
+        assert capture.store.list(), "an admission timeout must not erase stored bytes"
+
+    try:
+        asyncio.run(check())
+    finally:
+        kernel.close()
 
 
 def test_http_compare_captures_once_per_row_and_never_uses_latest_kpis(
