@@ -64,11 +64,34 @@ class OpenAIProvider:
             )
         if not isinstance(model, str) or not model.strip():
             raise ValueError("model must be nonempty")
+        self._validate_api_key(api_key)
         self.base_url, self.model, self.api_key = base_url.rstrip("/"), model, api_key
         self.host, self.scheme = parts.hostname, parts.scheme
         self.port = parts.port
         self.path = parts.path.rstrip("/") + "/chat/completions"
         self.session_id = uuid.uuid4().hex
+        # Credential-free policy metadata, not a per-call wire transcript.
+        self.transport_transformations: tuple[str, ...] = (
+            ("opencode.ai:strip-function.strict:v1",)
+            if self.host == "opencode.ai"
+            else ()
+        )
+
+    @staticmethod
+    def _validate_api_key(api_key: str | None) -> None:
+        if api_key is None:
+            return
+        message = "API key must be nonempty, control-free and latin-1 encodable"
+        if (
+            not isinstance(api_key, str)
+            or not api_key.strip()
+            or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in api_key)
+        ):
+            raise ValueError(message)
+        try:
+            api_key.encode("latin-1")
+        except UnicodeError:
+            raise ValueError(message) from None
 
     def bind_session(self, identity: str) -> None:
         """Keep harness identity stable without sending internal paths or names."""
@@ -164,8 +187,6 @@ class OpenAIProvider:
                 api_key = Path(entry["api_key_file"]).expanduser().read_text(encoding="utf-8").strip()
             except (OSError, UnicodeError):
                 raise ValueError("operator API key file unreadable") from None
-            if not api_key or "\n" in api_key or "\r" in api_key:
-                raise ValueError("operator API key file must contain one nonempty line")
             return entry["base_url"], entry["model"], api_key
         key_env = entry.get("api_key_env", "AAS_LLM_API_KEY")
         if not isinstance(key_env, str) or not key_env:
@@ -278,6 +299,11 @@ class OpenAIProvider:
                 # (credentials); report a fixed typed code.
                 results.put(
                     ProviderError("PROTOCOL", "connection to model endpoint failed")
+                )
+            except (TypeError, ValueError, OverflowError):
+                # Header validation and encoding errors can include credentials.
+                results.put(
+                    ProviderError("PROTOCOL", "model request construction failed")
                 )
             except OSError:
                 # Same reason as above: never propagate the raw exception text.
