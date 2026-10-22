@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import builtins
 import copy
+import hashlib
 import io
 import json
 import os
@@ -472,11 +473,60 @@ def test_legacy_digest_and_prepared_output_are_total_for_safe_loader_values(
         assert first == document_digest(prepared.document, legacy_yaml=True)
 
 
-def test_legacy_digest_handles_deep_safe_loader_alias_nesting() -> None:
+@pytest.mark.parametrize("negative", [False, True])
+def test_legacy_large_integer_digest_and_envelope_never_use_decimal_json(
+    monkeypatch: pytest.MonkeyPatch, negative: bool,
+) -> None:
+    digit_limit = sys.get_int_max_str_digits()
+    hex_text = ("-0x" if negative else "0x") + "f" * 4000
+    number = int(hex_text, 16)
+
+    def forbidden(value: Any) -> bytes:
+        pytest.fail("legacy digest/envelope must not attempt decimal JSON encoding")
+
+    # Reject even an attempted JSON-first path, irrespective of the interpreter's
+    # existing limit (including when the caller started Python with no limit).
+    monkeypatch.setattr(preparation_api, "_canonical_json", forbidden)
+    evidence = b'aeroagentsim.yaml-evidence/v1\0' + (
+        b'["int","' + hex_text.encode("ascii") + b'"]'
+    )
+    assert document_digest(number, legacy_yaml=True) == (
+        "sha256:" + hashlib.sha256(evidence).hexdigest()
+    )
+    document = {
+        "format": "aeroagentsim.scenario/v1",
+        "engines": {"probe": {"plugin": "probe", "config": {"value": number}}},
+        "run": {"seed": abs(number)},
+    }
+    selections = ({"final_seed": abs(number)},)
+    prepared = PreparedScenario(document, selections)
+    assert prepared.document == document
+    assert prepared.contribution_selections == selections
+    assert document_digest(prepared.document, legacy_yaml=True) == document_digest(
+        copy.deepcopy(document), legacy_yaml=True,
+    )
+    assert document_digest(number, legacy_yaml=True) != document_digest(
+        hex_text, legacy_yaml=True,
+    )
+    assert sys.get_int_max_str_digits() == digit_limit
+
+
+@pytest.mark.parametrize("format_id", ["aeroagentsim.scenario/v1", "aeroagentsim.scenario/v2"])
+@pytest.mark.parametrize("value", [
+    float("inf"), float("-inf"), float("nan"), date(2026, 7, 13),
+    b"binary", {"member"}, {1: "non-string-key"}, "\ud800", {"\ud800": "key"},
+])
+def test_selection_metadata_stays_strict_finite_json(format_id: str, value: Any) -> None:
+    with pytest.raises(ValueError):
+        PreparedScenario({"format": format_id}, ({"value": value},))
+
+
+@pytest.mark.parametrize("leaf", ["null", "!!binary aGVsbG8="])
+def test_legacy_digest_handles_deep_safe_loader_alias_nesting(leaf: str) -> None:
     # Shallow YAML syntax can construct a value deeper than Python's recursion
     # limit: each newly anchored sequence contains the preceding sequence.
     depth = 1500
-    source = "n0: &n0 [!!binary aGVsbG8=]\n" + "\n".join(
+    source = f"n0: &n0 [{leaf}]\n" + "\n".join(
         f"n{index}: &n{index} [*n{index - 1}]" for index in range(1, depth)
     )
     first = yaml.safe_load(source)[f"n{depth - 1}"]
@@ -510,8 +560,12 @@ def test_legacy_yaml_digest_is_canonical_and_type_tagged() -> None:
     assert document_digest({date(2026, 7, 13), b"hello", 3}, legacy_yaml=True)
     assert document_digest({3: date(2026, 7, 13)}, legacy_yaml=True)
     plain = {"nested": [None, True, 1, 1.5, "text"]}
-    assert document_digest(plain, legacy_yaml=True) == document_digest(plain)
-    # Force tagged evidence while varying otherwise JSON-compatible node types.
+    assert document_digest(plain) == "sha256:" + hashlib.sha256(
+        b'{"nested":[null,true,1,1.5,"text"]}'
+    ).hexdigest()
+    # Legacy evidence is always domain-separated, even for ordinary finite JSON.
+    assert document_digest(plain, legacy_yaml=True) != document_digest(plain)
+    # Vary otherwise JSON-compatible node types within the tagged evidence.
     def tagged(value: Any) -> str:
         return document_digest({"date": date(2026, 7, 13), "value": value}, legacy_yaml=True)
 

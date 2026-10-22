@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
@@ -27,17 +28,26 @@ ENTRY_POINT_GROUP = "aeroagentsim.preparers"
 ReadOnlyResources = Mapping[str, bytes]
 
 
-def _json_data(value: Any) -> None:
+def _json_data(value: Any, *, finite: bool = False) -> None:
+    """Check JSON structure, optionally validating scalars without serializing ints."""
     if isinstance(value, dict):
         if any(type(key) is not str for key in value):
             raise ValueError("preparation data: mapping keys must be strings")
+        if finite:
+            for key in value:
+                key.encode("utf-8")
         for child in value.values():
-            _json_data(child)
+            _json_data(child, finite=finite)
     elif isinstance(value, (list, tuple)):
         for child in value:
-            _json_data(child)
+            _json_data(child, finite=finite)
     elif value is not None and type(value) not in (str, bool, int, float):
         raise ValueError("preparation data: expected finite JSON data")
+    elif finite:
+        if type(value) is float and not math.isfinite(value):
+            raise ValueError("preparation data: expected finite JSON data")
+        if type(value) is str:
+            value.encode("utf-8")
 
 
 def _canonical_json(value: Any) -> bytes:
@@ -107,19 +117,17 @@ def _yaml_evidence(value: Any) -> bytes:
 
 
 def document_digest(value: Any, *, legacy_yaml: bool = False) -> str:
-    """Hash finite JSON, or use the total legacy v1 digest for SafeLoader data.
+    """Hash strict finite JSON, or always use tagged SafeLoader evidence for v1.
 
-    Finite JSON-compatible inputs retain their original digest bytes. The legacy
-    fallback is domain-separated, type-tagged evidence, never a normalization or
-    an additional admission restriction on authored/prepared v1 values.
+    Legacy encoding is value-defined, independent of decimal-conversion and
+    recursion limits, never a normalization or an additional admission restriction
+    on authored/prepared v1 values. Strict JSON digest bytes are unchanged.
     """
-    try:
+    if legacy_yaml:
+        data = b"aeroagentsim.yaml-evidence/v1\0" + _yaml_evidence(value)
+    else:
         _json_data(value)
         data = _canonical_json(value)
-    except (ValueError, RecursionError):
-        if not legacy_yaml:
-            raise
-        data = b"aeroagentsim.yaml-evidence/v1\0" + _yaml_evidence(value)
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
@@ -159,11 +167,14 @@ class PreparedScenario:
             raise ValueError("prepared resource manifest: expected named SHA-256 digests")
         # V1 uses the total legacy digest, not stricter output admission: even
         # tuple/set-contained nonfinite floats retain historical v1 semantics.
-        # V2 (and the selection evidence below) still requires finite JSON.
-        document_digest(
-            self.document, legacy_yaml=self.document.get("format") == "aeroagentsim.scenario/v1"
-        )
-        document_digest(self.contribution_selections)
+        legacy_yaml = self.document.get("format") == "aeroagentsim.scenario/v1"
+        document_digest(self.document, legacy_yaml=legacy_yaml)
+        if legacy_yaml:
+            # Selection evidence remains finite JSON, but checking its structure
+            # must not decimal-serialize the historically unbounded final seed.
+            _json_data(self.contribution_selections, finite=True)
+        else:
+            document_digest(self.contribution_selections)
         object.__setattr__(self, "document", copy.deepcopy(self.document))
         object.__setattr__(self, "contribution_selections", copy.deepcopy(self.contribution_selections))
         object.__setattr__(self, "resource_manifest", dict(self.resource_manifest))

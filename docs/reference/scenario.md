@@ -54,9 +54,9 @@ document and engine config. Its historical finiteness walker checks dictionaries
 and lists but does not descend into tuples or sets. Thus previously admitted
 non-finite floats inside pairs/ordered maps or sets remain admitted; ordinary
 numeric fields still require finite values. The **legacy v1 digest** is total over
-SafeLoader values, using deterministic, type-tagged canonical evidence when finite
-JSON encoding fails. Neither that digest nor `PreparedScenario` output validation
-adds v1 admission restrictions or rewrites values.
+SafeLoader values, always using deterministic, type-tagged canonical evidence
+rather than decimal JSON encoding. Neither that digest nor `PreparedScenario`
+output validation adds v1 admission restrictions or rewrites values.
 
 V2 remains strict: authored and prepared documents must be finite, JSON-compatible
 data, including nested values. Quote dates/timestamps (for example, `"2026-07-13"`)

@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, fields, is_dataclass
 from datetime import date, datetime
@@ -523,6 +524,64 @@ def test_v1_engine_safe_loader_values_load_with_stable_legacy_digest(
     assert preparation_api.document_digest(first.document, legacy_yaml=True) == (
         preparation_api.document_digest(legacy.document, legacy_yaml=True)
     )
+
+
+@pytest.mark.parametrize("source_kind", ["file", "mapping"])
+@pytest.mark.parametrize("location", ["engine-config", "run-seed"])
+def test_v1_large_hex_integer_matches_independent_legacy_admission(
+    source_kind: str, location: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    digit_limit = sys.get_int_max_str_digits()
+    hex_text = "0x" + "f" * 4000
+    expected = int(hex_text, 16)
+    document = _minimal_document()
+    if location == "engine-config":
+        document["engines"] = {
+            "probe": {"plugin": "probe", "config": {"value": "large-hex-integer"}},
+        }
+    else:
+        document["run"]["seed"] = "large-hex-integer"
+    # Dump only small ints/the placeholder, then author the large integer as YAML
+    # hex; neither fixture construction nor assertions need decimal conversion.
+    source_text = yaml.safe_dump(document, sort_keys=False).replace("large-hex-integer", hex_text)
+    path = tmp_path / "large-integer.yaml"
+    if source_kind == "file":
+        path.write_text(source_text, encoding="utf-8")
+    monkeypatch.setattr(preparation_driver, "discover_preparers", _forbid_discovery)
+
+    def load() -> Scenario:
+        source = path if source_kind == "file" else yaml.load(source_text, Loader=UniqueLoader)
+        return load_scenario(source, base=tmp_path)
+
+    current, repeated = load(), load()
+    with monkeypatch.context() as scoped:
+        scoped.setattr(preparation_driver, "prepare_scenario", _frozen_v1_preparation)
+        legacy = load()
+    # Compare effective values directly: the ordinary JSON-based test digest is
+    # itself decimal-limited and must not be used as an oversized-integer oracle.
+    for field in fields(Scenario):
+        if field.name not in {"compiled", "registry", "preparation"}:
+            assert getattr(current, field.name) == getattr(legacy, field.name)
+    assert current.compiled.to_data() == legacy.compiled.to_data()
+    assert current.registry.to_data() == legacy.registry.to_data()
+    assert current.registry.digest == legacy.registry.digest
+    assert current.preparation is not None
+    assert repeated.preparation == current.preparation
+    identity = current.preparation.contribution_selections[0]
+    assert identity["authored_document_digest"] == preparation_api.document_digest(
+        yaml.load(source_text, Loader=UniqueLoader), legacy_yaml=True,
+    )
+    assert identity["final_seed"] == current.seed == legacy.seed
+    if location == "engine-config":
+        value = current.engines["probe"]["config"]["value"]
+        prepared_value = current.preparation.document["engines"]["probe"]["config"]["value"]
+    else:
+        value = current.seed
+        prepared_value = current.preparation.document["run"]["seed"]
+        assert identity["final_seed"] == expected
+    assert type(value) is int and value == expected
+    assert type(prepared_value) is int and prepared_value == expected
+    assert sys.get_int_max_str_digits() == digit_limit
 
 
 def test_v2_yaml_engine_date_is_rejected_before_discovery(
