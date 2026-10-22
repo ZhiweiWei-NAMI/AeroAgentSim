@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import replace
+from importlib import import_module
 from pathlib import Path
-from typing import cast
+from typing import NoReturn, cast
 
 from aerokernel import (
     CommandRequest,
@@ -24,9 +26,94 @@ from aerokernel.values import canonical_json
 
 from aeroagentsim.models import MotionModel, motion_model
 from aeroagentsim.scenario import Scenario, ScenarioError, load_scenario
-from aeroagentsim.services.storage import RunStorage
 
-from .plugins import EngineBuild, EngineCatalog
+from .plugins import BUILTINS, EngineBuild, EngineCatalog
+
+
+def _pin_provenance(scenario: Scenario, provenance: str | None) -> Scenario:
+    effective = scenario.provenance if provenance is None else provenance
+    if type(effective) is not str or effective not in {"lean", "full"}:
+        raise ScenarioError("provenance: expected lean or full")
+    if provenance is None:
+        return scenario
+    return replace(
+        scenario,
+        provenance=effective,
+        document={**scenario.document, "provenance": effective},
+    )
+
+
+def _failure_details(
+    failure: BaseException, *, excluding: BaseException | None = None
+) -> str:
+    """Include nested kernel cleanup diagnostics without retaining context cycles."""
+    details: list[str] = []
+    pending = [failure]
+    seen = set() if excluding is None else {id(excluding)}
+    while pending:
+        error = pending.pop()
+        if id(error) in seen:
+            continue
+        seen.add(id(error))
+        details.append(f"{type(error).__name__}: {error}")
+        details.extend(getattr(error, "__notes__", ()))
+        if isinstance(error, KernelError):
+            pending.extend(
+                cleanup for _, cleanup in error.context.get("cleanup_errors", ())
+            )
+        for linked in (error.__cause__, error.__context__):
+            if linked is not None:
+                pending.append(linked)
+    return "; ".join(details)
+
+
+def _retain_failure(
+    primary: BaseException, secondary: BaseException, operation: str
+) -> None:
+    """Keep the primary error, with diagnostics also on Python 3.10."""
+    if secondary is primary:
+        return
+    try:
+        message = f"{operation}: {_failure_details(secondary, excluding=primary)}"
+    except BaseException:
+        # A plugin's exception formatter must not interrupt resource release.
+        message = f"{operation}: {type(secondary).__name__} (diagnostics unavailable)"
+    try:
+        add_note = getattr(primary, "add_note", None)
+        if callable(add_note):
+            add_note(message)
+            return
+    except BaseException:
+        pass  # Custom exception notes are also only best-effort diagnostics.
+    try:
+        context = RuntimeError(message)
+        context.__context__ = primary.__context__
+        primary.__context__ = context
+    except BaseException:
+        pass  # A custom exception may forbid attaching diagnostics entirely.
+
+
+def _raise_primary(failure: BaseException) -> NoReturn:
+    try:
+        context = failure.__context__
+    except BaseException:
+        context = None
+    try:
+        raise failure
+    except BaseException:
+        # An active caller/secondary exception must not replace the Python 3.10
+        # diagnostic chain when the primary is re-raised.
+        try:
+            failure.__context__ = context
+        except BaseException:
+            pass  # Custom exception diagnostics must not replace the primary.
+        raise
+
+
+def _is_builtin(catalog: EngineCatalog, plugin: str) -> bool:
+    # This distribution also installs builtin factories as entry points. Only
+    # the resolved callable, not its name or presence in entries, identifies one.
+    return catalog.factory(plugin) is import_module(BUILTINS[plugin]).build
 
 
 class Simulation:
@@ -53,25 +140,18 @@ class Simulation:
                 provenance=provenance,
                 catalog=EngineCatalog() if catalog is None else catalog,
             )
-        except Exception as exc:
+        except BaseException as exc:
             # Ownership transfers to the kernel only after successful binding.
             # Failed binding may have registered just a subset of these engines.
-            failures: list[Exception] = []
             for engine in reversed(self.engines):
                 try:
                     engine.close()
-                except Exception as cleanup:  # noqa: BLE001 - close every engine before reporting
-                    failures.append(cleanup)
+                except BaseException as cleanup:
+                    _retain_failure(exc, cleanup, "construction engine cleanup")
             try:
                 owned_journal.close()
-            except Exception as cleanup:  # noqa: BLE001 - report journal cleanup with engine errors
-                failures.append(cleanup)
-            if failures:
-                raise ScenarioError(
-                    f"scenario.bind: {exc}; construction cleanup failed: "
-                    + "; ".join(str(failure) for failure in failures),
-                    code=getattr(exc, "code", None),
-                ) from exc
+            except BaseException as cleanup:
+                _retain_failure(exc, cleanup, "construction journal cleanup")
             if isinstance(exc, StopIteration):
                 raise ScenarioError(
                     "scenario.bind: unexpected exhausted iterator during "
@@ -88,12 +168,10 @@ class Simulation:
         provenance: str | None,
         catalog: EngineCatalog,
     ) -> None:
+        # Pin overrides in the effective configuration as well as kernel policy;
+        # never mutate the caller's authored scenario or historical header shape.
+        scenario = _pin_provenance(scenario, provenance)
         self.scenario = scenario
-        # The scenario setting is the pinned default; an explicit override must
-        # be a valid value itself (no null/unknown coercion or fallback).
-        effective = scenario.provenance if provenance is None else provenance
-        if type(effective) is not str or effective not in {"lean", "full"}:
-            raise ScenarioError("provenance: expected lean or full")
         # Explicitly supplied journals keep their codec, including historical 1.x.
         partitions: dict[str, Partition] = {}
         self.ingress_targets: dict[str, set[str]] = {}
@@ -102,6 +180,8 @@ class Simulation:
         for engine_id, item in sorted(scenario.engines.items()):
             if item["plugin"] == "kinematic":
                 try:
+                    if not _is_builtin(catalog, "kinematic"):
+                        continue
                     models[engine_id] = motion_model(
                         item["config"], scenario.registry, scenario.manifest.entities
                     )
@@ -123,8 +203,14 @@ class Simulation:
             )
             engine: Engine
             try:
-                if item["plugin"] == "predicate" and any(
-                    item["plugin"] == "behaviour" for item in scenario.engines.values()
+                if (
+                    item["plugin"] == "predicate"
+                    and any(
+                        item["plugin"] == "behaviour"
+                        for item in scenario.engines.values()
+                    )
+                    and _is_builtin(catalog, "predicate")
+                    and _is_builtin(catalog, "behaviour")
                 ):
                     from aeroagentsim.engines.behaviour import RecordedPredicate
 
@@ -170,7 +256,7 @@ class Simulation:
             mappings=scenario.clock_mappings,
             journal=journal,
             ingress_streams=scenario.ingress_streams,
-            provenance=effective,
+            provenance=scenario.provenance,
             configuration={
                 "scenario": scenario.document,
             },
@@ -265,21 +351,20 @@ class RunSession:
         journal_codec: str = "positional-deflate",
         provenance: str | None = None,
     ) -> None:
+        # Storage is a host concern, not an import-time dependency of Simulation.
+        from aeroagentsim.services.storage import RunStorage
+
         loaded = scenario if isinstance(scenario, Scenario) else load_scenario(scenario)
-        # Pin the run-level override before persistence so the stored scenario
-        # copy, the run manifest and the kernel all agree.
-        if provenance is not None:
-            if type(provenance) is not str or provenance not in {"lean", "full"}:
-                raise ScenarioError("provenance: expected lean or full")
-            loaded = replace(
-                loaded,
-                provenance=provenance,
-                document={**loaded.document, "provenance": provenance},
-            )
-        self.scenario = loaded
+        self.scenario = _pin_provenance(loaded, provenance)
         self.storage = RunStorage(directory)
         if not prepared:
             self.storage.prepare(self.scenario)
+        self.now_ns = 0
+        self.closed = False
+        self.started = False
+        self.started_wall = 0.0
+        self._failure: BaseException | None = None
+        self._storage_lock = threading.RLock()
         self.simulation = Simulation(
             self.scenario,
             run_directory=directory,
@@ -289,10 +374,27 @@ class RunSession:
                 codec=journal_codec,
             ),
         )
+        try:
+            self._write_artifacts(
+                directory, repin=prepared and provenance is not None
+            )
+        except BaseException as exc:
+            # A failed constructor never returns ownership to the caller/worker.
+            self._fault(exc)
+            raise
+
+    def _write_artifacts(self, directory: Path, *, repin: bool) -> None:
+        document = canonical_json(self.scenario.document)
+        digest = hashlib.sha256(document).hexdigest()
+        if repin:
+            # Prepared runs already have a snapshot of the authored default.
+            # scenario.yaml remains the original source, not effective config.
+            self.storage._atomic("scenario.json", self.scenario.document)
         self.storage._atomic(
             "manifest.json",
             {
                 **self.storage.metadata(),
+                "configuration_digest": digest,
                 "epoch": self.scenario.manifest.epoch,
                 "provenance": self.scenario.provenance,
                 "journal_codec": self.simulation.kernel.journal.codec,
@@ -303,6 +405,15 @@ class RunSession:
                     if "codec" in self.simulation.kernel.header
                     else {}
                 ),
+            },
+        )
+        # Host pins are additive/versioned run metadata, never new WAL fields.
+        self.storage._atomic(
+            "run-metadata.json",
+            {
+                "contract": "aeroagentsim.run-metadata/v1",
+                "provenance": self.scenario.provenance,
+                "configuration_digest": digest,
             },
         )
         packages = [
@@ -350,11 +461,6 @@ class RunSession:
                     }
                 )
             )
-        self.now_ns = 0
-        self.closed = False
-        self.started = False
-        self.started_wall = 0.0
-        self._storage_lock = threading.RLock()
 
     def _index(self) -> None:
         with self._storage_lock:
@@ -372,17 +478,28 @@ class RunSession:
 
     def report_wait(self, wait: IngressWait | None) -> None:
         """Publish actual input-wait metadata and its committed journal prefix."""
-        with self._storage_lock:
-            self.storage.index()
-            self.storage.status(
-                "running" if wait is None else "waiting_for_input",
-                waiting=None
-                if wait is None
-                else {
-                    "stream_ids": list(wait.stream_ids),
-                    "at_ns": str(wait.target_ns),
-                },
-            )
+        try:
+            with self._storage_lock:
+                self.storage.index()
+                self.storage.status(
+                    "running" if wait is None else "waiting_for_input",
+                    waiting=None
+                    if wait is None
+                    else {
+                        "stream_ids": list(wait.stream_ids),
+                        "at_ns": str(wait.target_ns),
+                    },
+                )
+        except BaseException as exc:
+            self._fault(exc)
+            raise
+
+    def _index_or_fault(self) -> None:
+        try:
+            self._index()
+        except BaseException as exc:
+            self._fault(exc)
+            raise
 
     def submit_live(
         self,
@@ -394,25 +511,41 @@ class RunSession:
     ) -> IngressReceipt:
         if not self.started or self.closed:
             raise RuntimeError("live ingress requires a started open run session")
-        receipt = self.simulation.submit_live(
-            engine_id, command, stamp, stream_id=stream_id
-        )
-        self._index()
+        try:
+            receipt = self.simulation.submit_live(
+                engine_id, command, stamp, stream_id=stream_id
+            )
+        except BaseException as exc:
+            # Ordinary ingress rejection is not a terminal session failure.
+            if self.simulation.kernel.journal.failed:
+                self._fault(exc)
+            raise
+        self._index_or_fault()
         return receipt
 
     def advance_watermark(self, ns: int, *, stream_id: str | None = None) -> None:
         if not self.started or self.closed:
             raise RuntimeError("watermark requires a started open run session")
-        self.simulation.advance_watermark(ns, stream_id=stream_id)
-        self._index()
+        try:
+            self.simulation.advance_watermark(ns, stream_id=stream_id)
+        except BaseException as exc:
+            if self.simulation.kernel.journal.failed:
+                self._fault(exc)
+            raise
+        self._index_or_fault()
 
     def advance_source_progress(
         self, stamp: Stamp, *, stream_id: str | None = None
     ) -> None:
         if not self.started or self.closed:
             raise RuntimeError("source progress requires a started open run session")
-        self.simulation.advance_source_progress(stamp, stream_id=stream_id)
-        self._index()
+        try:
+            self.simulation.advance_source_progress(stamp, stream_id=stream_id)
+        except BaseException as exc:
+            if self.simulation.kernel.journal.failed:
+                self._fault(exc)
+            raise
+        self._index_or_fault()
 
     def start(self) -> StateView:
         if self.closed:
@@ -420,15 +553,15 @@ class RunSession:
         if self.started:
             return self.simulation.kernel.view()
         self.started_wall = time.perf_counter()
-        self._status("running")
         try:
+            self._status("running")
             view = self.simulation.start()
-        except Exception as exc:
+            self.started = True
+            self._index()
+            return view
+        except BaseException as exc:
             self._fault(exc)
             raise
-        self.started = True
-        self._index()
-        return view
 
     def run_until(
         self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
@@ -442,29 +575,43 @@ class RunSession:
             self.now_ns = self.simulation.kernel.sealed_ns
             self._index()
             return view
-        except Exception as exc:
+        except BaseException as exc:
+            primary = self._failure
+            if self.closed and primary is not None and primary is not exc:
+                # A publication callback may already have closed the journal;
+                # a later kernel fault append must not replace its first error.
+                _retain_failure(primary, exc, "execution finalization")
+                self._fault(primary)
+                _raise_primary(primary)
             if isinstance(exc, KernelError) and exc.code == "WATERMARK_TIMEOUT":
-                self.close()
-                self._status(
-                    "input_timeout",
-                    error=str(exc),
-                    waiting={
-                        "stream_ids": list(exc.context["stream_ids"]),
-                        "at_ns": str(exc.context["target_ns"]),
-                    },
-                )
+                self._close(exc)
+                try:
+                    self._status(
+                        "input_timeout",
+                        error=str(exc),
+                        waiting={
+                            "stream_ids": list(exc.context["stream_ids"]),
+                            "at_ns": str(exc.context["target_ns"]),
+                        },
+                    )
+                except BaseException as secondary:
+                    _retain_failure(exc, secondary, "input timeout status")
                 raise
             self._fault(exc)
             raise
 
-    def _fault(self, failure: Exception) -> None:
-        error = f"{type(failure).__name__}: {failure}"
+    def _fault(self, failure: BaseException) -> None:
+        with self._storage_lock:
+            if self._failure is None:
+                self._failure = failure
+            primary = self._failure
+        if primary is not failure:
+            _retain_failure(primary, failure, "session fault")
+        self._close(primary)
         try:
-            self.close()
-        except Exception as cleanup:  # noqa: BLE001 - preserve both real failures
-            error += f"; cleanup: {type(cleanup).__name__}: {cleanup}"
-        self._index()
-        self._status("faulted", error=error)
+            self._status("faulted", error=_failure_details(primary))
+        except BaseException as secondary:
+            _retain_failure(primary, secondary, "fault status")
 
     def run(self) -> StateView:
         if not self.started:
@@ -484,30 +631,49 @@ class RunSession:
         self._status("completed")
         return view
 
+    def _close(self, primary: BaseException | None = None) -> BaseException | None:
+        with self._storage_lock:
+            if self.closed:
+                return primary
+            # Claim ownership before cleanup so repeated/reentrant close is safe.
+            self.closed = True
+        # Never hold the storage lock while acquiring the kernel ingress lock.
+        for operation, cleanup in (
+            ("simulation cleanup", self.simulation.close),
+            ("run index", self._index),
+        ):
+            try:
+                cleanup()
+            except BaseException as exc:
+                if primary is None:
+                    primary = exc
+                else:
+                    _retain_failure(primary, exc, operation)
+        return primary
+
     def close(self) -> None:
-        if self.closed:
-            return
-        self.closed = True
-        failure: Exception | None = None
-        try:
-            self.simulation.close()
-        except Exception as exc:  # noqa: BLE001 - finalize before terminal outcome
-            failure = exc
-        finally:
-            self._index()
+        failure = self._close()
         if failure is not None:
-            previous = self.storage.metadata().get("error")
-            self._status(
-                "faulted",
-                error=(
-                    f"{previous + '; ' if previous else ''}cleanup: "
-                    f"{type(failure).__name__}: {failure}"
-                ),
-            )
-            raise failure
+            try:
+                previous = self.storage.metadata().get("error")
+                self._status(
+                    "faulted",
+                    error=(
+                        f"{previous + '; ' if previous else ''}cleanup: "
+                        f"{_failure_details(failure)}"
+                    ),
+                )
+            except BaseException as secondary:
+                _retain_failure(failure, secondary, "cleanup status")
+            _raise_primary(failure)
 
     def __enter__(self) -> RunSession:  # noqa: PYI034 - Python 3.10 runtime
         return self
 
     def __exit__(self, *_: object) -> None:
-        self.close()
+        failure = _[1] if len(_) > 1 else None
+        if isinstance(failure, BaseException):
+            if not self.closed:
+                self._fault(failure)
+        else:
+            self.close()
