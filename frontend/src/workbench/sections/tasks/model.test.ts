@@ -19,6 +19,15 @@ describe('real form sources', () => {
     expect(taskConfig({})).toBeUndefined();
   });
 
+  it('does not infer low-altitude tasks from an engine key named tasks', () => {
+    const generic = { engines: { tasks: { plugin: 'sumo', config: { generators: [{ id: 'road-orders' }] } } } };
+    expect(taskConfig(generic)).toBeUndefined();
+    expect(engineOf(generic, 'lowalt_tasks')).toBeUndefined();
+    const installed = { engines: { dispatch: { plugin: 'lowalt_tasks', config: { generators: [{ id: 'air-orders' }] } } } };
+    expect(engineOf(installed, 'lowalt_tasks')?.name).toBe('dispatch');
+    expect(taskConfig(installed)?.generators).toHaveLength(1);
+  });
+
   it('reads numeric tags and wind vectors without treating missing values as zero', () => {
     expect(nsToS(1_500_000_000)).toBe(1.5);
     expect(nsToS({ $integer: '1500000000' })).toBe(1.5);

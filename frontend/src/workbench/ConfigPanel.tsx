@@ -66,33 +66,10 @@ export function controlValue(value: unknown): KnobValue | undefined {
   }
 }
 
-/** Read the setting the draft will actually run, including declared compound controls. */
+/** Read a pointer control from the draft it belongs to. API v1 has no inverse readback for apply
+ *  hooks, so their value is the last applied record and the effective value stays unknown. */
 export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Scenario, authored: Record<string, KnobValue> | undefined): KnobValue | undefined {
   if (knob.pointer) return controlValue(getAt(draft, knob.pointer));
-  if (knob.apply === 'traffic.wind_east' || knob.apply === 'traffic.wind_north') {
-    const motion = getAt(draft, '/engines/air_motion') as Record<string, any> | undefined;
-    const consumer = motion?.config?.consumption_model;
-    if (motion?.plugin !== 'kinematic' || consumer?.plugin !== 'wind') return undefined;
-    const source = consumer.config;
-    if (typeof source?.entity !== 'string' || typeof source.field !== 'string') return undefined;
-    const profiles = Object.values((draft.engines ?? {}) as Record<string, Record<string, any>>)
-      .filter(engine => engine.plugin === 'environment')
-      .map(engine => engine.config?.profiles?.[source.entity]?.[source.field]).filter(profile => profile !== undefined);
-    if (profiles.length !== 1) return undefined;
-    const profile = profiles[0], row = source.vector_index;
-    if (!['calm', 'constant', 'gust'].includes(profile?.mode) || row !== undefined && (!Number.isSafeInteger(row) || row < 0)) return undefined;
-    const vector = row === undefined ? profile.value : profile.value?.[row];
-    if (!Array.isArray(vector) || ![2, 3].includes(vector.length) || vector.some(value => typeof controlValue(value) !== 'number')) return undefined;
-    return controlValue(vector[knob.apply === 'traffic.wind_east' ? 0 : 1]);
-  }
-  if (knob.apply === 'traffic.physics_hz') {
-    const road = controlValue(getAt(draft, '/engines/road_motion/config/step_ns'));
-    const air = controlValue(getAt(draft, '/engines/air_motion/config/step_ns'));
-    if (typeof road !== 'number' || !Number.isSafeInteger(road) || road <= 0 || air !== road) return undefined;
-    const frequency = 1e9 / road, rounded = Math.round(frequency * 1e6) / 1e6;
-    // Normalize only when applying that frequency reproduces the exact period.
-    return Math.round(1e9 / rounded) === road ? rounded : frequency;
-  }
   return controlValue(authored?.[knob.id]);
 }
 
@@ -303,7 +280,7 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
       return <>
         <p className="hint">{L('The controls the scenario was designed around. Applying writes them into this draft and keeps your other edits.', '该场景围绕这些控制项设计。应用后会写入当前草稿，并保留你的其他修改。')}</p>
         <div className="wb-knobs">{template.knobs.map(knob => {
-          const value = valueFor(knob);
+          const value = valueFor(knob), hookKnob = !knob.pointer;
           return <div className="wb-knob" key={knob.id} data-path={knob.pointer}>{value === undefined ? <div className="wb-form-prerequisite">
             <p>{L('This setting cannot be read from the current configuration. Validate the draft, or edit its source:', '无法从当前配置读取此控制项。可校验草稿，或编辑其来源：')} {knob.pointer ?? knob.id}</p>
             <button className="wb-btn small" onClick={() => {
@@ -311,7 +288,8 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
               if (source) goTo(source, knob.pointer); else { setFocus(knob.pointer); onSection('file'); }
             }}>{L('Edit source', '编辑来源')}</button>
           </div>
-            : <TemplateKnobControl disabled={workspaceOperations.applying || !!busy} knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />}</div>;
+            : <><TemplateKnobControl disabled={workspaceOperations.applying || !!busy} knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />
+              {hookKnob && <p className="hint" role="note" data-testid={`knob-${knob.id}-provenance`}>{L('last applied · effective value unknown', '上次应用值 · 当前生效值未知')}</p>}</>}</div>;
         })}</div>
       </>;
     }
