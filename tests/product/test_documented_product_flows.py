@@ -89,12 +89,22 @@ def _normalise_route(path: str) -> str:
     return re.sub(r"\{[^}]+\}", "{}", path.split("?", 1)[0]).rstrip("/") or "/"
 
 
+def _walk_routes(routes: Any, prefix: str = "") -> Any:
+    """Flatten routes, including routers that newer FastAPI keeps nested."""
+    for route in routes:
+        nested = getattr(route, "original_router", None)
+        if nested is not None:
+            context = getattr(route, "include_context", None)
+            inner = prefix + (getattr(context, "prefix", "") or "")
+            yield from _walk_routes(nested.routes, inner)
+        else:
+            yield prefix + (getattr(route, "path", "") or ""), getattr(route, "methods", None)
+
+
 def _available_routes(app: Any) -> dict[str, set[str]]:
     rows: dict[str, set[str]] = {}
-    for route in app.routes:
-        path = getattr(route, "path", None)
-        methods = getattr(route, "methods", None)
-        if isinstance(path, str) and path.startswith("/v1/") and methods:
+    for path, methods in _walk_routes(app.routes):
+        if path.startswith("/v1/") and methods:
             key = _normalise_route(path)
             rows.setdefault(key, set()).update(
                 method.upper() for method in methods
