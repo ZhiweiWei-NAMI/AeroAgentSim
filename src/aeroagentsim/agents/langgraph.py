@@ -22,7 +22,12 @@ from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.services.projector import project
 
-from .langgraph_client import JournalClient, ScriptedProvider, json_copy
+from .langgraph_client import (
+    JournalClient,
+    ScriptedProvider,
+    json_copy,
+    provider_record_metadata,
+)
 from .observation import FieldGrant, build_observation, delivery_route
 from .provider import OpenAIProvider, Provider, ProviderError
 
@@ -261,6 +266,17 @@ class LangGraphDecision(ContextEngine):
             raise ValueError("provider mode must be explicit stub or live")
         if isinstance(self.provider, OpenAIProvider):
             self.provider.bind_session(f"engine:{context.run_directory.resolve() if context.run_directory else context.manifest.run_id}:{context.manifest.epoch}:{context.id}")
+        self.provider_metadata = provider_record_metadata(
+            self.provider,
+            self.provider.model,
+            "structured_json",
+            provider_mode=pcfg["mode"] if provider is None else None,
+            provider_profile=(
+                pcfg["profile"]
+                if provider is None and pcfg["mode"] == "live"
+                else None
+            ),
+        )
         self.sequence = 0
         produces = tuple(sorted({field for _, field in self.fact_grants}))
         super().__init__(
@@ -409,9 +425,16 @@ class LangGraphDecision(ContextEngine):
                 "pin": self.pin,
                 "budget": budget,
                 "model": self.provider.model,
+                **self.provider_metadata,
             }
             self.record(ctx, decision, "observation", invocation)
-            client = JournalClient(self.provider, self.provider.model, budget)
+            client = JournalClient(
+                self.provider,
+                self.provider.model,
+                budget,
+                provider_mode=self.provider_metadata["provider_mode"],
+                provider_profile=self.provider_metadata["provider_profile"],
+            )
             result: dict[str, Any] | None = None
             failure: dict[str, Any] | None = None
             try:

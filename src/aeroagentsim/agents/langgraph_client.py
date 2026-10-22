@@ -10,7 +10,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
-from .provider import Provider, ProviderError
+from .provider import OpenAIProvider, Provider, ProviderError
 from .tools import strict_json
 
 
@@ -18,8 +18,55 @@ def json_copy(value: Any) -> Any:
     return strict_json(json.dumps(value, ensure_ascii=False, allow_nan=False))
 
 
+def provider_record_metadata(
+    provider: Provider | None,
+    model: str,
+    execution_mode: str,
+    *,
+    provider_mode: str | None = None,
+    provider_profile: str | None = None,
+) -> dict[str, Any]:
+    """Read only credential-free policy attributes, never provider internals.
+
+    Resolver metadata is supplied only when that resolver selected the provider;
+    an injected wrapper may instead expose its own explicit mode/policy. Optional
+    metadata properties must not turn an otherwise valid provider call into a fault.
+    """
+
+    def recorded_attribute(name: str) -> Any:
+        try:
+            return getattr(provider, name, None)
+        except Exception:  # noqa: BLE001 -- optional recording cannot break providers
+            return None
+
+    mode = provider_mode
+    if type(mode) is not str or mode not in {"stub", "scripted", "live"}:
+        mode = recorded_attribute("mode")
+    if type(mode) is not str or mode not in {"stub", "scripted", "live"}:
+        mode = "live" if isinstance(provider, OpenAIProvider) else None
+    scripted = mode in {"stub", "scripted"} or (
+        mode is None
+        and type(model) is str
+        and model in {"stub", "scripted", "lowalt-scripted-allocation/v1"}
+    )
+    transformations = recorded_attribute("transport_transformations")
+    return {
+        "provider_mode": mode,
+        "provider_profile": provider_profile if type(provider_profile) is str else None,
+        "execution_mode": "scripted" if scripted else execution_mode,
+        "transport_transformations": (
+            list(transformations)
+            if type(transformations) in (list, tuple)
+            and all(type(item) is str for item in transformations)
+            else None
+        ),
+    }
+
+
 class ScriptedProvider:
     """Explicit per-call scripts; exhausted or missing scripts are real failures."""
+
+    mode = "stub"
 
     def __init__(self, model: str, responses: dict[str, list[dict[str, Any]]]) -> None:
         if not isinstance(model, str) or not model.strip():
@@ -67,8 +114,17 @@ class JournalClient:
         budget: dict[str, Any],
         *,
         replay: list[dict[str, Any]] | None = None,
+        provider_mode: str | None = None,
+        provider_profile: str | None = None,
     ) -> None:
         self._provider, self.model, self.budget = provider, model, budget
+        self._provider_metadata = provider_record_metadata(
+            provider,
+            model,
+            "structured_json",
+            provider_mode=provider_mode,
+            provider_profile=provider_profile,
+        )
         self._deadline = time.monotonic() + budget["wall_timeout_s"]
         self._calls: dict[tuple[int, str, str, int], dict[str, Any]] = {}
         self._replay = (
@@ -155,7 +211,20 @@ class JournalClient:
                 "stream": False,
             }
         )
-        row: dict[str, Any] = {"identity": list(identity), "request": request}
+        row: dict[str, Any] = {
+            "identity": list(identity),
+            "request": request,
+            **self._provider_metadata,
+            "execution_mode": (
+                "scripted"
+                if self._provider_metadata["execution_mode"] == "scripted"
+                else "function_tools"
+                if request["tools"]
+                else "structured_json"
+            ),
+            "attempt": attempt,
+            "failure_code": None,
+        }
         self._calls[identity] = row
         if self._replay is not None:
             if (
@@ -230,8 +299,13 @@ class JournalClient:
                     if isinstance(self._provider, ScriptedProvider)
                     else time.monotonic() - started
                 )
+                if "error" in row:
+                    row["failure_code"] = row["error"]["code"]
         if "error" in row:
+            row["failure_code"] = row["error"]["code"]
             raise ProviderError(row["error"]["code"], row["error"]["message"])
+        if "rejection" in row:
+            row["failure_code"] = row["rejection"]["code"]
         return cast(dict[str, Any], deepcopy(row["response"]))
 
     async def ask_json(
@@ -261,23 +335,27 @@ class JournalClient:
                 ):
                     continue
                 raise
+            from langgraph.config import get_config
+
+            meta = get_config()["metadata"]
+            row = self._calls[
+                (meta["langgraph_step"], meta["langgraph_node"], key, attempt)
+            ]
             try:
                 value = strict_json(response["message"]["content"])
                 if not isinstance(value, dict):
                     raise TypeError("model JSON must be an object")
                 validator(value)
+                row["validation"] = {"valid": True}
                 return cast(dict[str, Any], value)
             except (ValueError, KeyError, TypeError) as exc:
-                # Public typed rejection retained with the corresponding response.
-                from langgraph.config import get_config
-
-                meta = get_config()["metadata"]
-                self._calls[
-                    (meta["langgraph_step"], meta["langgraph_node"], key, attempt)
-                ]["rejection"] = {
+                # Every attempt keeps its own response and typed rejection.
+                row["rejection"] = {
                     "code": "TOOL_REJECTED",
                     "message": str(exc),
                 }
+                row["validation"] = {"valid": False, "code": "TOOL_REJECTED"}
+                row["failure_code"] = "TOOL_REJECTED"
                 if attempt == self.budget["max_retries"]:
                     raise ProviderError("TOOL_REJECTED", str(exc)) from exc
                 messages.extend(
