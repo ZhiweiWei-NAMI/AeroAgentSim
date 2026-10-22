@@ -165,9 +165,11 @@ def discover(
     families must not invent descriptor versions or invoke factories here.
 
     ``load=False`` never calls entry.load(), builtin loaders or factories. It
-    returns conflicts as immutable diagnostics; runtime callers must reject
-    them with ``require_unique()`` (also enforced by ``resolve``). Inventory
-    can therefore describe an ambiguous installation without picking a winner.
+    retains malformed names and conflicts as immutable diagnostics; runtime
+    callers must reject conflicts with ``require_unique()`` (also enforced by
+    ``resolve``). Names are admitted only after duplicate collection, before
+    loading providers. Inventory can describe invalid/ambiguous installations
+    without picking a winner.
     """
     if api_version is not None and type(api_version) is not int:
         raise TypeError("discovery api_version: expected an integer or None")
@@ -177,11 +179,10 @@ def discover(
     installed: dict[str, list[Any]] = {}
     declared = entry_points(group=group) if entries is None else entries
     for entry in declared:
-        validate_name(entry.name, label=f"{group} entry point", pattern=name_pattern)
         installed.setdefault(entry.name, []).append(entry)
-    for name in builtin_values:
-        validate_name(name, label=f"builtin {group}", pattern=name_pattern)
-    names = tuple(sorted(set(builtin_values) | set(installed)))
+    # Metadata diagnostics must survive malformed declarations. Real entry-point
+    # names are text; the key also lets runtime admission diagnose non-text names.
+    names = tuple(sorted(set(builtin_values) | set(installed), key=str))
     contributions: list[Contribution] = []
     conflicts: list[EntryPointConflict] = []
     for name in names:
@@ -193,7 +194,12 @@ def discover(
             conflicts.append(EntryPointConflict(group, name, records))
 
     def resolve(name: str) -> T:
-        # Even metadata-only results cannot import an unconfigured provider.
+        # Enumeration is permissive, but even lazy resolution admits the name
+        # before importing code. DiscoveryResult.resolve rejects duplicates first.
+        validate_name(
+            name, label=f"{group} entry point" if name in installed else f"builtin {group}",
+            pattern=name_pattern,
+        )
         if expected_type is None:
             raise TypeError("discovery expected_type is required when loading")
         if name in installed:
@@ -215,6 +221,12 @@ def discover(
     )
     if load:
         result.require_unique()
+        # Reject every invalid declaration before loading even an unrelated
+        # provider, but never let name validation hide duplicate evidence.
+        for name in installed:
+            validate_name(name, label=f"{group} entry point", pattern=name_pattern)
+        for name in builtin_values:
+            validate_name(name, label=f"builtin {group}", pattern=name_pattern)
         return replace(result, providers=tuple(result.resolve(name) for name in names))
     return result
 

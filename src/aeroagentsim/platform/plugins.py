@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from importlib import import_module
@@ -14,7 +14,12 @@ from aerokernel import BindingManifest, EntityRef, MemoryRegistry
 from aerokernel.engine import Engine, Partition
 from aerokernel.values import normalize
 
-from aeroagentsim.extensions.discovery import DiscoveryResult, discover
+from aeroagentsim.extensions.discovery import (
+    DiscoveryResult,
+    DuplicateEntryPointError,
+    discover,
+    validate_name,
+)
 from aeroagentsim.extensions.engine_builtins import BUILTINS
 from aeroagentsim.models import MotionModel
 
@@ -73,33 +78,43 @@ class EngineBuild:
 Factory = Callable[[EngineBuild], Engine]
 
 
+def _engine_discovery(entries: Iterable[Any]) -> DiscoveryResult[Callable]:
+    discovery = discover(
+        "aeroagentsim.engines", BUILTINS,
+        expected_type=Callable, api_version=None, name_of=None, factory_label=None,
+        entries=entries, load=False, name_pattern=None,
+        builtin_loader=lambda module: import_module(module).build,
+        type_error="plugin {name!r}: engine factory must be callable",
+    )
+    try:
+        discovery.require_unique()
+    except DuplicateEntryPointError as exc:
+        raise ValueError("Duplicate aeroagentsim.engines entry point names") from exc
+    for entry in discovery.contributions:
+        label = (
+            "aeroagentsim.engines entry point" if entry.source == "installed"
+            else "builtin aeroagentsim.engines"
+        )
+        validate_name(entry.name, label=label, pattern=None)
+    return discovery
+
+
 class EngineCatalog:
     """Resolve installed plugins lazily; a factory returns any kernel Engine."""
 
     def __init__(self) -> None:
         installed = tuple(entry_points(group="aeroagentsim.engines"))
-        discover(
-            "aeroagentsim.engines", BUILTINS,
-            entries=installed, load=False, name_pattern=None,
-        ).require_unique()
+        _engine_discovery(installed)
         self.entries = {entry.name: entry for entry in installed}
 
     def _discover(self) -> DiscoveryResult[Callable]:
         # adapters.register / packs.register may extend this public collection.
         # Snapshot it without querying installed metadata again or loading code.
-        return discover(
-            "aeroagentsim.engines", BUILTINS,
-            expected_type=Callable, api_version=None, name_of=None, factory_label=None,
-            entries=self.entries.values(), load=False, name_pattern=None,
-            builtin_loader=lambda module: import_module(module).build,
-            type_error="plugin {name!r}: engine factory must be callable",
-        )
+        return _engine_discovery(self.entries.values())
 
     def names(self) -> tuple[str, ...]:
         """Every installed engine and builtin, with entry points taking precedence."""
-        discovery = self._discover()
-        discovery.require_unique()
-        return discovery.names
+        return self._discover().names
 
     def factory(self, plugin: str) -> Factory:
         """Import the declared factory without constructing an engine."""

@@ -11,13 +11,15 @@ The implementation is [`extensions/discovery.py`](../../src/aeroagentsim/extensi
 Scenario and metric discovery use it directly; the engine catalog uses its
 metadata enumeration and lazy resolution without constructing engines.
 
-1. **Enumerate once, before loading.** Collect every installed entry in the
-   requested group. Two installed declarations with the same name are an error,
-   even if they come from the same distribution or point to the same object.
-   `DuplicateEntryPointError` is a `ValueError`; its diagnostic names the provider
-   and all declaring distributions, with available versions and entry-point
-   values. Unknown metadata remains `None`. No builtin factory or installed
-   entry is loaded before ambiguity is rejected.
+1. **Enumerate once, before loading or admitting names.** Collect every installed
+   declaration and duplicate conflict before validating the family's name syntax.
+   Two installed declarations with the same name are an error, even if their name
+   is malformed, they come from the same distribution or point to the same object.
+   The helper's `DuplicateEntryPointError` is a `ValueError`; its diagnostic names
+   the provider and all declaring distributions, with available versions and
+   entry-point values. Unknown metadata remains `None`. No builtin factory or
+   installed entry is loaded before ambiguity is rejected. Metadata-only
+   enumeration retains malformed names and all conflicts for diagnosis.
 2. **Sort the union.** Resolve the sorted union of builtin and installed names.
    One installed entry replaces the **whole** same-name builtin provider; do not
    call the shadowed builtin or merge back its hooks, templates or reducers. An
@@ -46,10 +48,22 @@ metadata enumeration and lazy resolution without constructing engines.
 
 The existing scenario/metric discovery functions still return tuples with their
 original signatures. Descriptor validation and factory failures retain their
-`ValueError`/`TypeError` messages; duplicate-name errors retain the old message
-prefix and append distribution evidence. Family API versions are independent:
-scenario v1 does **not** version the engine/kernel Python ABI. Authors should
-write literal `api_version=1`, not copy whichever host constant is installed.
+`ValueError`/`TypeError` messages. At the public adapters, duplicate errors are
+translated to plain `ValueError` with the **exact** legacy messages, not appended
+distribution evidence:
+
+| Adapter | Message for duplicate installed name `external` |
+| --- | --- |
+| `plugin_api.discover_scenario_plugins()` | `Duplicate aeroagentsim.scenarios entry point name: 'external'` |
+| `metrics_api.discover_metric_plugins()` | `Duplicate aeroagentsim.metrics entry point name: 'external'` |
+| `platform.plugins.EngineCatalog()` | `Duplicate aeroagentsim.engines entry point names` |
+
+The rich `DuplicateEntryPointError` is retained as `__cause__`, including its
+immutable conflict records. The metrics fingerprint metadata path preserves the
+same public metric error. Direct helper callers still receive the typed error.
+Family API versions are independent: scenario v1 does **not** version the
+engine/kernel Python ABI. Authors should write literal `api_version=1`, not copy
+whichever host constant is installed.
 
 ## Family matrix
 
@@ -123,40 +137,61 @@ activated providers. Distribution objects are reduced to detached text; missing
 release/provenance data is `None`, never an inferred version or zero. Metric cache
 fingerprints use these snapshots without changing their checkpoint format.
 
-## Metadata-only inventory
+## Metadata-only enumeration and public inventory
 
 `discover(group, builtins, load=False)` never calls entry-point loaders, builtin
 loaders or provider factories. `providers` is empty because no provider was
-inspected. It returns immutable conflicts rather than choosing a duplicate's
-winner; runtime consumers call `require_unique()` to raise the typed error.
-Provider types, versions, contributed IDs, resources and readiness remain
-**unverified** in this mode.
+inspected. Malformed names and all duplicate declarations remain in the evidence;
+conflicts are immutable diagnostics, not a choice of winner. Runtime consumers
+call `require_unique()` to raise the typed duplicate error. Full discovery with
+`load=True` rejects duplicates first, then validates all names before loading any
+provider. Lazy `resolve(name)` also rejects group-wide duplicates and validates
+the selected name before loading. Provider types, versions, contributed IDs,
+resources and readiness remain **unverified** during metadata-only enumeration.
 
-[`plugin_inventory()`](../../src/aeroagentsim/services/plugins.py), the CLI and
-`GET /v1/plugins` use that mode for scenarios, engines, algorithms, models and
-metrics. Engine builtin paths live in an import-light declaration module, also
-re-exported as `platform.plugins.BUILTINS`, so inventory need not import platform
-or model implementations. Rows are sorted by name. Duplicate rows retain every
-declaring distribution in `conflict`, including repeated names or unknown (`null`)
-distributions; `status: ok` means only that the name is unambiguous. An installed
-row hides the builtin implementation, not a second installed declaration.
+[`plugin_inventory()`](../../src/aeroagentsim/services/plugins.py),
+[`aeroagentsim plugins`](cli.md#aeroagentsim-plugins) and
+[`GET /v1/plugins`](http-api.md#plugin-catalog) preserve the existing inventory
+contract, rather than making the whole response metadata-only:
 
-The response adds `metadata_only: true` and the `metrics` family. Legacy scenario
-`templates` / `apply_hooks` array fields remain empty **placeholders**, not a claim
-that the provider contributes nothing. Complete lists require deliberately loading
-scenario providers through discovery / `TemplateRegistry`, outside inventory.
-This changes the former eager inventory: consumers must honor `metadata_only`
-before treating those arrays as complete. Updating the existing console's
-contribution-detail display and old exact-schema/eager-inventory test assertions
-is a follow-up; neither is silently changed in this backend-only write set.
+- The response is `{api_version, scenarios, engines, algorithms, models, metrics}`.
+  `api_version` stays **1**; `metrics` is an additive family. There is no
+  `metadata_only` flag.
+- Scenario plugins are loaded, including their zero-argument **data factories**,
+  to populate sorted `templates` IDs from `template.yaml` and sorted `apply_hooks`
+  names. Hooks are not invoked, and inventory never instantiates engines or model
+  providers. In a well-formed, unambiguous section, invalid scenario descriptors,
+  versions or resources still fail discovery; they do not silently fall back to
+  builtin implementations.
+- Engines, algorithms, models and metrics use metadata-only enumeration, without
+  loading their entries. Engine builtin paths remain in an import-light
+  declaration module, also re-exported as `platform.plugins.BUILTINS`. Metric rows
+  share the common fields and diagnostics below; they do not enumerate reducers
+  or metric IDs.
+- Every row has `{name, origin, distribution, status}`; scenario rows additionally
+  have `templates` and `apply_hooks`. Rows are sorted by name. Installed names
+  replace same-name builtins. Duplicates are listed once with `status: "duplicate"`
+  and `conflict` containing **every** declaring distribution in installation order,
+  including repeated names and unknown (`null`) distributions. `distribution` is
+  the first declaration's distribution, not a selected winner. Other rows have
+  `status: "ok"`, meaning unambiguous, not contract-valid or ready.
+- Metadata inventory keeps malformed names (for example, `MixedCase`) and their
+  conflicts visible even though runtime scenario/metric admission rejects those
+  names. A duplicate or malformed scenario name triggers a section-wide metadata
+  fallback without loading scenario plugins: builtins remain listed and every
+  scenario row has empty `templates`/`apply_hooks`. These fallback arrays mean
+  **uninspected**. In a successfully loaded scenario section, empty arrays instead
+  mean no contributions of that kind; hook-only providers legitimately have no
+  templates. This retains the existing duplicate fallback and also makes invalid
+  name declarations diagnosable.
 
 ## Deliberate follow-ups
 
 - **Algorithms and algorithm catalog:** preserve qualified/unqualified lookup,
   direct `module:Class` loading, protocol-method classification and configured
   construction before migrating. The [service catalog](../../src/aeroagentsim/services/algorithm_catalog.py)
-  currently imports installed factories for metadata; it is not the metadata-only
-  plugin inventory. The [consumer catalog](../../src/aeroagentsim/algorithms/consumers.py)
+  currently imports installed factories for metadata, unlike the metadata-only
+  algorithm rows in plugin inventory. The [consumer catalog](../../src/aeroagentsim/algorithms/consumers.py)
   verifies specific engine factory identities without loading them; an override
   must not inherit a builtin's consumption claim. These sites remain unchanged.
 - **Models:** preserve selected-name-only duplicate rejection and the implicit

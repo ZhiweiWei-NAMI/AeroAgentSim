@@ -205,6 +205,7 @@ def test_plugins_http_api_returns_the_inventory(tmp_path: Path) -> None:
         "engines",
         "algorithms",
         "models",
+        "metrics",
     }
 
 
@@ -221,4 +222,5 @@ def test_plugins_cli_prints_valid_json(
         "engines",
         "algorithms",
         "models",
+        "metrics",
     }

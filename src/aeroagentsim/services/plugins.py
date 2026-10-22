@@ -1,23 +1,28 @@
-"""Metadata-only inventory of every installed plugin family."""
+"""Read-only plugin inventory, including loaded scenario data contributions."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from importlib.metadata import entry_points
 from typing import Any
 
+import yaml
+
 import aeroagentsim.plugin_api as plugin_api
-from aeroagentsim.extensions.discovery import NAME_PATTERN, discover
+from aeroagentsim.extensions.discovery import NAME_PATTERN, discover, validate_name
 from aeroagentsim.extensions.records import Contribution
 
 MODEL_BUILTINS = ("linear", "wind")
 
 
-def _rows(group: str, builtins: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _rows(
+    group: str, builtins: Mapping[str, Any], *, entries: Iterable[Any] | None = None,
+) -> list[dict[str, Any]]:
     # Legacy algorithm/model/engine entry-point names have their own syntax.
     # No provider type, API version or contributed IDs can be checked without load.
     discovery = discover(
-        group, builtins, entries=entry_points(group=group), load=False,
+        group, builtins,
+        entries=entry_points(group=group) if entries is None else entries, load=False,
         name_pattern=(
             NAME_PATTERN if group in {"aeroagentsim.scenarios", "aeroagentsim.metrics"}
             else None
@@ -44,14 +49,43 @@ def _rows(group: str, builtins: Mapping[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _template_id(source: Any) -> str:
+    path = source.directory / "template.yaml"
+    metadata = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(metadata, dict) or not isinstance(metadata.get("id"), str):
+        raise ValueError(f"template source {path}: template.yaml needs a string id")
+    return metadata["id"]
+
+
 def _scenario_rows() -> list[dict[str, Any]]:
     from aeroagentsim.scenarios import BUILTINS
 
-    # Retain the v1 list fields for older decoders. metadata_only marks their
-    # contents as uninspected, not proof that the provider contributes no IDs.
+    rows = _rows(
+        "aeroagentsim.scenarios", BUILTINS,
+        entries=plugin_api.entry_points(group="aeroagentsim.scenarios"),
+    )
+    fallback = any(row["status"] == "duplicate" for row in rows)
+    if not fallback:
+        try:
+            for row in rows:
+                validate_name(row["name"], label="aeroagentsim.scenarios entry point")
+        except ValueError:
+            fallback = True
+    if fallback:
+        # Preserve the legacy section-wide duplicate fallback, also for malformed
+        # declarations: contributions are unknown and no scenario plugin is loaded.
+        return [{**row, "templates": [], "apply_hooks": []} for row in rows]
+
+    plugins = {plugin.name: plugin for plugin in plugin_api.discover_scenario_plugins()}
     return [
-        {**row, "templates": [], "apply_hooks": []}
-        for row in _rows("aeroagentsim.scenarios", BUILTINS)
+        {
+            **row,
+            "templates": sorted(
+                _template_id(source) for source in plugins[row["name"]].templates
+            ),
+            "apply_hooks": sorted(plugins[row["name"]].apply_hooks),
+        }
+        for row in rows
     ]
 
 
@@ -80,14 +114,14 @@ def _metric_rows() -> list[dict[str, Any]]:
 
 
 def plugin_inventory() -> dict[str, Any]:
-    """Describe declarations, never import or invoke their providers.
+    """Load scenario data, but never start engines or model providers.
 
-    Status ``ok`` means an unambiguous name, not loaded/validated contributions
-    or runtime readiness. Unknown scenario contribution lists are placeholders.
+    Other families use metadata only. Status ``ok`` means an unambiguous name,
+    not runtime readiness. Malformed scenario names and duplicates retain
+    diagnostic rows with legacy empty arrays instead of loading a partial set.
     """
     return {
         "api_version": plugin_api.API_VERSION,
-        "metadata_only": True,
         "scenarios": _scenario_rows(),
         "engines": _engine_rows(),
         "algorithms": _algorithm_rows(),

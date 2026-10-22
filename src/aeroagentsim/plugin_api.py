@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import Any, Protocol
 
 from aeroagentsim.extensions.discovery import (
+    DuplicateEntryPointError,
     discover,
     validate_api_version,
     validate_name,
@@ -105,12 +106,17 @@ def discover_scenario_plugins() -> tuple[ScenarioPlugin, ...]:
     """Merge builtins with installed plugins; installed names take precedence."""
     from aeroagentsim.scenarios import BUILTINS
 
-    return discover(
-        "aeroagentsim.scenarios", BUILTINS,
-        expected_type=ScenarioPlugin, api_version=API_VERSION,
-        name_of=lambda plugin: plugin.name, factory_label="scenario plugin",
-        entries=entry_points(group="aeroagentsim.scenarios"),
-    ).providers
+    try:
+        return discover(
+            "aeroagentsim.scenarios", BUILTINS,
+            expected_type=ScenarioPlugin, api_version=API_VERSION,
+            name_of=lambda plugin: plugin.name, factory_label="scenario plugin",
+            entries=entry_points(group="aeroagentsim.scenarios"),
+        ).providers
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate aeroagentsim.scenarios entry point name: {exc.conflict.name!r}"
+        ) from exc
 
 
 __all__ = [

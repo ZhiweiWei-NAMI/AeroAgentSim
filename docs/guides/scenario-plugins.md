@@ -115,7 +115,9 @@ def plugin() -> ScenarioPlugin:
     )
 ```
 
-The factory takes no arguments. `templates` is a tuple of `TemplateSource`
+The factory takes no arguments. Inventory also calls this data factory to list
+its templates and hooks, so return declarations only: do not construct engines
+or contact model providers here. `templates` is a tuple of `TemplateSource`
 objects; each `directory` must be a `Path`. `importlib.resources.files`
 locates installed package data without assuming a repository checkout.
 This example requires filesystem resources, as in a normal unpacked wheel
@@ -224,11 +226,26 @@ aeroagentsim run-template example-patrol --headless --out runs/example-patrol
 aeroagentsim run-template example-patrol --set patrol_interval_s=60 --headless --out runs/example-patrol-60
 ```
 
-`plugins` reports API version, scenario plugin origins/distributions, template
-ids and owned hook names, plus engine/algorithm/model catalogs. Look for the
-installed `example-patrol` and the separate `lowalt` provider. `templates`
-should include the new id. The server exposes the same catalog through
-[`GET /v1/plugins`](../reference/http-api.md).
+`plugins` reports `api_version: 1`, scenario plugin origins/distributions, sorted
+template IDs and owned hook names, plus engine/algorithm/model catalogs and the
+additive `metrics` family. It loads scenario data factories to populate
+`templates` and `apply_hooks`; other families use metadata only, with the same
+`name`, `origin`, `distribution` and `status` row fields. It never instantiates
+engines or model providers. Look for the installed `example-patrol` with its
+`example-patrol` template and `example-patrol.patrol_interval` hook, and the
+separate `lowalt` hook provider. `templates` should include the new id. The server
+exposes the same catalog through [`GET /v1/plugins`](../reference/http-api.md#plugin-catalog).
+
+In every family a duplicate installed name appears once with `status: "duplicate"`
+and `conflict` listing all declaring distributions, including repeated names and
+unknown (`null`) distributions. Scenario runtime discovery rejects these duplicates
+before loading any provider, even when the duplicated name is malformed. Inventory
+keeps malformed declarations visible for diagnosis instead of admitting them at runtime.
+If any scenario name is duplicated or malformed, the entire scenario section
+falls back to metadata: builtins remain listed but all `templates`/`apply_hooks`
+arrays are empty because contributions are uninspected. Otherwise empty arrays
+mean no contributions of that kind (as with a hook-only plugin's templates).
+`status: "ok"` means only an unambiguous name, not contract validity or readiness.
 
 In the console, open the scenario gallery and choose **Plugins / 插件**. The
 panel lists every discovered scenario plugin, including hook-only providers,

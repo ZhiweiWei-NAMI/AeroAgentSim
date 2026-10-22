@@ -18,6 +18,7 @@ from types import MappingProxyType
 from typing import Any, Literal, Protocol
 
 from aeroagentsim.extensions.discovery import (
+    DuplicateEntryPointError,
     discover,
     validate_api_version,
     validate_name,
@@ -151,17 +152,29 @@ def _installed() -> dict[str, Contribution]:
         "aeroagentsim.metrics", {},
         entries=entry_points(group="aeroagentsim.metrics"), load=False,
     )
-    discovery.require_unique()
+    try:
+        discovery.require_unique()
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate aeroagentsim.metrics entry point name: {exc.conflict.name!r}"
+        ) from exc
+    for entry in discovery.contributions:
+        validate_name(entry.name, label="aeroagentsim.metrics entry point")
     return {entry.name: entry for entry in discovery.contributions}
 
 
 def _discover(entries: Iterable[Any]) -> tuple[MetricPlugin, ...]:
-    return discover(
-        "aeroagentsim.metrics", BUILTINS,
-        expected_type=MetricPlugin, api_version=METRICS_API_VERSION,
-        name_of=lambda plugin: plugin.name, factory_label="metric plugin",
-        entries=entries,
-    ).providers
+    try:
+        return discover(
+            "aeroagentsim.metrics", BUILTINS,
+            expected_type=MetricPlugin, api_version=METRICS_API_VERSION,
+            name_of=lambda plugin: plugin.name, factory_label="metric plugin",
+            entries=entries,
+        ).providers
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate aeroagentsim.metrics entry point name: {exc.conflict.name!r}"
+        ) from exc
 
 
 def builtin_metric_plugins() -> tuple[MetricPlugin, ...]:

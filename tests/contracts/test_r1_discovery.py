@@ -1,4 +1,4 @@
-"""Shared admission, family composition and import-free installation inventory.
+"""Shared admission, legacy inventory and import-free helper enumeration.
 
 Engine factories remain unversioned callables: descriptor name/version rejection
 applies to scenarios and metrics, not to a fabricated engine descriptor ABI.
@@ -159,26 +159,52 @@ def test_zero_argument_factory_is_called_once(
 
 
 @pytest.mark.parametrize("family", FAMILIES)
-def test_duplicate_installed_names_fail_before_any_loading(
-    monkeypatch: pytest.MonkeyPatch, family: str,
+@pytest.mark.parametrize("name", ["external", "MixedCase"])
+def test_duplicate_installed_names_keep_exact_legacy_errors_before_loading(
+    monkeypatch: pytest.MonkeyPatch, family: str, name: str,
 ) -> None:
     imports = _builtins(monkeypatch, family, {"aaa-builtin": _forbidden})
     loads: list[str] = []
     _install(
         monkeypatch, family, _entry("aaa-installed", _forbidden, loads=loads),
-        _entry("external", _forbidden, distribution="first-dist", loads=loads),
-        _entry("external", _forbidden, distribution="second-dist", loads=loads),
+        _entry(name, _forbidden, distribution="first-dist", loads=loads),
+        _entry(name, _forbidden, distribution="second-dist", loads=loads),
     )
-    with pytest.raises(DuplicateEntryPointError) as error:
+    messages = {
+        "scenarios": f"Duplicate aeroagentsim.scenarios entry point name: {name!r}",
+        "metrics": f"Duplicate aeroagentsim.metrics entry point name: {name!r}",
+        "engines": "Duplicate aeroagentsim.engines entry point names",
+    }
+    with pytest.raises(ValueError) as error:
         _discover(family)
-    assert isinstance(error.value, ValueError)
-    assert all(text in str(error.value) for text in (
-        f"aeroagentsim.{family}", "external", "first-dist", "second-dist",
+    assert type(error.value) is ValueError
+    assert str(error.value) == messages[family]
+    cause = error.value.__cause__
+    assert isinstance(cause, DuplicateEntryPointError)
+    assert cause.conflict.group == f"aeroagentsim.{family}"
+    assert cause.conflict.name == name
+    assert all(text in str(cause) for text in (
+        f"aeroagentsim.{family}", name, "first-dist", "second-dist",
     ))
-    assert tuple(item.distribution for item in error.value.conflict.entries) == (
+    assert tuple(item.distribution for item in cause.conflict.entries) == (
         "first-dist", "second-dist",
     )
     assert loads == [] and imports == []
+
+
+def test_metric_fingerprint_keeps_exact_legacy_duplicate_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install(
+        monkeypatch, "metrics",
+        _entry("external", _forbidden, distribution="first-dist"),
+        _entry("external", _forbidden, distribution="second-dist"),
+    )
+    with pytest.raises(ValueError) as error:
+        metrics_api.metric_plugin_fingerprint(())
+    assert type(error.value) is ValueError
+    assert str(error.value) == "Duplicate aeroagentsim.metrics entry point name: 'external'"
+    assert isinstance(error.value.__cause__, DuplicateEntryPointError)
 
 
 @pytest.mark.parametrize("family", FAMILIES)
@@ -225,9 +251,12 @@ def test_wrong_descriptor_name_is_rejected(
 def test_versioned_entry_names_are_strict_before_loading(
     monkeypatch: pytest.MonkeyPatch, family: str, name: str,
 ) -> None:
-    _builtins(monkeypatch, family, {})
+    _builtins(monkeypatch, family, {"aaa-builtin": _forbidden})
     loads: list[str] = []
-    _install(monkeypatch, family, _entry(name, _forbidden, loads=loads))
+    _install(
+        monkeypatch, family, _entry("aaa-installed", _forbidden, loads=loads),
+        _entry(name, _forbidden, loads=loads),
+    )
     with pytest.raises(ValueError, match="name must match"):
         _discover(family)
     assert loads == []
@@ -316,8 +345,11 @@ def test_contribution_id_collision_is_not_an_override(
         _install(monkeypatch, family,
                  _entry("shared", factory, distribution="first-dist"),
                  _entry("shared", factory, distribution="second-dist"))
-        with pytest.raises(DuplicateEntryPointError, match="shared"):
+        with pytest.raises(ValueError) as error:
             engine_plugins.EngineCatalog()
+        assert type(error.value) is ValueError
+        assert str(error.value) == "Duplicate aeroagentsim.engines entry point names"
+        assert isinstance(error.value.__cause__, DuplicateEntryPointError)
 
 
 def test_discovery_and_contribution_evidence_are_immutable_snapshots(
@@ -349,16 +381,17 @@ def test_discovery_and_contribution_evidence_are_immutable_snapshots(
         setattr(result.contributions[1], "version", "changed")
 
 
-def test_metadata_mode_keeps_all_conflicts_without_loading() -> None:
+@pytest.mark.parametrize("name", ["external", "MixedCase"])
+def test_metadata_mode_keeps_all_conflicts_without_loading(name: str) -> None:
     loads: list[str] = []
     entries = (
-        _entry("external", _forbidden, distribution="same-dist", version="1", loads=loads),
-        _entry("external", _forbidden, distribution="same-dist", version="2", loads=loads),
-        _entry("external", _forbidden, distribution=None, version=None, loads=loads),
+        _entry(name, _forbidden, distribution="same-dist", version="1", loads=loads),
+        _entry(name, _forbidden, distribution="same-dist", version="2", loads=loads),
+        _entry(name, _forbidden, distribution=None, version=None, loads=loads),
     )
-    result = discover("aeroagentsim.scenarios", {"external": _forbidden},
+    result = discover("aeroagentsim.scenarios", {name: _forbidden},
                       entries=entries, expected_type=ScenarioPlugin, load=False)
-    assert result.providers == () and result.names == ("external",)
+    assert result.providers == () and result.names == (name,)
     assert len(result.contributions) == 4
     assert tuple(record.version for record in result.conflicts[0].entries) == ("1", "2", None)
     with pytest.raises(FrozenInstanceError):
@@ -366,7 +399,30 @@ def test_metadata_mode_keeps_all_conflicts_without_loading() -> None:
     with pytest.raises(DuplicateEntryPointError):
         result.require_unique()
     with pytest.raises(DuplicateEntryPointError):
-        result.resolve("external")
+        result.resolve(name)
+    with pytest.raises(DuplicateEntryPointError) as error:
+        discover(
+            "aeroagentsim.scenarios", {"aaa-builtin": _forbidden},
+            entries=entries, expected_type=ScenarioPlugin,
+        )
+    assert error.value.conflict == result.conflicts[0]
+    assert loads == []
+
+
+@pytest.mark.parametrize("name", ["MixedCase", "contains.dot", "", None, True])
+def test_metadata_mode_retains_malformed_names_but_resolution_rejects_them(
+    name: Any,
+) -> None:
+    loads: list[str] = []
+    result = discover(
+        "aeroagentsim.scenarios", {"valid": _forbidden}, load=False,
+        expected_type=ScenarioPlugin, entries=(_entry(name, _forbidden, loads=loads),),
+    )
+    assert name in result.names
+    assert result.providers == () and result.conflicts == ()
+    assert any(record.name == name for record in result.contributions)
+    with pytest.raises(ValueError, match="name must match"):
+        result.resolve(name)
     assert loads == []
 
 
@@ -423,53 +479,98 @@ def test_local_engine_catalog_registration_stays_resolvable(
     assert catalog.factory("local") is factory
 
 
-def test_inventory_does_not_import_provider_modules(
+def test_metadata_helper_does_not_import_provider_modules(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
     families = (*FAMILIES, "algorithms", "models")
     module_names = tuple(f"r1_unimported_{family}_provider" for family in families)
+    for family, module in zip(families, module_names):
+        monkeypatch.delitem(sys.modules, module, raising=False)
+        (tmp_path / f"{module}.py").write_text(
+            "raise AssertionError('Metadata enumeration imported a provider')\n",
+            encoding="utf-8",
+        )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    for family, module in zip(families, module_names):
+        result = discover(
+            f"aeroagentsim.{family}", {"builtin": _forbidden}, load=False,
+            builtin_loader=_forbidden, entries=(EntryPoint(
+                name="external", value=f"{module}:plugin", group=f"aeroagentsim.{family}",
+            ),),
+        )
+        assert result.names == ("builtin", "external")
+        assert result.providers == ()
+    assert not set(module_names) & set(sys.modules)
+
+
+def test_inventory_loads_only_scenario_data_factories(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    families = ("metrics", "engines", "algorithms", "models")
+    module_names = tuple(f"r1_inventory_{family}_provider" for family in families)
     entries = {}
     for family, module in zip(families, module_names):
         monkeypatch.delitem(sys.modules, module, raising=False)
         (tmp_path / f"{module}.py").write_text(
-            "raise AssertionError('Inventory imported a provider')\n", encoding="utf-8",
+            "raise AssertionError('Inventory imported a runtime provider')\n",
+            encoding="utf-8",
         )
         entries[f"aeroagentsim.{family}"] = (EntryPoint(
             name="external", value=f"{module}:plugin", group=f"aeroagentsim.{family}",
         ),)
     monkeypatch.syspath_prepend(str(tmp_path))
+    _builtins(monkeypatch, "scenarios", {})
+    plugin = ScenarioPlugin(
+        "external", templates=(_template(tmp_path / "scenario-data"),),
+        apply_hooks={"external.sample": _forbidden},
+    )
+    calls: list[str] = []
+    loads: list[str] = []
+
+    def scenario_factory() -> ScenarioPlugin:
+        calls.append("factory")
+        return plugin
+
+    entries["aeroagentsim.scenarios"] = (_entry("external", scenario_factory, loads=loads),)
     monkeypatch.setattr(inventory_service, "entry_points", lambda *, group: entries[group])
-    monkeypatch.setattr(plugin_api, "discover_scenario_plugins", _forbidden)
+    monkeypatch.setattr(plugin_api, "entry_points", lambda *, group: entries[group])
     monkeypatch.setattr(metrics_api, "discover_metric_plugins", _forbidden)
     monkeypatch.setattr(engine_plugins, "import_module", _forbidden)
+    monkeypatch.setattr(engine_plugins.EngineCatalog, "__init__", _forbidden)
     monkeypatch.setattr(metrics_api, "import_module", _forbidden)
     builtin_modules = set(engine_plugins.BUILTINS.values()) | {
-        "aeroagentsim.scenarios.builtin", "aeroagentsim.packs.lowalt.scenario_hooks",
-        "aeroagentsim.packs.lowalt.rescue_hooks",
-        "aeroagentsim.packs.traffic_accident.scenario_hooks",
         "aeroagentsim.packs.inspection_metrics", "aeroagentsim.packs.logistics_metrics",
         "aeroagentsim.packs.lowalt.metrics", "aeroagentsim.packs.task_metrics",
         "aeroagentsim.packs.traffic_accident.metrics", "aeroagentsim.agents.provider",
     }
     before = set(sys.modules)
     inventory = inventory_service.plugin_inventory()
-    assert inventory["metadata_only"] is True
+    assert set(inventory) == {"api_version", "scenarios", *families}
+    assert inventory["api_version"] == 1
+    assert inventory["scenarios"] == [{
+        "name": "external", "origin": "entry-point", "distribution": "acme-extensions",
+        "status": "ok", "templates": ["shared"], "apply_hooks": ["external.sample"],
+    }]
+    assert calls == ["factory"] and loads == ["external"]
     for family in families:
         assert any(row["name"] == "external" for row in inventory[family])
     assert not set(module_names) & set(sys.modules)
     assert not (set(sys.modules) - before) & builtin_modules
-    assert all(row["templates"] == [] and row["apply_hooks"] == []
-               for row in inventory["scenarios"])
 
 
-def test_inventory_cold_import_keeps_runtime_and_providers_unimported() -> None:
+def test_metadata_helper_cold_import_keeps_runtime_and_providers_unimported() -> None:
     # A fresh interpreter prevents earlier suites' imports from hiding a leak.
     script = """
 import sys
 sys.path.insert(0, sys.argv[1])
-from aeroagentsim.services import plugins
-plugins.entry_points = lambda *, group: ()
-assert plugins.plugin_inventory()["metadata_only"] is True
+from aeroagentsim.extensions import discover
+from aeroagentsim.extensions.engine_builtins import BUILTINS as engines
+from aeroagentsim.metrics_api import BUILTINS as metrics
+from aeroagentsim.scenarios import BUILTINS as scenarios
+for family, builtins in (("scenarios", scenarios), ("metrics", metrics), ("engines", engines)):
+    result = discover(f"aeroagentsim.{family}", builtins, entries=(), load=False)
+    assert result.providers == ()
+    assert result.names == tuple(sorted(builtins))
 for prefix in (
     "aeroagentsim.platform", "aeroagentsim.models", "aeroagentsim.engines",
     "aeroagentsim.agents", "aeroagentsim.packs", "aeroagentsim.scenarios.builtin",
@@ -495,9 +596,13 @@ def test_inventory_preserves_every_duplicate_distribution(
         _entry("external", _forbidden, distribution="second-dist"),
         _entry("external", _forbidden, distribution=None),
     )
-    monkeypatch.setattr(inventory_service, "entry_points", lambda *, group: (
-        entries if group == f"aeroagentsim.{family}" else ()
-    ))
+    _builtins(monkeypatch, "scenarios", {})
+
+    def query(*, group: str) -> tuple[Any, ...]:
+        return entries if group == f"aeroagentsim.{family}" else ()
+
+    monkeypatch.setattr(inventory_service, "entry_points", query)
+    monkeypatch.setattr(plugin_api, "entry_points", query)
     rows = inventory_service.plugin_inventory()[family]
     matches = [row for row in rows if row["name"] == "external"]
     assert len(matches) == 1
@@ -510,15 +615,97 @@ def test_inventory_preserves_every_duplicate_distribution(
     ("scenarios", "lowalt"), ("metrics", "tasks"), ("engines", "records"),
     ("algorithms", "allocation.nearest"), ("models", "wind"),
 ])
-def test_inventory_marks_installed_over_builtin_without_loading(
+def test_inventory_marks_installed_over_builtin_loading_only_scenario_data(
     monkeypatch: pytest.MonkeyPatch, family: str, name: str,
 ) -> None:
-    entry = _entry(name, _forbidden)
-    monkeypatch.setattr(inventory_service, "entry_points", lambda *, group: (
-        (entry,) if group == f"aeroagentsim.{family}" else ()
-    ))
+    _builtins(monkeypatch, "scenarios", {name: _forbidden} if family == "scenarios" else {})
+    loads: list[str] = []
+    value = _provider(family, name) if family == "scenarios" else _forbidden
+    entry = _entry(name, value, loads=loads)
+
+    def query(*, group: str) -> tuple[Any, ...]:
+        return (entry,) if group == f"aeroagentsim.{family}" else ()
+
+    monkeypatch.setattr(inventory_service, "entry_points", query)
+    monkeypatch.setattr(plugin_api, "entry_points", query)
     matches = [row for row in inventory_service.plugin_inventory()[family] if row["name"] == name]
     assert len(matches) == 1
     assert matches[0]["origin"] == "entry-point"
     assert matches[0]["distribution"] == "acme-extensions"
     assert matches[0]["status"] == "ok"
+    assert loads == ([name] if family == "scenarios" else [])
+
+
+@pytest.mark.parametrize("family", VERSIONED_FAMILIES)
+def test_inventory_retains_malformed_names_and_duplicate_diagnostics(
+    monkeypatch: pytest.MonkeyPatch, family: str,
+) -> None:
+    _builtins(monkeypatch, "scenarios", {})
+    _builtins(monkeypatch, family, {"builtin": _forbidden})
+    loads: list[str] = []
+    entries = (
+        _entry("MixedCase", _forbidden, distribution="first-dist", loads=loads),
+        _entry("MixedCase", _forbidden, distribution="second-dist", loads=loads),
+        _entry("contains.dot", _forbidden, loads=loads),
+    )
+
+    def query(*, group: str) -> tuple[Any, ...]:
+        return entries if group == f"aeroagentsim.{family}" else ()
+
+    monkeypatch.setattr(inventory_service, "entry_points", query)
+    monkeypatch.setattr(plugin_api, "entry_points", query)
+    rows = {row["name"]: row for row in inventory_service.plugin_inventory()[family]}
+    contributions = {"templates": [], "apply_hooks": []} if family == "scenarios" else {}
+    assert rows["MixedCase"] == {
+        "name": "MixedCase", "origin": "entry-point", "distribution": "first-dist",
+        "status": "duplicate", "conflict": ["first-dist", "second-dist"],
+        **contributions,
+    }
+    assert rows["contains.dot"] == {
+        "name": "contains.dot", "origin": "entry-point", "distribution": "acme-extensions",
+        "status": "ok", **contributions,
+    }
+    assert rows["builtin"] == {
+        "name": "builtin", "origin": "builtin", "distribution": None,
+        "status": "ok", **contributions,
+    }
+    assert loads == []
+
+
+@pytest.mark.parametrize("family", VERSIONED_FAMILIES)
+@pytest.mark.parametrize("name", ["MixedCase", "contains.dot", ""])
+def test_inventory_retains_unambiguous_malformed_declarations_without_loading(
+    monkeypatch: pytest.MonkeyPatch, family: str, name: str,
+) -> None:
+    _builtins(monkeypatch, "scenarios", {})
+    _builtins(monkeypatch, family, {"builtin": _forbidden})
+    loads: list[str] = []
+    entry = _entry(name, _forbidden, loads=loads)
+
+    def query(*, group: str) -> tuple[Any, ...]:
+        return (entry,) if group == f"aeroagentsim.{family}" else ()
+
+    monkeypatch.setattr(inventory_service, "entry_points", query)
+    monkeypatch.setattr(plugin_api, "entry_points", query)
+    rows = {row["name"]: row for row in inventory_service.plugin_inventory()[family]}
+    assert rows[name]["origin"] == "entry-point"
+    assert rows[name]["distribution"] == "acme-extensions"
+    assert rows[name]["status"] == "ok"
+    assert "conflict" not in rows[name]
+    if family == "scenarios":
+        assert all(row["templates"] == [] and row["apply_hooks"] == [] for row in rows.values())
+    assert loads == []
+
+
+def test_inventory_metric_builtins_have_the_same_per_entry_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _builtins(monkeypatch, "scenarios", {})
+    monkeypatch.setattr(inventory_service, "entry_points", lambda *, group: ())
+    monkeypatch.setattr(plugin_api, "entry_points", lambda *, group: ())
+    inventory = inventory_service.plugin_inventory()
+    assert "metadata_only" not in inventory
+    assert inventory["metrics"] == [
+        {"name": name, "origin": "builtin", "distribution": None, "status": "ok"}
+        for name in sorted(metrics_api.BUILTINS)
+    ]

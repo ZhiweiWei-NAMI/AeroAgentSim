@@ -30,18 +30,35 @@ aeroagentsim plugins
 ```
 
 Prints the plugin catalog as JSON: `{api_version, scenarios, engines,
-algorithms, models}`. `api_version` is `1`. Every row has
-`{name, origin, distribution, status}`; scenario rows add `templates` and
-`apply_hooks`, and duplicate rows add `conflict`. Scenario discovery merges
-builtins with installed `aeroagentsim.scenarios` entries; installed names take
-precedence and runtime discovery rejects duplicate installed names. The inventory
-reports a duplicated name once with `status: "duplicate"` and `conflict` (all
-distribution names) instead of collapsing it; scenario rows then use entry-point
-metadata with empty `templates`/`apply_hooks` and builtins stay listed. The
-catalogue is an inventory, not readiness: it does not prove a worker, native
+algorithms, models, metrics}`. `api_version` remains `1`; `metrics` is an additive
+family with the same `{name, origin, distribution, status}` row fields. Scenario
+rows also contain sorted `templates` (IDs from `template.yaml`) and `apply_hooks`
+(owned hook names). These arrays are populated by loading scenario plugins and
+calling their data factories, as in the existing inventory contract. Hooks are
+not invoked; engines and model providers are never instantiated. The other four
+families are enumerated from metadata without loading their entries.
+
+Rows are sorted by name, with installed entries replacing same-name builtins.
+Every family reports a duplicated installed name once with `status: "duplicate"`
+and `conflict` containing every declaring distribution, including repeated names
+and unknown (`null`) distributions. Other rows have `status: "ok"`, which means
+only that the name is unambiguous, not that its contract is valid or ready to run.
+Malformed declarations remain visible for diagnosis. Scenario/metric runtime
+admission rejects bad names and duplicates before loading providers; engine
+catalogs reject duplicates before loading factories. Algorithm/model runtime
+lookup retains the legacy rules in [extension admission](extension-admission.md#family-matrix).
+
+If any scenario name is duplicated or malformed, the **whole scenario section**
+falls back to declaration metadata without loading scenario plugins. Builtins
+stay listed and all scenario `templates`/`apply_hooks` arrays are then empty
+because contributions are uninspected. In normal, successfully loaded rows,
+empty arrays instead mean that the plugin declares no contributions of that
+kind (for example, a hook-only plugin has no templates).
+
+The catalogue is an inventory, not readiness: it does not prove a worker, native
 simulator, camera, model provider or detailed city is available. See
-[plugin contracts](plugin-contracts.md) and the matching
-[`GET /v1/plugins` response](http-api.md#plugin-catalog).
+[extension admission](extension-admission.md), [plugin contracts](plugin-contracts.md)
+and the matching [`GET /v1/plugins` response](http-api.md#plugin-catalog).
 
 ## aeroagentsim templates
 
