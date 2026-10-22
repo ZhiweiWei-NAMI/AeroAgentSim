@@ -7,3 +7,13 @@
 .wb:has(.wb-gallery-overlay) > .wb-top {
   visibility: hidden;
 }
+
+/* Provenance comes from /v1/plugins and is deliberately quieter than the scenario id.
+   A missing inventory leaves the card unbadged rather than guessing an owner. */
+.wb-card-meta .wb-card-prov {
+  background: rgba(31, 122, 224, .12);
+  color: var(--wb-accent);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.wb-night .wb-card-meta .wb-card-prov { background: rgba(56, 198, 244, .18); color: #bfefff; }

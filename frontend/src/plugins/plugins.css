@@ -1,0 +1,43 @@
+/* Read-only plugin inventory opened from the scenario gallery. */
+.wb-plugins {
+  display: grid; gap: 10px; margin: 0 0 18px; padding: 14px 16px;
+  border: 1px solid var(--wb-line); border-radius: 12px; background: rgba(255, 255, 255, .64);
+}
+.wb-night .wb-plugins { background: rgba(18, 29, 44, .62); border-color: var(--wb-night-line); }
+.wb-plugins-head { display: flex; align-items: flex-start; gap: 12px; }
+.wb-plugins-head > div { flex: 1; min-width: 0; }
+.wb-plugins-head .wb-section-title { margin: 0 0 4px; }
+.wb-plugins .hint { margin: 0; color: var(--wb-muted); font-size: 12px; }
+.wb-plugin-list { list-style: none; margin: 0; padding: 0; }
+.wb-plugin-row { display: grid; gap: 5px; padding: 10px 0; border-top: 1px solid var(--wb-line); }
+.wb-plugin-row:first-child { border-top: 0; }
+
+.wb-plugin-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wb-plugin-name strong { font-size: 13px; }
+.wb-plugin-contrib { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.wb-plugin-label {
+  flex: 0 0 72px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--wb-muted);
+}
+.wb-plugin-tags { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.wb-plugin-warning { color: #9a6a00; }
+.wb-night .wb-plugin-warning { color: #ffd27a; }
+.wb-night .wb-plugin-row, .wb-night .wb-plugin-catalogs { border-color: var(--wb-night-line); }
+
+.wb-plugin-catalogs { display: grid; gap: 6px; padding-top: 4px; border-top: 1px solid var(--wb-line); }
+.wb-plugin-catalog-toggle {
+  all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 5px 6px; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 700; color: var(--wb-ink);
+}
+.wb-plugin-catalog-toggle:hover { background: rgba(20, 32, 46, .06); }
+.wb-plugin-catalog-toggle:focus-visible { outline: 2px solid var(--wb-accent); outline-offset: 1px; }
+.wb-night .wb-plugin-catalog-toggle:hover { background: rgba(255, 255, 255, .08); }
+.wb-plugin-catalog-toggle .wb-tag { font-weight: 500; }
+.wb-plugin-chevron { margin-left: auto; color: var(--wb-muted); font-variant-numeric: tabular-nums; }
+.wb-plugin-catalog ul {
+  list-style: none; display: grid; gap: 4px; margin: 4px 0 2px;
+  padding: 0 0 0 18px;
+}
+.wb-plugin-catalog li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.wb-plugin-catalog .hint { padding: 2px 0 2px 18px; }
