@@ -4,8 +4,9 @@ Every reported number comes from a real run (no invented or zero-filled
 measurements): the coordinator validates typed knob variations against the
 template registry in the parent, then executes each (configuration, seed)
 cell as its own run — a direct child of the run root — in a private invocation
-process owned by a spawned Linux subreaper. There is no queued process-pool
-backlog: at most ``jobs`` cells are submitted at once, each with one supervisor.
+process owned by a spawned supervisor (a Linux subreaper where available,
+otherwise best-effort process control). There is no queued process-pool backlog:
+at most ``jobs`` cells are submitted at once, each with one supervisor.
 Matched seeds 0..seeds-1 and an optional horizon override are
 applied to the pinned scenario document BEFORE final ``load_scenario``
 expansion, so unexpanded low-altitude generators observe them.
@@ -249,6 +250,8 @@ def _run_result(path: Path, *, collection_error: str | None = None) -> dict[str,
         "execution_outcome": metadata.get("execution_outcome"),
         "cleanup_interrupted": metadata.get("cleanup_interrupted"),
         "cleanup_error": metadata.get("cleanup_error"),
+        **(_supervision_metadata(metadata["supervision"])
+           if metadata.get("supervision") else {}),
         "collection_error": collection_error or evidence_error or metadata.get("recovery_error"),
         "cut": cut,
         "cursor": cut["index"] + 1 if cut is not None else None,
@@ -334,6 +337,8 @@ def _child_run(
             {
                 **session.storage.metadata(),
                 "template": template,
+                **(_supervision_metadata(experiment["supervision"])
+                   if experiment.get("supervision") else {}),
                 "experiment": {**experiment, "config_id": config_id, "seed": seed},
             },
         )
@@ -443,16 +448,105 @@ def _cell_worker(arguments: tuple[Any, ...], cancelled: Any, output: str) -> Non
     _publish_cell_result(output, result)
 
 
-def _cell_supervisor(
+def _supervision_metadata(mode: str) -> dict[str, Any]:
+    metadata: dict[str, Any] = {"supervision": mode}
+    if mode == "best_effort":
+        metadata.update({
+            "termination_scope": "cell_process",
+            "cleanup_limitations": "Detached renderer/browser descendants may not be reclaimed.",
+        })
+    return metadata
+
+
+def _best_effort_worker(worker: Any, arguments: tuple[Any, ...], cancelled: Any, output: str) -> None:
+    # A private session lets POSIX cancellation reach non-detached helpers too.
+    # Failure to create it must not prevent a portable cell from running.
+    if hasattr(os, "setsid"):
+        try:
+            os.setsid()
+        except OSError:
+            pass
+    worker(arguments, cancelled, output)
+
+
+def _best_effort_supervisor(
     worker: Any, arguments: tuple[Any, ...], cancelled: Any, output: str,
     force: Any, reaped: Any,
 ) -> None:
-    """Own/reap one Linux subtree outside the killable invocation process.
+    """Confirm only invocation exit; detached descendants are not owned here."""
+    # The private supervisor is spawned as a daemon for the Linux fork path.
+    # Allow it to spawn the portable invocation; it joins that child itself.
+    multiprocessing.current_process().daemon = False
+    process = multiprocessing.get_context("spawn").Process(
+        target=_best_effort_worker, args=(worker, arguments, cancelled, output),
+    )
+    terminate_requested = False
+
+    def request_terminate(signum: int, frame: Any) -> None:
+        nonlocal terminate_requested
+        terminate_requested = True
+
+    signal.signal(signal.SIGTERM, request_terminate)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    if hasattr(signal, "SIGCHLD"):
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+    try:
+        process.start()
+    except Exception as exc:  # No invocation has been started.
+        process.close()
+        reaped.value = 1
+        _publish_cell_result(output, {
+            "worker_error": f"subprocess supervision: {type(exc).__name__}: {exc}",
+        })
+        return
+
+    from multiprocessing.connection import wait
+
+    escalate_at: float | None = None
+    has_groups = hasattr(os, "killpg") and hasattr(os, "getpgid")
+    while True:
+        # Observe exit without reaping yet: keep the POSIX PID/group ID pinned
+        # until the final group signal, even if the invocation exits on TERM.
+        exited = bool(wait([process.sentinel], timeout=_CANCEL_POLL_S / 5))
+        if (terminate_requested or force.value) and escalate_at is None:
+            escalate_at = time.monotonic() + _TERMINATE_GRACE_S
+        phase = max(force.value, int(escalate_at is not None))
+        if escalate_at is not None and time.monotonic() >= escalate_at:
+            phase = 2
+        if phase:
+            if has_groups:
+                try:
+                    # Never signal the supervisor/server's inherited group if
+                    # cancellation races the child's setsid() or it failed.
+                    if os.getpgid(process.pid) == process.pid:
+                        os.killpg(process.pid, signal.SIGKILL if phase >= 2 else signal.SIGTERM)
+                except OSError:
+                    pass  # Not evidence of group exit or descendant cleanup.
+            if not exited:
+                try:
+                    (process.kill if phase >= 2 else process.terminate)()
+                except OSError:
+                    pass  # Leave confirmation unset while the cell is still alive.
+        if exited and (not phase or not has_groups or phase >= 2):
+            break
+        if exited:
+            # A ready sentinel would otherwise busy-spin during group grace.
+            time.sleep(_CANCEL_POLL_S / 5)
+    process.join()
+    reaped.value = 1  # Only the cell process was verified/reaped, not its tree.
+    process.close()
+
+
+def _cell_supervisor(
+    worker: Any, arguments: tuple[Any, ...], cancelled: Any, output: str,
+    supervision: Any, force: Any, reaped: Any,
+) -> None:
+    """Own/reap a Linux subtree, or control the invocation best-effort.
 
     A new session/process group is not an ownership boundary: the renderer and
     Chromium can detach into their own sessions. A per-cell subreaper adopts
-    their orphans instead. It never executes scenario/plugin code itself, and
-    the coordinator requests escalation without killing this supervisor.
+    their orphans instead, where supported. The coordinator requests escalation
+    without killing this supervisor; fallback only confirms invocation exit.
     """
     terminate_requested = False
 
@@ -467,14 +561,29 @@ def _cell_supervisor(
 
         libc = ctypes.CDLL(None, use_errno=True)
         # PR_SET_CHILD_SUBREAPER applies only to this private supervisor, not to
-        # the server or another manager's workers. Fail before starting a cell
-        # if the host cannot provide the required ownership boundary.
+        # the server or another manager's workers. If unavailable, use portable
+        # best-effort control without claiming this ownership boundary.
         if libc.prctl(36, 1, 0, 0, 0) != 0:
             code = ctypes.get_errno()
             raise OSError(code, os.strerror(code))
         pid = os.getpid()
         children = Path(f"/proc/{pid}/task/{pid}/children")
         children.read_text()  # Check procfs availability before forking.
+    except (OSError, AttributeError):
+        mode = "best_effort"
+    else:
+        mode = "linux_subreaper"
+    supervision.value = 1 if mode == "linux_subreaper" else 2
+    document, base, directory, template, experiment, config_id, seed = arguments
+    arguments = (
+        document, base, directory, template,
+        {**experiment, **_supervision_metadata(mode)}, config_id, seed,
+    )
+    if mode == "best_effort":
+        _best_effort_supervisor(worker, arguments, cancelled, output, force, reaped)
+        return
+
+    try:
         signal.signal(signal.SIGTERM, request_terminate)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # Keep children waitable/PIDs pinned.
@@ -540,7 +649,7 @@ def _cell_supervisor(
 
 
 class _CellProcess:
-    """Process-compatible control of a cell without killing its subreaper."""
+    """Process-compatible control of a cell without killing its supervisor."""
 
     def __init__(
         self, context: Any, arguments: tuple[Any, ...], cancelled: Any,
@@ -548,12 +657,20 @@ class _CellProcess:
     ) -> None:
         self._force = context.RawValue("b", 0)
         self._reaped = context.RawValue("b", 0)
+        self._supervision = context.RawValue("b", 0)
         self._process = context.Process(
             target=_cell_supervisor,
-            args=(_cell_worker, arguments, cancelled, output, self._force, self._reaped),
+            args=(
+                _cell_worker, arguments, cancelled, output,
+                self._supervision, self._force, self._reaped,
+            ),
             name=name,
             daemon=True,
         )
+
+    @property
+    def supervision(self) -> str | None:
+        return {1: "linux_subreaper", 2: "best_effort"}.get(self._supervision.value)
 
     @property
     def termination_confirmed(self) -> bool:
@@ -696,8 +813,8 @@ class ExperimentManager:
     ``create`` validates bounded counts before copying axes/materializing the
     factorial, then validates typed knobs synchronously. A coordinator owns at
     most ``jobs`` invocation processes per batch, each owned by a private spawned
-    Linux subreaper, with no queued submissions. Subreapers adopt/reap detached
-    local helpers without changing the server's process ownership. Artifact
+    supervisor, with no queued submissions. Linux subreapers adopt/reap detached
+    local helpers; best-effort fallback only confirms invocation exit. Artifact
     recovery/aggregation waits until the batch has no live siblings,
     so large dead-cell journals cannot delay control of a blocked live cell.
 
@@ -863,8 +980,8 @@ class ExperimentManager:
                 "cooperative_grace_s": _CANCEL_GRACE_S,
                 "terminate_grace_s": _TERMINATE_GRACE_S,
                 "kill_grace_s": _KILL_GRACE_S,
-                "scope": "owned_cell_process_trees",
-                "supervision": "linux_subreaper",
+                "scope": None,
+                "supervision": None,  # Selected inside each spawned supervisor.
             },
             "completed": 0,
             "failed": 0,
@@ -1174,6 +1291,9 @@ class ExperimentManager:
         result["termination_confirmed"] = False
         result["attempted"] = True
         result["control_errors"] = cell.get("control_errors", [])
+        mode = cell.get("supervision") or getattr(cell["process"], "supervision", None)
+        if mode:
+            result.update(_supervision_metadata(mode))
         return result
 
     def _fill_unstarted(self, entry: dict[str, Any]) -> None:
@@ -1238,7 +1358,7 @@ class ExperimentManager:
 
     @staticmethod
     def _collect(entry: dict[str, Any], active: list[dict[str, Any]]) -> bool:
-        """Reap supervisors and retain their tree-exit proof, without artifact I/O."""
+        """Reap supervisors and retain their scoped exit proof, without artifact I/O."""
         ready = entry.setdefault("ready", [])
         changed = False
         for cell in list(active):
@@ -1247,6 +1367,7 @@ class ExperimentManager:
                 continue
             process.join(timeout=0)
             cell["termination_confirmed"] = getattr(process, "termination_confirmed", True)
+            cell["supervision"] = getattr(process, "supervision", None)
             process.close()
             active.remove(cell)
             ready.append(cell)
@@ -1279,6 +1400,8 @@ class ExperimentManager:
                 if result["status"] not in _TERMINAL:
                     result["status"] = "interrupted" if entry.get("cancelling") else "faulted"
                     result["error"] = result.get("error") or error
+            if cell.get("supervision"):
+                result.update(_supervision_metadata(cell["supervision"]))
             result["termination_confirmed"] = True
             result["attempted"] = True
             result["cancellation_requested"] = bool(entry.get("cancelling"))
@@ -1354,6 +1477,15 @@ class ExperimentManager:
             if row.get("status") != "completed" or row.get("error") or row.get("collection_error"):
                 row["kpis"], row["kpi_meta"] = {}, {}
             report["runs"].append(row)
+            mode = row.get("supervision")
+            if mode:
+                policy = report.setdefault("cancellation_policy", {})
+                # Mixed capabilities must never upgrade an experiment's claim.
+                if policy.get("supervision") != "best_effort":
+                    policy.update(_supervision_metadata(mode))
+                    policy["scope"] = (
+                        "cell_process" if mode == "best_effort" else "owned_cell_process_trees"
+                    )
             if row.get("status") == "completed" and not row.get("error") and not row.get("collection_error"):
                 report["completed"] += 1
             else:
@@ -1393,6 +1525,7 @@ class ExperimentManager:
                     "basis", "error", "collection_error", "attempted",
                     "execution_outcome", "cleanup_interrupted", "cleanup_error",
                     "cancellation_requested", "termination_confirmed", "control_errors",
+                    "supervision", "termination_scope", "cleanup_limitations",
                 )
             }
 

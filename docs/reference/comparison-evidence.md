@@ -41,18 +41,25 @@ For active cells the shutdown policy is:
 2. Terminate remaining cell process trees and allow one shared second to exit.
 3. Kill survivors and allow one shared second to reap them.
 
-Each invocation runs under a private **Linux child subreaper**, outside the
-killable cell. The supervisor adopts, signals and reaps orphaned local helpers,
-including the renderer's separately sessioned Node bridge and browser processes;
-closing their stdin or killing only the Python invocation is not sufficient.
-Escalation requests do not kill the supervisor itself. A cell is confirmed
-terminated only after its supervisor has reaped the entire owned subtree, not
-merely the invocation. Helpers leaked by a normal cell exit are also cleaned up.
-The server's child-reaping policy and other managers' processes are unchanged.
-This requires Linux `fork`, child-subreaper support and readable `/proc` child
-lists; if unavailable, the worker reports a supervision failure **before running
-scenario/plugin code**, rather than silently admitting unsupervised helpers.
-There is one additional supervisor process per active cell, not per queued cell.
+Where Linux `fork`, child-subreaper support and readable `/proc` child lists are
+available, each invocation runs under a private **Linux child subreaper**, outside
+the killable cell (`supervision: "linux_subreaper"`). It adopts, signals and reaps
+orphaned local helpers, including the renderer's separately sessioned Node bridge
+and browser processes. In this mode, termination is confirmed only after the
+entire owned subtree has been reaped; helpers leaked by normal exit are cleaned
+up too. The server's child-reaping policy and other managers remain unchanged.
+
+Other hosts, including Linux where `prctl` or `/proc` is unavailable, run cells
+through the spawn context with **`supervision: "best_effort"`**. Cancellation
+terminates then kills the invocation, also signaling its private process group
+where POSIX supports it; Windows uses process `terminate()` / `kill()`. In this
+mode `termination_confirmed` verifies **only the cell process**
+(`termination_scope: "cell_process"`), not its descendants. Detached renderer/browser
+descendants may not be reclaimed; `cleanup_limitations` records this explicitly.
+Run manifests and experiment cell rows record the actual mode. The experiment's
+`cancellation_policy.supervision` is unknown (`null`) until observed, and becomes
+`best_effort` if any cell uses that fallback. Escalation requests do not kill the
+supervisor itself. There is one supervisor per active cell, not per queued cell.
 
 The phase deadlines are shared across active cells, not multiplied by `jobs`.
 Only process control/reaping occurs inside them; artifact parsing, ACK-index
@@ -199,3 +206,10 @@ crash-surviving model-call auditing or rollback of external effects. Recorded
 links are evidence links, not causal attribution. Model replies, acknowledgements,
 command acceptance, terminal status, projection finality and mission completion
 remain distinct.
+
+Best-effort supervision on non-Linux hosts (or without working Linux `prctl` /
+`/proc`) does not guarantee descendant cleanup. Process-group signals cannot
+reclaim helpers that create their own sessions, including detached renderer and
+browser processes. A verified cell exit is not verification that those helpers
+exited; metadata records the mode and this limitation rather than claiming full
+tree cleanup.

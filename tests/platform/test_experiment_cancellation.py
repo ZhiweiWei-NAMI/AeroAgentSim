@@ -159,7 +159,7 @@ def _blocked_cell_worker(arguments, cancelled, output) -> None:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
     path = Path(arguments[2])
     _run_files(path)
-    (path / "blocked.ready").write_text("ready")
+    (path / "blocked.ready").write_text(str(os.getpid()))
     threading.Event().wait()
 
 
@@ -263,6 +263,7 @@ def test_close_kills_blocked_cells_without_backlog_and_preserves_ack(
         if os.name == "posix":
             assert all(process.killed for process in context.processes)
         final = manager.wait(created["id"])
+        assert final["cancellation_policy"]["supervision"] == "linux_subreaper"
         assert final["status"] == "interrupted"
         assert final["completed"] == 0 and final["failed"] == final["total"] == 5
         assert len(final["runs"]) == 5
@@ -282,6 +283,8 @@ def test_close_kills_blocked_cells_without_backlog_and_preserves_ack(
             assert (path / "committed-prefix.json").read_bytes() == ack
             assert run["cut"] == json.loads(ack) and run["cursor"] == 2
             assert run["termination_confirmed"] is True
+            assert run["supervision"] == "linux_subreaper"
+            assert "cleanup_limitations" not in run
             assert [row["index"] for row in json.loads((path / "index.json").read_text())] == [0, 1]
             metadata = json.loads((path / "manifest.json").read_text())
             assert metadata["status"] == "interrupted" and metadata["final_cursor"] == 2
@@ -412,18 +415,180 @@ def test_close_reaps_separately_sessioned_renderer_and_browser_descendants(
         unrelated.wait(timeout=2)
 
 
-def test_supervision_unavailable_fails_before_invoking_cell(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def forbidden_worker(*args):
-        pytest.fail("cell ran without subprocess ownership supervision")
+def _supervisor_without_subreaper(worker, arguments, *args) -> None:
+    """Apply capability failures inside spawn (parent monkeypatches do not carry)."""
+    reason = arguments[0]["test_supervision_failure"]
+    with pytest.MonkeyPatch.context() as patch:
+        if reason in {"darwin", "win32"}:
+            # Do not change the real sys.platform used by multiprocessing spawn.
+            patch.setattr(experiments, "sys", SimpleNamespace(platform=reason))
+        elif reason == "prctl":
+            import ctypes
 
-    force, reaped = SimpleNamespace(value=0), SimpleNamespace(value=0)
-    output = tmp_path / "result.json"
-    monkeypatch.setattr(experiments, "sys", SimpleNamespace(platform="unsupported"))
-    experiments._cell_supervisor(forbidden_worker, (), None, str(output), force, reaped)
-    assert reaped.value == 1
-    assert "requires Linux /proc" in json.loads(output.read_text())["worker_error"]
+            patch.setattr(ctypes, "CDLL", lambda *a, **kw: SimpleNamespace(prctl=lambda *a: -1))
+        else:
+            read_text = Path.read_text
+
+            def without_proc(path, *a, **kw):
+                if str(path).startswith("/proc/"):
+                    raise OSError("procfs unavailable")
+                return read_text(path, *a, **kw)
+
+            patch.setattr(Path, "read_text", without_proc)
+        experiments._cell_supervisor(worker, arguments, *args)
+
+
+def _completed_cell_worker(arguments, cancelled, output) -> None:
+    path = Path(arguments[2])
+    _run_files(path, status="completed")
+    experiments._publish_cell_result(output, {"result": experiments._run_result(path)})
+
+
+@pytest.mark.parametrize("reason", ["darwin", "win32", "prctl", "proc"])
+@pytest.mark.parametrize("blocked", [False, True], ids=["completed", "cancelled"])
+def test_unavailable_subreaper_runs_cells_and_cancels_best_effort(
+    reason: str, blocked: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if reason in {"prctl", "proc"} and sys.platform != "linux":
+        pytest.skip("Linux capability failure regression")
+
+    class FallbackRegistry(_Registry):
+        def apply(self, template_id, knobs):
+            prepared = super().apply(template_id, knobs)
+            prepared.document["test_supervision_failure"] = reason
+            return prepared
+
+    context = _BlockedContext(
+        multiprocessing.get_context("spawn"),
+        _blocked_cell_worker if blocked else _completed_cell_worker,
+        supervisor=_supervisor_without_subreaper,
+    )
+    monkeypatch.setattr(experiments, "multiprocessing", SimpleNamespace(get_context=lambda method: context))
+    root = tmp_path / "runs"
+    manager = ExperimentManager(root, FallbackRegistry(tmp_path))
+    closer = None
+    try:
+        created = manager.create("probe", vary={}, seeds=1)
+        if blocked:
+            _wait_for(lambda: bool(list(root.glob("*/blocked.ready"))))
+            cell_pid = int(next(root.glob("*/blocked.ready")).read_text())
+            closer = threading.Thread(target=manager.close, daemon=True)
+            closer.start()
+            closer.join(timeout=6)
+            assert not closer.is_alive(), "best-effort cancellation stranded the cell"
+        else:
+            _wait_for(lambda: manager.get(created["id"])["status"] not in {"created", "running"})
+        report = manager.wait(created["id"])
+        run = report["runs"][0]
+        policy = report["cancellation_policy"]
+        assert report["status"] == ("interrupted" if blocked else "completed")
+        assert run["status"] == ("interrupted" if blocked else "completed")
+        assert run["supervision"] == policy["supervision"] == "best_effort"
+        assert run["termination_scope"] == policy["termination_scope"] == "cell_process"
+        assert "Detached renderer/browser descendants" in run["cleanup_limitations"]
+        assert policy["cleanup_limitations"] == run["cleanup_limitations"]
+        assert run["termination_confirmed"] is True
+        assert all(process.closed and process.reaped.value for process in context.processes)
+        if blocked:
+            assert all(process.terminated for process in context.processes)
+            if os.name == "posix":
+                assert all(process.killed for process in context.processes)
+                with pytest.raises(ProcessLookupError):
+                    os.kill(cell_pid, 0)
+        stored = json.loads((root / ".experiments" / created["id"] / "experiment.json").read_text())
+        assert stored["runs"][0]["supervision"] == "best_effort"
+        assert stored["cancellation_policy"]["supervision"] == "best_effort"
+    finally:
+        for process in context.processes:
+            if process.is_alive():
+                process.kill()
+                process.join(timeout=2)
+        if closer is None:
+            closer = threading.Thread(target=manager.close, daemon=True)
+            closer.start()
+        closer.join(timeout=2)
+
+
+@pytest.mark.parametrize("has_groups", [False, True], ids=["windows", "posix"])
+@pytest.mark.parametrize("exits_on_term", [False, True])
+def test_best_effort_escalates_process_and_supported_group_without_claiming_tree_cleanup(
+    has_groups: bool, exits_on_term: bool, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import multiprocessing.connection as connection
+
+    calls = []
+
+    class Process:
+        pid = 1234
+        sentinel = object()
+        exited = False
+
+        def start(self):
+            calls.append("start")
+
+        def terminate(self):
+            calls.append("terminate")
+            self.exited = exits_on_term
+
+        def kill(self):
+            calls.append("kill")
+            self.exited = True
+
+        def join(self):
+            assert self.exited
+            calls.append("join")
+
+        def close(self):
+            calls.append("close")
+
+    process = Process()
+    current = SimpleNamespace(daemon=True)
+    monkeypatch.setattr(experiments, "multiprocessing", SimpleNamespace(
+        current_process=lambda: current,
+        get_context=lambda method: SimpleNamespace(Process=lambda **kw: process),
+    ))
+    monkeypatch.setattr(connection, "wait", lambda *a, **kw: [process.sentinel] if process.exited else [])
+    monkeypatch.setattr(experiments, "signal", SimpleNamespace(
+        signal=lambda *a: None, SIGTERM=15, SIGINT=2, SIG_IGN=1, SIGKILL=9,
+    ))
+    fake_os = SimpleNamespace()
+    if has_groups:
+        fake_os.getpgid = lambda pid: pid
+        fake_os.killpg = lambda pid, signum: calls.append(("group", pid, signum))
+    monkeypatch.setattr(experiments, "os", fake_os)
+    ticks = iter(range(100))
+    monkeypatch.setattr(experiments, "time", SimpleNamespace(
+        monotonic=lambda: next(ticks) * 0.5, sleep=lambda delay: None,
+    ))
+    reaped = SimpleNamespace(value=0)
+    experiments._best_effort_supervisor(
+        None, (), None, "unused", SimpleNamespace(value=1), reaped,
+    )
+    assert not current.daemon
+    assert "terminate" in calls
+    if not exits_on_term:
+        assert "kill" in calls
+    if has_groups:
+        assert ("group", process.pid, 15) in calls
+        assert ("group", process.pid, 9) in calls
+        assert calls.index(("group", process.pid, 9)) < calls.index("join")
+    assert calls[-2:] == ["join", "close"] and reaped.value == 1
+
+
+@pytest.mark.parametrize("mode", ["linux_subreaper", "best_effort"])
+def test_supervision_mode_is_persisted_in_run_manifest(
+    mode: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _patch_session(monkeypatch)
+    path = tmp_path / "run"
+    metadata = experiments._supervision_metadata(mode)
+    experiments._child_run(
+        {"run": {}}, str(tmp_path), str(path), {"id": "probe", "title": "Probe"},
+        {"id": "experiment", **metadata}, "config-0", 0,
+    )
+    manifest = json.loads((path / "manifest.json").read_text())
+    for key, value in metadata.items():
+        assert manifest[key] == manifest["experiment"][key] == value
 
 
 class _UncooperativeProcess:
