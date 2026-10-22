@@ -1,9 +1,10 @@
-"""Journal 2.0: lossless positional records in independently compressed frames."""
+"""Decode-only journal admission and lossless independent compressed frames."""
 
 from __future__ import annotations
 
 import base64
 import json
+import sys
 import zlib
 from typing import Any, cast
 
@@ -12,6 +13,191 @@ from .values import ResourceBudget, normalize, parse_json
 
 CODEC = "positional-deflate/v1"
 LEAN_CODEC = "canonical-deflate/v1"
+
+
+class JournalHeaderError(KernelError):
+    """Malformed journal envelope, before any semantic replay checks."""
+
+    def __init__(self, message: str, *, code: str = "JOURNAL_HEADER") -> None:
+        super().__init__(code, message)
+
+
+class UnsupportedJournalVersion(JournalHeaderError):
+    """Unknown wire version, codec or provenance policy; never guessed."""
+
+
+class JournalFrameError(KernelError):
+    """Malformed wire frame; retain the original machine-readable error code."""
+
+
+class JournalTruncatedError(JournalFrameError):
+    """An unterminated final line, distinct from a corrupt complete frame."""
+
+    def __init__(self) -> None:
+        super().__init__("JOURNAL_TRUNCATED", "last record lacks LF")
+
+
+def admit_header(header: dict[str, Any], *, allow_legacy_stub: bool = False) -> None:
+    """Admit a journal's wire envelope, not its registry, authority or effects.
+
+    Historical full 1.1–1.3/2.0 and lean 1.4/2.1 retain their explicit policy
+    mappings. No semantic version or provenance is inferred from absent fields.
+    Decode-only compatibility permits the exact budget-only and minimal 1.2
+    diagnostic stubs; replay never accepts these as reconstructable headers.
+    """
+    from .codec import decode_record
+    from .time import Instant
+
+    raw_budget = header.get("budget")
+    if not isinstance(raw_budget, dict):
+        raise JournalHeaderError("header lacks resource budgets")
+    if set(raw_budget) - {"integer_digits", "frame_bytes", "nesting_depth"}:
+        raise JournalHeaderError("malformed resource budgets")
+    if any(type(value) is not int or value <= 0 for value in raw_budget.values()):
+        raise ResourceLimit("budgets must be positive integers")
+    if allow_legacy_stub and set(header) == {"budget"}:
+        return
+    if header.get("type") != "header":
+        raise JournalHeaderError("record zero must be a journal header")
+    if header.get("format") != "aerokernel.journal":
+        raise UnsupportedJournalVersion("unsupported journal format")
+    major, minor = header.get("major"), header.get("minor")
+    if type(major) is not int or type(minor) is not int:
+        raise UnsupportedJournalVersion("unsupported journal version types")
+    lean = (major, minor) in {(1, 4), (2, 1)}
+    if lean:
+        if (
+            header.get("provenance") != "lean"
+            or type(header.get("policy_version")) is not int
+            or header["policy_version"] not in {2, 3}
+        ):
+            raise UnsupportedJournalVersion("unsupported lean journal policy")
+    elif "provenance" in header or "policy_version" in header:
+        raise UnsupportedJournalVersion("unsupported full journal policy")
+    if major == 1:
+        if (
+            minor not in {1, 2, 3, 4}
+            or "codec" in header
+            or "semantic_version" in header
+        ):
+            raise UnsupportedJournalVersion("unsupported uncompressed journal version")
+    elif major == 2:
+        if (
+            minor not in {0, 1}
+            or header.get("codec") != (LEAN_CODEC if lean else CODEC)
+            or type(header.get("semantic_version")) is not int
+            or header["semantic_version"] not in ({4} if lean else {2, 3})
+        ):
+            raise UnsupportedJournalVersion("unsupported journal version/codec")
+    else:
+        raise UnsupportedJournalVersion("unsupported journal major version")
+    policy = (
+        header["policy_version"]
+        if lean
+        else header["semantic_version"]
+        if major == 2
+        else minor
+    )
+    required = {
+        "type", "format", "major", "minor", "index", "instant", "time_origin_ns",
+        "run_id", "epoch", "registry", "registry_digest", "manifest", "partitions",
+        "mappings", "budget", "max_microsteps", "durability", "root_seed",
+        "configuration", "serializer", "rng", "resolved_bindings", "engine_versions",
+    }
+    if policy in {2, 3}:
+        required.update({"ingress_policy", "engine_profiles"})
+    if policy == 3:
+        required.add("ingress_streams")
+    if major == 2:
+        required.update({"codec", "semantic_version"})
+    if lean:
+        required.update({"provenance", "policy_version"})
+    stub = (
+        allow_legacy_stub
+        and (major, minor) == (1, 2)
+        and set(header)
+        == {"type", "format", "major", "minor", "index", "budget", "instant"}
+    )
+    if not stub and set(header) != required:
+        raise JournalHeaderError("malformed header fields")
+    try:
+        instant = decode_record(header["instant"])
+    except ResourceLimit:
+        raise
+    except RecursionError as exc:
+        raise ResourceLimit("decoder recursion limit exceeded") from exc
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        raise JournalHeaderError("malformed header instant") from exc
+    if (
+        type(header["index"]) is not int
+        or header["index"] != 0
+        or (not stub and type(header["time_origin_ns"]) is not int)
+        or (not stub and header["time_origin_ns"] != 0)
+        or not isinstance(instant, Instant)
+        or instant != Instant(0)
+    ):
+        raise JournalHeaderError("header must start at index/time zero")
+
+
+def _parse_wire(data: bytes, budget: ResourceBudget, *, header: bool = False) -> Any:
+    """Normalize parser diagnostics without collapsing resource failures."""
+    try:
+        return parse_json(data, budget)
+    except ResourceLimit:
+        raise
+    except KernelError as exc:
+        if isinstance(exc.__cause__, RecursionError):
+            raise ResourceLimit("decoder recursion limit exceeded") from exc
+        if header:
+            raise JournalHeaderError(
+                "invalid UTF-8 JSON header", code=exc.code
+            ) from exc
+        raise JournalFrameError(exc.code, "invalid UTF-8 JSON frame") from exc
+    except (ValueError, RecursionError) as exc:
+        raise ResourceLimit("decoder conversion limit exceeded") from exc
+
+
+def decode_journal_line(
+    line: bytes, budget: ResourceBudget | None, header: dict[str, Any] | None
+) -> tuple[dict[str, Any], ResourceBudget]:
+    """Decode/admit one complete line; never verify recorded semantic effects.
+
+    Legacy diagnostic stubs remain supported for decode-only callers. These are
+    not reconstructable journal headers and are never admitted by semantic replay.
+    Explicit budgets override the declared decoding limits, as before.
+    """
+    if not line.endswith(b"\n") or b"\r" in line[:-2]:
+        raise JournalFrameError("JOURNAL_FRAME", "record must be LF-terminated")
+    if header is None and budget is None:
+        # Discover the declared policy, then parse again under that policy.
+        # Do not modify CPython's process-global decimal or recursion limits.
+        digit_limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
+        bootstrap = ResourceBudget(
+            digit_limit or max(4096, len(line)), len(line), sys.getrecursionlimit()
+        )
+        tree = _parse_wire(line, bootstrap, header=True)
+        if not isinstance(tree, dict) or not isinstance(tree.get("budget"), dict):
+            raise JournalHeaderError("header lacks resource budgets")
+        try:
+            budget = ResourceBudget(**tree["budget"])
+        except (TypeError, KeyError) as exc:
+            raise JournalHeaderError("malformed resource budgets") from exc
+    assert budget is not None
+    frame_budget = budget
+    if header is not None and header.get("provenance") == "lean":
+        frame_budget = ResourceBudget(
+            budget.integer_digits, budget.frame_bytes, budget.nesting_depth * 2 + 2
+        )
+    record = _parse_wire(line, frame_budget, header=header is None)
+    if not isinstance(record, dict):
+        if header is None:
+            raise JournalHeaderError("header must be an object")
+        raise JournalFrameError("JOURNAL_RECORD", "record must be an object")
+    if header is None:
+        admit_header(record, allow_legacy_stub=True)
+    elif header.get("major") == 2:
+        record = decode_frame(record, budget, lean=header.get("provenance") == "lean")
+    return record, budget
 
 
 _SHAPES: dict[str, tuple[str, ...]] = {
@@ -296,7 +482,7 @@ def _unpack(value: Any) -> Any:
     if not isinstance(value, list):
         return value
     if not value or type(value[0]) is not int:
-        raise KernelError("JOURNAL_CODEC", "invalid positional container")
+        raise JournalFrameError("JOURNAL_CODEC", "invalid positional container")
     if value[0] == 0:
         return [_unpack(v) for v in value[1:]]
     if value[0] == 1:
@@ -308,7 +494,7 @@ def _unpack(value: Any) -> Any:
                 or type(pair[0]) is not str
                 or pair[0] in result
             ):
-                raise KernelError("JOURNAL_CODEC", "invalid positional mapping")
+                raise JournalFrameError("JOURNAL_CODEC", "invalid positional mapping")
             result[pair[0]] = _unpack(pair[1])
         return result
     if value[0] == 2 and len(value) >= 2 and type(value[1]) is str:
@@ -321,7 +507,7 @@ def _unpack(value: Any) -> Any:
                         n: _unpack(v) for n, v in zip(names, value[2:], strict=True)
                     },
                 }
-    raise KernelError("JOURNAL_CODEC", "unknown positional record shape")
+    raise JournalFrameError("JOURNAL_CODEC", "unknown positional record shape")
 
 
 def encode_frame(record: dict[str, Any], budget: ResourceBudget) -> bytes:
@@ -355,11 +541,34 @@ def compress_frame(
 def decode_frame(
     wire: dict[str, Any], budget: ResourceBudget, *, lean: bool = False
 ) -> dict[str, Any]:
-    """Bound decompression before allocating or interpreting the expanded tree."""
+    """Decode a bounded frame, not a journal header or semantic verification.
+
+    Standalone callers must choose lean/full from an admitted header. Resource
+    failures remain ResourceLimit (also KernelError/ValueError compatible).
+    """
+    try:
+        return _decode_frame(wire, budget, lean=lean)
+    except ResourceLimit:
+        raise
+    except JournalFrameError:
+        raise
+    except KernelError as exc:
+        raise JournalFrameError(exc.code, "invalid expanded frame") from exc
+    except RecursionError as exc:
+        raise ResourceLimit("decoder recursion limit exceeded") from exc
+    except (ValueError, TypeError, KeyError) as exc:
+        raise JournalFrameError("JOURNAL_CODEC", "invalid compressed frame") from exc
+
+
+def _decode_frame(
+    wire: dict[str, Any], budget: ResourceBudget, *, lean: bool
+) -> dict[str, Any]:
+    if not isinstance(wire, dict):
+        raise JournalFrameError("JOURNAL_CODEC", "frame must be an object")
     if set(wire) not in ({"type", "index", "data"}, {"type", "index", "data", "phase"}):
-        raise KernelError("JOURNAL_CODEC", "unexpected frame fields")
+        raise JournalFrameError("JOURNAL_CODEC", "unexpected frame fields")
     if type(wire["data"]) is not str:
-        raise KernelError("JOURNAL_CODEC", "compressed data must be base64 text")
+        raise JournalFrameError("JOURNAL_CODEC", "compressed data must be base64 text")
     try:
         compressed = base64.b64decode(wire["data"], validate=True)
         inflater = zlib.decompressobj()
@@ -367,25 +576,32 @@ def decode_frame(
         if len(packed) > budget.frame_bytes or inflater.unconsumed_tail:
             raise ResourceLimit("expanded codec frame bytes exceeded")
         if not inflater.eof or inflater.unused_data:
-            raise KernelError("JOURNAL_CODEC", "invalid compressed frame boundary")
+            raise JournalFrameError(
+                "JOURNAL_CODEC", "invalid compressed frame boundary"
+            )
+    except KernelError:
+        # KernelError is a ValueError too: do not hide expansion limits or the
+        # more precise compressed-boundary diagnostic in the broad catch below.
+        raise
     except (ValueError, zlib.error) as exc:
-        raise KernelError("JOURNAL_CODEC", "invalid compressed frame") from exc
+        raise JournalFrameError("JOURNAL_CODEC", "invalid compressed frame") from exc
     # Positional wrapping can add container depth; its resource ceiling is
     # derived from the semantic budget, then the expanded tree is checked again.
     packed_budget = ResourceBudget(
         budget.integer_digits, budget.frame_bytes, budget.nesting_depth * 2 + 2
     )
     if lean:
-        record = parse_json(packed, packed_budget)
+        record = _parse_wire(packed, packed_budget)
     else:
-        record = _unpack(parse_json(packed, packed_budget))
+        record = _unpack(_parse_wire(packed, packed_budget))
         record = normalize(record, budget, _check_bytes=False)
     if (
         not isinstance(record, dict)
         or record.get("type") != wire["type"]
         or type(wire["index"]) is not int
-        or record.get("index") != wire["index"]
+        or type(record.get("index")) is not int
+        or record["index"] != wire["index"]
         or record.get("phase") != wire.get("phase")
     ):
-        raise KernelError("JOURNAL_CODEC", "wire and expanded coordinates differ")
+        raise JournalFrameError("JOURNAL_CODEC", "wire and expanded coordinates differ")
     return cast(dict[str, Any], record)

@@ -10,6 +10,7 @@ from .control import boundary_control, publish_ingress, reserve
 from .engine import Batch, Partition
 from .errors import KernelError, MicrostepLimitExceeded
 from .journal import Journal
+from .journal_codec import admit_header
 from .messages import Actions
 from .scheduling import build_wave, wave_intents
 from .state import Store
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
 
 
 def from_header(header: dict[str, Any]) -> Kernel:
+    """Admit the wire envelope, then verify registry, authority and pinned policy."""
+    admit_header(header)
     from .coordinator import Kernel
 
     cls = Kernel
@@ -30,25 +33,9 @@ def from_header(header: dict[str, Any]) -> Kernel:
     if (header.get("major") == 1 and header.get("minor") == 4) or (
         header.get("major") == 2 and header.get("minor") == 1
     ):
-        from .journal_codec import CODEC, LEAN_CODEC
+        from .journal_codec import CODEC
 
         compressed = header.get("major") == 2
-        if (
-            header.get("provenance") != "lean"
-            or type(header.get("policy_version")) is not int
-            or header["policy_version"] not in {2, 3}
-            or type(header.get("major")) is not int
-            or type(header.get("minor")) is not int
-            or (compressed and header.get("codec") != LEAN_CODEC)
-            or (
-                compressed
-                and (
-                    type(header.get("semantic_version")) is not int
-                    or header["semantic_version"] != 4
-                )
-            )
-        ):
-            raise KernelError("JOURNAL_HEADER", "unsupported lean journal header")
         legacy = dict(header)
         legacy["minor"] = 0 if compressed else legacy["policy_version"]
         if compressed:
@@ -64,17 +51,6 @@ def from_header(header: dict[str, Any]) -> Kernel:
         return kernel
 
     if header.get("major") == 2:
-        from .journal_codec import CODEC
-
-        if (
-            type(header.get("major")) is not int
-            or type(header.get("minor")) is not int
-            or header["minor"] != 0
-            or header.get("codec") != CODEC
-            or type(header.get("semantic_version")) is not int
-            or header["semantic_version"] not in {2, 3}
-        ):
-            raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
         legacy = dict(header)
         legacy["major"], legacy["minor"] = 1, legacy.pop("semantic_version")
         del legacy["codec"]
@@ -83,50 +59,6 @@ def from_header(header: dict[str, Any]) -> Kernel:
         kernel._store.allow_frame_prefix = True
         return kernel
 
-    required = {
-        "type",
-        "format",
-        "major",
-        "minor",
-        "index",
-        "instant",
-        "time_origin_ns",
-        "run_id",
-        "epoch",
-        "registry",
-        "registry_digest",
-        "manifest",
-        "partitions",
-        "mappings",
-        "budget",
-        "max_microsteps",
-        "durability",
-        "root_seed",
-        "configuration",
-        "serializer",
-        "rng",
-        "resolved_bindings",
-        "engine_versions",
-    }
-    if header.get("minor") in {2, 3}:
-        required.update({"ingress_policy", "engine_profiles"})
-    if header.get("minor") == 3:
-        required.add("ingress_streams")
-    if (
-        set(header) != required
-        or header["type"] != "header"
-        or header["format"] != "aerokernel.journal"
-        or type(header["major"]) is not int
-        or type(header["minor"]) is not int
-        or type(header["index"]) is not int
-        or header["time_origin_ns"] != 0
-        or type(header["time_origin_ns"]) is not int
-        or header["major"] != 1
-        or header["minor"] not in {1, 2, 3}
-        or header["index"] != 0
-        or decode_record(header["instant"]) != Instant(0)
-    ):
-        raise KernelError("JOURNAL_HEADER", "unsupported or malformed header")
     if header["minor"] in {2, 3}:
         import hashlib
 

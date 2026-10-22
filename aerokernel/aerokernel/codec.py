@@ -7,6 +7,12 @@ from collections.abc import Mapping, Sequence
 from functools import lru_cache
 from typing import Any, cast
 
+from .errors import KernelError
+
+
+class RecordDecodeError(KernelError):
+    """Malformed typed-record shape; still compatible with ValueError handlers."""
+
 
 @lru_cache(maxsize=256)
 def _field_names(cls: type[Any]) -> tuple[str, ...]:
@@ -136,7 +142,11 @@ class _DecodedRecord(dict[str, Any]):
 
 
 def decode_record(value: Any) -> Any:
-    """Decode only known kernel records, with explicit sequence fields."""
+    """Decode known record shapes, not journal admission or semantic verification.
+
+    Portable payload trees remain opaque; only complete historical declaration
+    shapes receive their original additive defaults.
+    """
     if isinstance(value, _DecodedRecord):
         return value.decoded
     classes = _record_classes()
@@ -149,14 +159,20 @@ def decode_record(value: Any) -> Any:
             k: v if k in {"payload", "value", "result"} else decode_record(v)
             for k, v in value.items()
         }
-    if set(value) != {"$type", "fields"} or value["$type"] not in classes:
-        raise ValueError("RECORD_TYPE: unsupported record")
+    if (
+        set(value) != {"$type", "fields"}
+        or type(value["$type"]) is not str
+        or value["$type"] not in classes
+    ):
+        raise RecordDecodeError("RECORD_TYPE", "unsupported record")
     cls = classes[value["$type"]]
     fields = value["fields"]
     expected = _field_set(cls)
     historical = _HISTORICAL_DECLARATION_FIELDS.get(value["$type"])
-    if set(fields) != expected and (historical is None or set(fields) != historical):
-        raise ValueError("RECORD_FIELDS: unexpected record fields")
+    if not isinstance(fields, dict) or (
+        set(fields) != expected and (historical is None or set(fields) != historical)
+    ):
+        raise RecordDecodeError("RECORD_FIELDS", "unexpected record fields")
     # Payloads are portable trees, not nested record encodings.
     payload_fields = {
         "payload",
@@ -166,16 +182,22 @@ def decode_record(value: Any) -> Any:
         "configuration",
         "metadata",
     }
-    kwargs = {
-        k: (
-            v
-            if k in payload_fields
-            else {role: decode_record(entry) for role, entry in v.items()}
-            if k in {"bindings", "sources", "clocks"}
-            else decode_record(v)
-        )
-        for k, v in fields.items()
-    }
-    if cls.__name__ == "ActionState":
-        kwargs["history"] = tuple(fields["history"])
-    return cls(**kwargs)
+    try:
+        kwargs = {
+            k: (
+                v
+                if k in payload_fields
+                else {role: decode_record(entry) for role, entry in v.items()}
+                if k in {"bindings", "sources", "clocks"}
+                else decode_record(v)
+            )
+            for k, v in fields.items()
+        }
+        if cls.__name__ == "ActionState":
+            kwargs["history"] = tuple(fields["history"])
+        return cls(**kwargs)
+    except KernelError:
+        # Preserve semantic constructor faults and resource-limit subclasses.
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        raise RecordDecodeError("RECORD_FIELDS", "malformed record fields") from exc
