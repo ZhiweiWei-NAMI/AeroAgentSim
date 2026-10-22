@@ -91,6 +91,27 @@ export function resultsPending(status: string | undefined, record: { results_fin
   return !!status && TERMINAL.has(status) && record?.results_final === false;
 }
 
+/** F1: only the worker's own `initialized` acknowledgement may claim a t = 0 world. */
+export type InitializationOutcome =
+  | { state: 'initialized'; run: RunRecord }
+  | { state: 'pending'; run: RunRecord }
+  | { state: 'failed'; run: RunRecord }
+  | { state: 'malformed'; runId?: string };
+
+/** Statuses a worker may report before it acknowledges initialization. */
+const INITIALIZING = new Set(['created', 'loading', 'starting', 'queued', 'running', 'paused', 'waiting_for_input']);
+
+export function initializationOutcome(value: unknown): InitializationOutcome {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { state: 'malformed' };
+  const run = value as Partial<RunRecord>;
+  const runId = typeof run.id === 'string' && run.id ? run.id : undefined;
+  if (!runId || typeof run.status !== 'string' || !run.status) return { state: 'malformed', runId };
+  if (run.status === 'initialized') return { state: 'initialized', run: run as RunRecord };
+  if (TERMINAL.has(run.status)) return { state: 'failed', run: run as RunRecord };
+  if (!INITIALIZING.has(run.status)) return { state: 'malformed', runId };
+  return { state: 'pending', run: run as RunRecord };
+}
+
 export default function Workbench() {
   const { locale, setLocale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
@@ -150,6 +171,7 @@ export default function Workbench() {
 
   // Runs of this project: the attached run's record, and recovery of an active run after refresh.
   const [records, setRecords] = useState<RunRecord[]>(), [recordsKey, setRecordsKey] = useState(0), [recordsError, setRecordsError] = useState<string>();
+  const [initialization, setInitialization] = useState<InitializationOutcome & { version: number }>();
   const recordsRef = useRef<RunRecord[]>();
   const recordsErrorRef = useRef<string>();
   useEffect(() => {
@@ -171,7 +193,9 @@ export default function Workbench() {
     load(); const timer = setInterval(load, 5000);
     return () => { abort.abort(); clearInterval(timer); };
   }, [api, recordsKey]);
-  const record = records?.find(row => row.id === runId);
+  // F1: the initialize receipt is authoritative until the records poll catches up.
+  const receiptRun = initialization && 'run' in initialization ? initialization.run : undefined;
+  const record = records?.find(row => row.id === runId) ?? (receiptRun && receiptRun.id === runId ? receiptRun : undefined);
   useEffect(() => {
     if (!project || runId || !records) return;
     const active = [...records].reverse().find(row => row.studio_workspace === project.id && !TERMINAL.has(row.status));
@@ -227,7 +251,9 @@ export default function Workbench() {
     return () => { clearInterval(timer); removeEventListener('beforeunload', unload); };
   }, [recordedSession?.clock, recordedSession?.clock.playing, update]);
   // Runtime metadata drives simulation controls; the journal can arrive later.
-  const status = runStatus(!recordsError ? record?.status : undefined, session?.status);
+  // A pending receipt must not mask a later initialized record or stream.
+  const receiptStatus = receiptRun && receiptRun.id === runId && initialization?.state !== 'pending' ? receiptRun.status : undefined;
+  const status = runStatus(receiptStatus, runStatus(!recordsError ? record?.status : undefined, session?.status));
   // C6: a terminal status with still-aggregating KPIs/Story is not finished yet.
   const finalizing = resultsPending(status, record);
   useEffect(() => { setRecordsKey(value => value + 1); }, [session?.status, finalizing]);
@@ -322,6 +348,8 @@ export default function Workbench() {
       ['start', 'resume'].includes(pending) && ['running', 'waiting_for_input'].includes(status ?? '')) setPending(undefined);
   }, [pending, status]);
   useEffect(() => { setPending(undefined); }, [runId]);
+  // A receipt describes the project it was created from, not the next one.
+  useEffect(() => { setInitialization(undefined); }, [projectId]);
   const [speed, setSpeedState] = useState<number | null>();
   const [speedPending, setSpeedPending] = useState(false);
   const [graphPosition, setGraphPosition] = useState<{ x: number; y: number }>();
@@ -479,14 +507,37 @@ export default function Workbench() {
   const initialize = async (version: number) => {
     if (!project || initializing) return;
     setInitializing(true);
+    setInitialization(undefined);
     try {
-      const run = await api.initialize(project.id, version);
+      const outcome = initializationOutcome(await api.initialize(project.id, version));
+      setInitialization({ ...outcome, version });
+      if (outcome.state === 'malformed') {
+        toast('error', outcome.runId
+          ? L(`The server returned a malformed initialization response. Run ${outcome.runId} may be inspectable in Records; nothing was started.`, `服务器返回的初始化结果格式异常。运行 ${outcome.runId} 可在“记录”中查看；没有启动任何内容。`)
+          : L('The server returned a malformed initialization response; no run is acknowledged. Nothing was started.', '服务器返回的初始化结果格式异常，未确认任何运行，也没有启动任何内容。'));
+        setRecordsKey(value => value + 1);
+        return;
+      }
+      if (outcome.state === 'failed') {
+        const label = runStatusLabel(outcome.run.status, locale);
+        toast('error', L(`Initialization of version ${version} failed (${label}). Run ${outcome.run.id} is kept for diagnosis and replay; it cannot be started.`, `版本 ${version} 初始化失败（${label}）。运行 ${outcome.run.id} 已保留，可用于诊断和回放，不能启动。`));
+        setRecordsKey(value => value + 1);
+        update({ run: outcome.run.id, mode: 'replay', cut: undefined, sel: undefined, panel: assistantOpen ? 'assistant' : undefined }, true);
+        return;
+      }
+      if (outcome.state === 'pending') {
+        const label = runStatusLabel(outcome.run.status, locale);
+        toast('info', L(`Initialization of version ${version} is still pending (${label}). Run ${outcome.run.id} is not acknowledged at t = 0; Start stays unavailable until it reports initialized.`, `版本 ${version} 的初始化仍在等待中（${label}）。运行 ${outcome.run.id} 尚未确认停在 t = 0；在报告“已初始化”之前无法启动。`));
+        setRecordsKey(value => value + 1);
+        update({ run: outcome.run.id, mode: 'live', cut: undefined, sel: undefined, panel: assistantOpen ? 'assistant' : undefined }, true);
+        return;
+      }
       // A scenario authored "as fast as possible" starts at a watchable 5×; the selector shows and changes it.
-      try { const current = await api.speed(run.id); setSpeedState(current.factor === null ? (await api.setSpeed(run.id, 5)).factor : current.factor); }
+      try { const current = await api.speed(outcome.run.id); setSpeedState(current.factor === null ? (await api.setSpeed(outcome.run.id, 5)).factor : current.factor); }
       catch (problem) { toast('error', `${L('Simulation speed could not be loaded.', '无法读取仿真速度。')} ${problemText(problem)}`); }
       toast('success', L(`Initialized version ${version}. The world is held at t = 0 — press Start to run it.`, `已初始化版本 ${version}。世界停在 t = 0，按“启动”开始运行。`));
       setRecordsKey(value => value + 1);
-      update({ run: run.id, mode: 'live', cut: undefined, sel: undefined, panel: assistantOpen ? 'assistant' : undefined }, true);
+      update({ run: outcome.run.id, mode: 'live', cut: undefined, sel: undefined, panel: assistantOpen ? 'assistant' : undefined }, true);
     } catch (problem) { toast('error', problemText(problem)); } finally { setInitializing(false); }
   };
   const control = async (action: 'start' | 'pause' | 'resume' | 'stop') => {
@@ -583,6 +634,9 @@ export default function Workbench() {
   const spatial = !!store && (store.header.presentation.length > 0 || !!store.header.scene?.city ||
     [...store.entities.values()].some(entity => resolveBinding(store.header, entity.typeId)));
   const live = mode === 'live' && !!status && !TERMINAL.has(status);
+  // F1: a terminal run never offers Start, even if a stale poll still says initialized.
+  const startAvailable = mode === 'live' && status === 'initialized' && !TERMINAL.has(record?.status ?? '')
+    && !(initialization?.state === 'failed' && initialization.run.id === runId);
   // Only an active run has a live moment to return to.
   const history = !!session && mode === 'live' && !session.followingLive && !TERMINAL.has(status ?? '');
   // A finished run seeked before its last record shows earlier values; say so, as for live history.
@@ -653,7 +707,7 @@ export default function Workbench() {
       <PlaybackRegion updates={playback}>{() => <div className="wb-clock"><small>{mode === 'replay' ? L('Replay time', '回放时间') : L('Simulation time', '仿真时间')}</small><time className="wb-mono">{session ? displayTime(runClockTime(mode ?? 'replay', { ...session, waiting, reportedBoundaryNs: metadataBoundary && metadataBoundary.runId === runId && (!session.reportedBoundaryNs || BigInt(metadataBoundary.ns) > BigInt(session.reportedBoundaryNs)) ? metadataBoundary.ns : session.reportedBoundaryNs }), session.store.header.start.ns) : '--:--.-'}</time></div>}</PlaybackRegion>
       <div className="wb-controls" aria-label={L('Simulation control', '仿真控制')}>
         {(!runId || TERMINAL.has(status ?? '') || mode === 'replay') && project && <button className="wb-btn primary" data-testid="wb-init" disabled={!project.latest_version || initializing} title={project.latest_version ? L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0') : L('Validate and save a version first', '请先校验并保存版本')} onClick={() => { if (project.latest_version) void initialize(project.latest_version.version); }}>{initializing ? L('Initializing…', '初始化中…') : project.latest_version ? L(`Initialize v${project.latest_version.version}`, `初始化 v${project.latest_version.version}`) : L('Initialize', '初始化')}</button>}
-        {mode === 'live' && status === 'initialized' && <button className="wb-btn go" data-testid="wb-start" disabled={!!pending} onClick={() => void control('start')}>▶ {pending === 'start' ? L('Starting…', '启动中…') : L('Start', '启动')}</button>}
+        {startAvailable && <button className="wb-btn go" data-testid="wb-start" disabled={!!pending} onClick={() => void control('start')}>▶ {pending === 'start' ? L('Starting…', '启动中…') : L('Start', '启动')}</button>}
         {mode === 'live' && ['running', 'waiting_for_input'].includes(status ?? '') && <button className="wb-btn" data-testid="wb-pause" disabled={!!pending} onClick={() => void control('pause')}>❚❚ {pending === 'pause' ? L('Pausing…', '暂停中…') : L('Pause', '暂停')}</button>}
         {mode === 'live' && status === 'paused' && <button className="wb-btn go" data-testid="wb-resume" disabled={!!pending} onClick={() => void control('resume')}>▶ {pending === 'resume' ? L('Resuming…', '恢复中…') : L('Resume', '恢复')}</button>}
         {live && speed !== undefined && <select className="wb-btn" disabled={speedPending} aria-label={L('Simulation speed', '仿真速度')} title={L('Simulation speed: how fast simulated time advances against the wall clock. Results do not change.', '仿真速度：仿真时间相对墙钟的推进速度，不影响结果。')} data-testid="wb-speed"
@@ -709,6 +763,19 @@ export default function Workbench() {
     <div ref={noticePanel} className="wb-notices" data-testid="wb-notices">
     {session?.error && <div className="wb-history" role="alert">{session.error}</div>}
     {session?.transportError && !session.error && <div className="wb-history" role="status">{L('Reconnecting to the journal stream…', '正在重新连接日志流…')} {session.transportError}</div>}
+
+    {initialization?.state === 'failed' && initialization.run.id === runId && <div className="wb-history" role="alert" data-testid="wb-init-failed" title={typeof initialization.run.error === 'string' ? initialization.run.error : undefined}>
+      {L(`Initialization failed (${runStatusLabel(initialization.run.status, locale)}). Run ${initialization.run.id} is kept for diagnosis and replay; it cannot be started.`, `初始化失败（${runStatusLabel(initialization.run.status, locale)}）。运行 ${initialization.run.id} 已保留，可用于诊断和回放，不能启动。`)}
+      {typeof initialization.run.error === 'string' && initialization.run.error && <span className="wb-mono"> · {initialization.run.error}</span>}
+    </div>}
+    {initialization?.state === 'pending' && initialization.run.id === runId && status !== 'initialized' && !TERMINAL.has(status ?? '') && <div className="wb-history" role="status" data-testid="wb-init-pending">
+      {L(`Initialization is still pending (${runStatusLabel(initialization.run.status, locale)}). Run ${initialization.run.id} is not acknowledged at t = 0; Start stays unavailable until it reports initialized.`, `初始化仍在等待中（${runStatusLabel(initialization.run.status, locale)}）。运行 ${initialization.run.id} 尚未确认停在 t = 0；在报告“已初始化”之前无法启动。`)}
+    </div>}
+    {initialization?.state === 'malformed' && <div className="wb-history" role="alert" data-testid="wb-init-malformed">
+      {initialization.runId
+        ? L(`The initialization response was malformed; no run is acknowledged. Run ${initialization.runId} may be inspectable in Records. Nothing was started.`, `初始化返回结果格式异常，未确认任何运行。运行 ${initialization.runId} 可在“记录”中查看。没有启动任何内容。`)
+        : L('The initialization response was malformed; no run is acknowledged. Nothing was started.', '初始化返回结果格式异常，未确认任何运行。没有启动任何内容。')}
+    </div>}
 
     {session?.inputSource.error && <div className="wb-history" role="alert" data-testid="wb-input-error">{L('Operator input source unavailable', '操作员输入源暂不可用')} · {session.inputSource.error}</div>}
     </div>
