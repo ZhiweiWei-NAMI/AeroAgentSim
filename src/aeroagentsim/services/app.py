@@ -6,12 +6,10 @@ import asyncio
 import json
 import logging
 import math
-import multiprocessing
 import os
-import threading
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -19,22 +17,28 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 
-from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import Scenario, load_scenario
 
-from .comparison import configuration_differences
+from .comparison import configuration_differences as configuration_differences
+from .lifecycle import (
+    TERMINAL,
+    WorkerFailure,
+    WorkerHandle,
+    WorkerLimits,
+    WorkerRegistry,
+    bounded_input,
+)
 from .plugins import plugin_inventory
 from .projector import header
 from .security import LOCAL_ORIGIN, RequestBoundary
 from .storage import RunStorage, committed_prefix
 from .worker import execute, superseded_watermark
 
-TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
 CONTROLS = {"start", "pause", "resume", "stop"}
 
 
 async def close_workers(workers: dict[str, tuple[Any, Any, Any, Any, Any]], root: Path) -> None:
-    """Signal every worker first; the shutdown deadline is shared across runs."""
+    """Legacy tuple-owner helper; create_app uses WorkerRegistry instead."""
     for process, paused, stopped, _, _ in workers.values():
         stopped.set()
         paused.clear()
@@ -65,6 +69,7 @@ def create_app(
     frontend: Path | None = None,
     studio_root: Path | None = None,
     templates_root: Path | None = None,
+    worker_limits: WorkerLimits | None = None,
 ) -> FastAPI:
     """Scenario paths are scoped to scenario_root; no arbitrary host-file API."""
     root = root.resolve()
@@ -76,12 +81,7 @@ def create_app(
     from .experiments import ExperimentManager
 
     experiments = ExperimentManager(root, templates)
-    # Linux local worker: fork preserves the compiled immutable registry without
-    # pickling MappingProxyType or re-reading a concurrently changing source tree.
-    context = multiprocessing.get_context("fork")
-    workers: dict[str, tuple[Any, Any, Any, Any, Any]] = {}
-    inputs: dict[str, tuple[Any, threading.Lock]] = {}
-    index_tasks: list[asyncio.Task[None]] = []
+    workers = WorkerRegistry(root, worker_limits, target=execute)
     for path in root.iterdir():
         if (path / "manifest.json").exists():
             storage = RunStorage(path)
@@ -99,15 +99,11 @@ def create_app(
         try:
             yield
         finally:
-            await close_workers(workers, root)
-            for connection, input_lock in inputs.values():
-                connection.close()
-            await asyncio.to_thread(experiments.close)
-            if index_tasks:
-                await asyncio.gather(*index_tasks)
+            await asyncio.gather(workers.close(), asyncio.to_thread(experiments.close))
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
     app.state.templates = templates
+    app.state.worker_registry = workers
     from .algorithm_catalog import mount_algorithm_catalog
 
     mount_algorithm_catalog(app)
@@ -238,11 +234,12 @@ def create_app(
             autostart=autostart,
         )
 
-    async def warm_feed(path: Path, process: Any) -> None:
+    async def warm_feed(worker: WorkerHandle) -> None:
         from .feed_index import update
 
+        path = worker.path
         try:
-            while process.is_alive():
+            while worker.alive:
                 prefix = committed_prefix(path)
                 if prefix is None or prefix["index"] < 1:
                     # Startup has not acknowledged a world cut yet. Scanning
@@ -252,6 +249,9 @@ def create_app(
                     continue
                 complete = await asyncio.to_thread(update, path, max_batches=1)
                 await asyncio.sleep(0.25 if complete else 0.02)
+            prefix = committed_prefix(path)
+            if prefix is None or prefix["index"] < 1:
+                return  # Failed startup has no acknowledged world to project.
             while not await asyncio.to_thread(update, path, max_batches=1):
                 await asyncio.sleep(0.02)
         except Exception:
@@ -276,10 +276,6 @@ def create_app(
 
         try:
             scenario = scope_capture_storage(scenario, path)
-            validation = await asyncio.to_thread(
-                Simulation, scenario, run_directory=path
-            )
-            validation.close()
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
         workspace_metadata: dict[str, Any] = {}
@@ -326,44 +322,13 @@ def create_app(
             from aeroagentsim.authoring.replay import snapshot_scene
 
             snapshot_scene(app.state.studio, scenario, path, workspace_id, workspace_version)
-        paused, stopped, started = context.Event(), context.Event(), context.Event()
-        # Host pacing factor: simulated seconds per wall second; 0 = as fast as possible.
-        speed = context.Value("d", 1.0 if scenario.pacing == "realtime" else 0.0)
-        if autostart:
-            started.set()
-        host_input, worker_input = context.Pipe()
-        process = context.Process(
-            target=execute,
-            args=(scenario, path, paused, stopped, worker_input, started, speed),
-            name=run_id,
-        )
-        process.start()
-        workers[run_id] = (process, paused, stopped, started, speed)
-        inputs[run_id] = (host_input, threading.Lock())
-        index_tasks.append(asyncio.create_task(warm_feed(path, process)))
-        worker_input.close()
-        # The console requests identity/injection configuration immediately after
-        # creation. A created directory is not an acknowledged worker startup:
-        # wait for its real, completely indexed WAL header before handing it out.
-        while not await asyncio.to_thread(storage.records, 0, 1):
-            if not process.is_alive():
-                metadata = storage.metadata()
-                if metadata["status"] in TERMINAL:
-                    return metadata
-                raise HTTPException(
-                    500,
-                    {
-                        "id": run_id,
-                        "error": "Worker exited before committing its WAL header",
-                    },
-                )
-            await asyncio.sleep(0.01)
-        # An initialized run is handed out only after it reports that state.
-        while not autostart and storage.metadata()["status"] not in {"initialized", *TERMINAL}:
-            if not process.is_alive():
-                break
-            await asyncio.sleep(0.01)
-        return storage.metadata()
+        try:
+            worker = workers.start(scenario, path, autostart=autostart, warm=warm_feed)
+            return await workers.wait_started(worker)
+        except WorkerFailure as exc:
+            raise HTTPException(exc.status_code, exc.detail) from exc
+        except OSError as exc:
+            raise HTTPException(503, {"id": run_id, "error": "Could not start run worker"}) from exc
 
     def run_summary(path: Path, *, include_kpis: bool = True) -> dict[str, Any]:
         import math
@@ -495,9 +460,9 @@ def create_app(
 
     @app.get("/v1/runs/compare")
     def compare(ids: str = Query(...), include_kpis: bool = True) -> dict[str, Any]:
-        from aerokernel.codec import decode_record
+        from aeroagentsim.runs import RunReadError, open_run
 
-        from .comparison import compare_runs
+        from .comparison import compare_runs, compare_runs_at_cuts
 
         identifiers = ids.split(",")
         if not 2 <= len(identifiers) <= 20 or len(set(identifiers)) != len(identifiers):
@@ -505,31 +470,48 @@ def create_app(
                 422, "Provide 2–20 distinct run ids separated by commas"
             )
         paths = {run_id: directory(run_id) for run_id in identifiers}
-        rows = [run_summary(path, include_kpis=include_kpis) for path in paths.values()]
-        recorded_ends = {}
-        for run_id, path in paths.items():
-            storage = RunStorage(path)
-            storage.refresh_committed()
-            if not storage.entries or storage.entries[-1]["index"] == 0:
-                raise HTTPException(409, f"Run {run_id} has not committed a world state yet")
-            record = storage.records(storage.entries[-1]["index"], 1)[0]
-            instant = decode_record(record["instant"])
-            recorded_ends[run_id] = {"at_ns": str(instant.ns), "commit_index": record["index"],
-                                     "status": storage.metadata()["status"]}
-        configuration = {
-            # compare_runs reports each run's own final measurements; it does
-            # not truncate unequal runs to a common simulated-time horizon.
-            "alignment": "recorded_run_end",
-            "recorded_ends": recorded_ends,
-            "config_diff": configuration_differences({
-                run_id: json.loads((path / "scenario.json").read_text())
-                for run_id, path in paths.items()
-            }),
-        }
-        if not include_kpis:
-            return {"runs": rows, **configuration}
         try:
-            return {**compare_runs(rows), **configuration}
+            with ExitStack() as readers:
+                # Capture every source once before projecting any row. Host
+                # observations below may advance, but can never extend these cuts.
+                cuts = {
+                    run_id: readers.enter_context(open_run(path)).snapshot()
+                    for run_id, path in paths.items()
+                }
+                for run_id, cut in cuts.items():
+                    if cut.cut_index < 1:
+                        raise HTTPException(409, f"Run {run_id} has not committed a world state yet")
+                fixed = compare_runs_at_cuts(cuts)
+            rows = []
+            for projected in fixed["runs"]:
+                summary = run_summary(paths[projected["id"]], include_kpis=False)
+                rows.append({
+                    **summary, **projected,
+                    # Preserve v1's host status, presentation and knob aliases.
+                    # Neither status nor results_cursor is evidence at the cut.
+                    "status": summary["status"], "knobs": summary["knobs"],
+                    "status_basis": "host_observation",
+                })
+                fixed["recorded_ends"][projected["id"]].update(
+                    status=summary["status"], status_basis="host_observation"
+                )
+            result = {
+                **compare_runs(rows),
+                "basis": fixed["basis"],
+                "recorded_ends": fixed["recorded_ends"],
+                "config_diff": fixed["config_diff"],
+            }
+            for metric in result["kpis"]:
+                for evidence in metric["evidence"].values():
+                    evidence["status_basis"] = "host_observation"
+            if not include_kpis:
+                result.pop("kpis")
+                result.pop("differences")
+                for row in result["runs"]:
+                    row.pop("kpis")
+            return result
+        except RunReadError as exc:
+            raise HTTPException(409, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
 
@@ -880,7 +862,9 @@ def create_app(
             headers={"Cache-Control": "no-cache"},
         )
 
-    def worker_input_call(run_id: str, operation: str, body: Any) -> dict[str, Any]:
+    def worker_input_call(
+        run_id: str, operation: str, body: Any, *, deadline: float | None = None,
+    ) -> dict[str, Any]:
         path = directory(run_id)
         status = json.loads((path / "manifest.json").read_text())["status"]
 
@@ -907,33 +891,36 @@ def create_app(
         final_progress = closed_progress(status)
         if final_progress is not None:
             return final_progress
-        if run_id not in inputs or status in TERMINAL:
+        if status in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
-        connection, lock = inputs[run_id]
-        with lock:
-            # Another progress read may have held this lock while cleanup
-            # finished; inspect the real terminal publication after acquiring it.
-            final_progress = closed_progress(json.loads((path / "manifest.json").read_text())["status"])
-            if final_progress is not None:
-                return final_progress
-            if not workers[run_id][0].is_alive():
-                raise HTTPException(409, "Run worker has exited")
-            try:
-                connection.send((operation, body))
-                while not connection.poll(0.05):
-                    if not workers[run_id][0].is_alive():
-                        raise HTTPException(
-                            409,
-                            "Worker exited before acknowledging input; inspect journal",
-                        )
-                reply = connection.recv()
-            except (EOFError, BrokenPipeError, ConnectionResetError) as exc:
-                raise HTTPException(
-                    409, "Worker closed before acknowledging input; inspect journal"
-                ) from exc
+        try:
+            reply = workers.input_call(run_id, operation, body, deadline=deadline)
+        except WorkerFailure as exc:
+            # A queued call may cross final publication. Recover that retained
+            # read only when this request was definitely not sent; never turn an
+            # ambiguous state-changing call into an automatic resubmission.
+            if exc.detail["outcome"] == "not_submitted":
+                final_progress = closed_progress(json.loads((path / "manifest.json").read_text())["status"])
+                if final_progress is not None:
+                    return final_progress
+            raise HTTPException(exc.status_code, exc.detail) from exc
         if "error" in reply:
             raise HTTPException(422, reply["error"])
         return dict(reply["result"])
+
+    async def bounded_input_call(
+        run_id: str, operation: str, body: Any, *, deadline: float | None = None,
+    ) -> dict[str, Any]:
+        directory(run_id)
+        try:
+            return await bounded_input(
+                run_id,
+                lambda expires: worker_input_call(run_id, operation, body, deadline=expires),
+                timeout_s=workers.limits.input_timeout_s,
+                deadline=deadline,
+            )
+        except WorkerFailure as exc:
+            raise HTTPException(exc.status_code, exc.detail) from exc
 
     @app.get("/v1/runs/{run_id}/inputs")
     async def input_progress(run_id: str) -> dict[str, Any]:
@@ -948,45 +935,60 @@ def create_app(
                 # Older runs have no sidecar: recover their actual journal
                 # frontier without loading engines or resubmitting input.
                 from aerokernel.journal import replay
-                kernel = await asyncio.to_thread(replay, path / "journal.jsonl")
+
+                journal = path / "journal.jsonl"
+                if (path / "worker-owner.json").exists():
+                    prefix = committed_prefix(path)
+                    if prefix is None or not journal.is_file() or journal.stat().st_size != prefix["bytes"]:
+                        raise HTTPException(
+                            409, "Worker did not publish final source progress; "
+                            "inspect the acknowledged journal, not its unacknowledged tail",
+                        )
+                kernel = await asyncio.to_thread(replay, journal)
                 watermarks = dict(kernel.ingress_watermarks)
             return {"contract": "aeroagentsim.input-progress/v1", "watermarks": watermarks,
                     "status": status, "pause_requested": False}
-        return await asyncio.to_thread(worker_input_call, run_id, "progress", {})
+        return await bounded_input_call(run_id, "progress", {})
 
     @app.post("/v1/runs/{run_id}/ingress")
     async def live_ingress(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Admit typed input after worker-side injection-manifest validation."""
-        return await asyncio.to_thread(worker_input_call, run_id, "ingress", body)
+        return await bounded_input_call(run_id, "ingress", body)
 
     @app.post("/v1/runs/{run_id}/watermark")
     async def watermark(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
-        return await asyncio.to_thread(worker_input_call, run_id, "watermark", body)
+        return await bounded_input_call(run_id, "watermark", body)
 
     from .artifacts import mount_artifacts
 
-    mount_artifacts(app, directory, worker_input_call)
+    mount_artifacts(
+        app, directory,
+        bounded_worker_input=bounded_input_call,
+        input_timeout_s=workers.limits.input_timeout_s,
+    )
 
     @app.get("/v1/runs/{run_id}/speed")
     async def get_speed(run_id: str) -> dict[str, Any]:
         directory(run_id)
-        if run_id not in workers:
+        worker = workers.get(run_id)
+        if worker is None or not worker.alive:
             raise HTTPException(409, "Run has no active worker")
-        value = workers[run_id][4].value
+        value = worker.speed.value
         return {"id": run_id, "factor": value if value > 0 else None}
 
     @app.post("/v1/runs/{run_id}/speed")
     async def set_speed(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Host pacing only: how fast simulated time advances against the wall clock."""
         path = directory(run_id)
-        if run_id not in workers or json.loads((path / "manifest.json").read_text())["status"] in TERMINAL:
+        worker = workers.get(run_id)
+        if worker is None or not worker.alive or json.loads((path / "manifest.json").read_text())["status"] in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
         if set(body) != {"factor"}:
             raise HTTPException(422, "speed: factor required (positive number, or null for as fast as possible)")
         factor = body["factor"]
         if factor is not None and (type(factor) not in (int, float) or not math.isfinite(factor) or not 0.05 <= factor <= 1000):
             raise HTTPException(422, "speed.factor: number between 0.05 and 1000, or null")
-        workers[run_id][4].value = 0.0 if factor is None else float(factor)
+        worker.speed.value = 0.0 if factor is None else float(factor)
         return {"id": run_id, "factor": factor}
 
     @app.post("/v1/runs/{run_id}/{operation}")
@@ -995,9 +997,10 @@ def create_app(
         if operation not in CONTROLS:
             raise HTTPException(404, "Unknown control operation")
         status = json.loads((path / "manifest.json").read_text())["status"]
-        if run_id not in workers or status in TERMINAL:
+        worker = workers.get(run_id)
+        if worker is None or not worker.alive or status in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
-        _, paused, stopped, started, _ = workers[run_id]
+        paused, stopped, started = worker.paused, worker.stopped, worker.started
         if operation == "start":
             if status != "initialized" or started.is_set():
                 raise HTTPException(409, f"Only an initialized run can be started; this run is {status}")

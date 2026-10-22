@@ -141,18 +141,52 @@ aeroagentsim serve --out runs --frontend frontend/dist
 | --- | --- | --- |
 | `--out` | `runs` | Run storage root. |
 | `--scenario-root` | current directory | Root that `scenario_path` submissions are resolved against. |
-| `--host` / `--port` | `127.0.0.1` / `8002` | Bind address. |
+| `--host` / `--port` | `127.0.0.1` / `8002` | Bind address; non-loopback serving requires API authentication unless explicitly overridden below. |
+| `--unsafe-local-lab` | off | **Unsafe:** allow a non-loopback listener without authentication in an isolated trusted lab; prints a bilingual stderr warning. Never use on shared/public networks. |
+| `--startup-timeout SECONDS` | `60` | Real worker initialization and t=0 ACK deadline. |
+| `--input-timeout SECONDS` | `10` | End-to-end worker input/progress budget, including executor queue, serialization, send and full reply; also applies to capture-artifact admission. |
+| `--shutdown-grace SECONDS` | `10` | Cooperative stop budget, shared across all owned run workers. |
+| `--terminate-grace SECONDS` | `2` | Terminate-to-exit budget, shared across workers. |
+| `--kill-grace SECONDS` | `2` | Kill-to-exit/reaping budget, shared across workers. |
+| `--cleanup-timeout SECONDS` | `1` | Final IPC/cache-task drain (shared at shutdown, per completed run otherwise); also bounds the worker's final input-thread join. |
 | `--frontend` | — | Built console directory (`frontend/dist`); enables SPA pages. |
 | `--studio-root` | `<out>/.workspaces` (or `AEROAGENTSIM_STUDIO_ROOT`) | Studio workspace storage. `--studio-root` wins over the environment variable, which wins over the `<out>/.workspaces` default. |
 
 The console URL used for city assets and the in-simulation camera defaults to
-`http://<host>:<port>`; set `AEROAGENTSIM_CONSOLE_URL` when serving behind a proxy.
+`http://<host>:<port>` (IPv6 literals are bracketed; wildcard binds use
+`127.0.0.1` instead). Set `AEROAGENTSIM_CONSOLE_URL` when serving behind a proxy
+or accessing a wildcard listener remotely.
 `serve` mounts the Studio and assistant routes; the workspace root above is also
 the default when no `--studio-root` is passed.
 
-`AEROAGENTSIM_API_TOKEN` protects API requests, but the browser console sends no
-bearer token, so a token-protected server is not a supported browser flow. See
-the [HTTP API request boundary](http-api.md#request-boundary).
+**Non-loopback serving requires a nonblank `AEROAGENTSIM_API_TOKEN`.** This
+includes wildcard binds (`0.0.0.0`, `::`), remote IPs and DNS names other than
+`localhost`; DNS is not resolved to infer loopback. Missing/blank credentials fail
+before app/storage creation. Literal loopback addresses and `localhost` retain
+optional authentication. `--unsafe-local-lab` is the explicit isolated-lab
+exception, not an authentication feature: Host/Origin, JSON and any configured
+token checks still apply. With a wildcard listener, set
+`AEROAGENTSIM_CONSOLE_URL` to the actual trusted remote origin; binding remotely
+does not broaden trusted Hosts. Programmatic ASGI listeners must enforce the same
+bind policy themselves.
+
+When `AEROAGENTSIM_API_TOKEN` is set, API clients must send
+`Authorization: Bearer <token>` for `/v1/` requests (except CORS preflight). The
+browser console sends no bearer token, so a token-protected server is not a
+supported browser flow. See the [HTTP request boundary](http-api.md#request-boundary).
+
+Lifecycle limits must be positive finite wall-clock seconds, no greater than
+Python's `threading.TIMEOUT_MAX`. They do not alter simulated time or the
+scenario's watermark `timeout_s`. Shutdown process-control phases share
+10 + 2 + 2 seconds by default, followed by one shared cleanup second, rather
+than multiplying by the number of workers. Uvicorn separately allows five seconds
+for open requests/SSE before worker shutdown. These are scheduling budgets, not
+hard real-time guarantees against stalled filesystems or unkillable OS tasks.
+Startup/input timeouts retain the run id and prohibit automatic resubmission;
+inspect the run, admissions and acknowledged journal instead. Capture upload
+validation and byte storage precede its admission budget. See
+[host lifecycle limits](http-api.md#host-lifecycle-limits) for failure semantics
+and process-control limitations.
 
 Requires the `server` extra. On restart, non-terminal runs are marked
 `interrupted`: the journal remains replayable, but execution is not resumed.

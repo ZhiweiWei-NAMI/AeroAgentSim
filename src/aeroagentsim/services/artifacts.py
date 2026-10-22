@@ -6,11 +6,12 @@ import asyncio
 import base64
 import copy
 import json
-from collections.abc import Callable
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from itertools import islice
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import yaml
 from aerokernel.codec import decode_record
@@ -29,6 +30,7 @@ from aeroagentsim.observations.contracts import (
 )
 from aeroagentsim.platform.ingress import submission
 from aeroagentsim.scenario.loader import Scenario, contract
+from aeroagentsim.services.lifecycle import WorkerFailure, WorkerLimits, bounded_input
 from aeroagentsim.services.projector import project
 from aeroagentsim.services.subjects import projection_context
 
@@ -36,10 +38,58 @@ Directory = Callable[[str], Path]
 WorkerInput = Callable[[str, str, Any], dict[str, Any]]
 
 
+class BoundedWorkerInput(Protocol):
+    def __call__(
+        self, run_id: str, operation: str, body: Any, *, deadline: float | None = None,
+    ) -> Awaitable[dict[str, Any]]:
+        ...
+
+
 def mount_artifacts(
-    app: FastAPI, directory: Directory, worker_input: WorkerInput
+    app: FastAPI,
+    directory: Directory,
+    worker_input: WorkerInput | None = None,
+    *,
+    bounded_worker_input: BoundedWorkerInput | None = None,
+    input_timeout_s: float = WorkerLimits().input_timeout_s,
 ) -> None:
-    """Mount before the existing generic POST control route so uploads can match."""
+    """Mount before generic controls; production uses the shared async input adapter.
+
+    Standalone mounts may retain the synchronous callback interface. Those calls
+    use the same bounded executor adapter, with an expiry check before dispatch.
+    """
+    if (worker_input is None) == (bounded_worker_input is None):
+        raise TypeError("Supply exactly one worker input callback")
+
+    async def admit(run_id: str, body: Any, deadline: float) -> dict[str, Any]:
+        try:
+            if bounded_worker_input is not None:
+                return await bounded_worker_input(run_id, "ingress", body, deadline=deadline)
+            assert worker_input is not None
+            return await bounded_input(
+                run_id, lambda _: worker_input(run_id, "ingress", body),
+                timeout_s=input_timeout_s, deadline=deadline,
+            )
+        except WorkerFailure as exc:
+            raise HTTPException(exc.status_code, exc.detail) from exc
+
+    async def delivery(
+        store: ArtifactStore, request_id: str, receipt: dict[str, Any], deadline: float,
+    ) -> None:
+        # This sidecar is only a diagnostic. Do not strand a timeout response
+        # behind the same saturated executor, or give it a new full budget.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+
+        def persist() -> None:
+            if time.monotonic() < deadline:
+                store.delivery(request_id, receipt)
+
+        try:
+            await asyncio.wait_for(asyncio.to_thread(persist), timeout=remaining)
+        except asyncio.TimeoutError:
+            pass  # An already-running filesystem write may still finish.
 
     @app.get("/v1/runs/{run_id}/capture-requests/{request_id:path}/scene")
     def capture_scene(run_id: str, request_id: str) -> dict[str, Any]:
@@ -200,18 +250,19 @@ def mount_artifacts(
             ) from exc
         except (ValueError, TypeError, KeyError, OSError) as exc:
             raise HTTPException(422, str(exc)) from exc
+        # Upload validation and byte storage precede admission. Capture this
+        # deadline before queuing any input work, not inside an executor thread.
+        deadline = time.monotonic() + input_timeout_s
         try:
-            admission = await asyncio.to_thread(
-                worker_input, run_id, "ingress", ingress
-            )
+            admission = await admit(run_id, ingress, deadline)
         except HTTPException as exc:
-            await asyncio.to_thread(
-                store.delivery,
-                capture.request_id,
+            await delivery(
+                store, capture.request_id,
                 {"status": "admission_failed", "detail": exc.detail, "digest": content},
+                deadline,
             )
             raise
-        await asyncio.to_thread(store.delivery, capture.request_id, admission)
+        await delivery(store, capture.request_id, admission, deadline)
         return {
             "contract": "aeroagentsim.artifact-upload/v1",
             "storage": browser_encode(record),

@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import resource
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -23,7 +24,14 @@ if TYPE_CHECKING:
 GRACEFUL_SHUTDOWN_SECONDS = 5
 
 
-def serve_app(app: Any, *, host: str, port: int) -> None:
+def serve_app(
+    app: Any, *, host: str, port: int, unsafe_local_lab: bool = False
+) -> None:
+    from .security import validate_serving_host
+
+    warning = validate_serving_host(host, unsafe_local_lab=unsafe_local_lab)
+    if warning is not None:
+        print(warning, file=sys.stderr, flush=True)
     import uvicorn
 
     # Waiting SSE clients cannot block lifespan cleanup indefinitely. Uvicorn
@@ -223,6 +231,25 @@ def main() -> None:
     serve.add_argument("--scenario-root", type=Path, default=Path.cwd())
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8002)
+    serve.add_argument(
+        "--unsafe-local-lab", action="store_true",
+        help="Allow unauthenticated remote binding in an isolated lab (UNSAFE) / 允许隔离实验环境无认证远程监听（不安全）",
+    )
+    from .lifecycle import WorkerLimits
+
+    defaults = WorkerLimits()
+    for flag, name, help_text in (
+        ("startup-timeout", "startup_timeout_s", "Worker initialization deadline / 工作进程初始化期限"),
+        ("input-timeout", "input_timeout_s", "Input RPC deadline, including queue/send/reply / 输入 RPC 期限（含排队、发送与回执）"),
+        ("shutdown-grace", "shutdown_grace_s", "Shared cooperative shutdown budget / 共享优雅关闭预算"),
+        ("terminate-grace", "terminate_grace_s", "Shared terminate budget / 共享终止预算"),
+        ("kill-grace", "kill_grace_s", "Shared kill/reap budget / 共享强制结束回收预算"),
+        ("cleanup-timeout", "cleanup_timeout_s", "IPC/index-task drain budget / IPC 与索引任务收尾预算"),
+    ):
+        serve.add_argument(
+            "--" + flag, dest=name, type=float, default=getattr(defaults, name),
+            metavar="SECONDS", help=help_text,
+        )
     serve.add_argument("--frontend", type=Path)
     serve.add_argument(
         "--studio-root",
@@ -419,6 +446,16 @@ def main() -> None:
             )
         )
     else:
+        from .security import validate_serving_host
+
+        try:
+            # Reject policy/limit errors before creating run/workspace storage.
+            validate_serving_host(args.host, unsafe_local_lab=args.unsafe_local_lab)
+            worker_limits = WorkerLimits(**{
+                name: getattr(args, name) for name in vars(defaults)
+            })
+        except ValueError as exc:
+            parser.error(str(exc))
         try:
             import uvicorn
 
@@ -428,7 +465,8 @@ def main() -> None:
         # The console's own origin feeds city URLs and the in-simulation camera.
         if "AEROAGENTSIM_CONSOLE_URL" not in os.environ:
             host = "127.0.0.1" if args.host in {"0.0.0.0", "::"} else args.host
-            os.environ["AEROAGENTSIM_CONSOLE_URL"] = f"http://{host}:{args.port}"
+            authority = f"[{host}]" if ":" in host else host
+            os.environ["AEROAGENTSIM_CONSOLE_URL"] = f"http://{authority}:{args.port}"
         studio_root = args.studio_root or Path(
             os.environ.get("AEROAGENTSIM_STUDIO_ROOT") or args.out / ".workspaces"
         )
@@ -438,9 +476,11 @@ def main() -> None:
                 scenario_root=args.scenario_root,
                 frontend=args.frontend,
                 studio_root=studio_root,
+                worker_limits=worker_limits,
             ),
             host=args.host,
             port=args.port,
+            unsafe_local_lab=args.unsafe_local_lab,
         )
 
 

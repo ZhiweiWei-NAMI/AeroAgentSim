@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
 import re
 import secrets
@@ -13,6 +14,35 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 LOCAL_ORIGIN = r"https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def validate_serving_host(host: str, *, unsafe_local_lab: bool = False) -> str | None:
+    """Fail closed for remote names/wildcards without resolving operator DNS.
+
+    This bind policy does not replace the API's token or Host/Origin checks.
+    Programmatic ASGI deployments must apply the same policy at their listener.
+    """
+    loopback = host.lower() == "localhost"
+    if not loopback:
+        try:
+            loopback = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            loopback = False
+    if loopback:
+        return None
+    if unsafe_local_lab:
+        return (
+            "WARNING / 警告: --unsafe-local-lab permits a non-loopback listener. "
+            "Without AEROAGENTSIM_API_TOKEN the API has NO AUTHENTICATION. "
+            "Trusted isolated labs only; never expose it to shared/public networks. "
+            "/ 非回环监听；未设置令牌时 API 无认证，仅限可信隔离实验环境，切勿暴露到共享或公网。"
+        )
+    if not os.environ.get("AEROAGENTSIM_API_TOKEN", "").strip():
+        raise ValueError(
+            "Non-loopback serve requires AEROAGENTSIM_API_TOKEN authentication; "
+            "use --unsafe-local-lab only for an isolated trusted lab"
+        )
+    return None
 
 
 class RequestBoundary:
