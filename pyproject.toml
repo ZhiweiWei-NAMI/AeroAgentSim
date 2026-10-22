@@ -76,6 +76,11 @@ traffic_decision_failures = "aeroagentsim.packs.traffic_accident.decision_failur
 traffic_capture_bridge = "aeroagentsim.packs.traffic_accident.capture:build"
 traffic_camera_capture = "aeroagentsim.packs.traffic_accident.camera:build"
 
+# External distributions may register zero-argument ScenarioPlugin factories here:
+# [project.entry-points."aeroagentsim.scenarios"]
+# my_scenario = "my_package.scenarios:plugin"
+# Empty for now: built-ins are registered in aeroagentsim.scenarios.BUILTINS,
+# not in this distribution's entry-point metadata.
 
 [project.entry-points."aeroagentsim.algorithms"]
 "allocation.nearest" = "aeroagentsim.algorithms.builtins:Nearest"

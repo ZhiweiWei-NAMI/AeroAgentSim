@@ -596,7 +596,7 @@ def create_app(
         metadata = template_detail(template_id)
         if "thumbnail" not in metadata:
             raise HTTPException(404, "Template has no thumbnail")
-        directory = (templates.root / template_id).resolve()
+        directory = templates.directory_of(template_id)
         image = (directory / metadata["thumbnail"]).resolve()
         if not image.is_relative_to(directory):
             raise HTTPException(422, "thumbnail must be inside its template directory")
@@ -608,7 +608,7 @@ def create_app(
     def template_guide(template_id: str) -> dict[str, Any]:
         """The template's own README, for the scenario guide in the console."""
         template_detail(template_id)
-        directory = (templates.root / template_id).resolve()
+        directory = templates.directory_of(template_id)
         guide = directory / "README.md"
         if not guide.is_file():
             raise HTTPException(404, "Template has no guide")

@@ -9,11 +9,18 @@ from __future__ import annotations
 import copy
 import dataclasses
 import importlib.resources
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from aeroagentsim.plugin_api import (
+    ApplyHook,
+    ScenarioPlugin,
+    TemplateSource,
+    discover_scenario_plugins,
+)
 from aeroagentsim.scenario.loader import UniqueLoader
 
 POS = "aas.studio.position_enu_m"
@@ -301,181 +308,112 @@ def _pointer(document: dict[str, Any], pointer: str, value: Any) -> None:
             target = target[key]
 
 
-def _accident_time(document: dict[str, Any], base: Path, value: Any) -> None:
-    packages = document["behaviours"]
-    package = packages[0]
-    if "path" in package:
-        package = yaml.load((base / package["path"]).read_bytes(), Loader=UniqueLoader)
-    elif "document" in package:
-        package = package["document"]
-    package = copy.deepcopy(package)
-    transitions = package["chains"]["traffic.incident_report"]["transitions"]
-    action = next(
-        action
-        for transition in transitions
-        if transition["id"] == "schedule"
-        for action in transition["actions"]
-        if action["id"] == "accident-time"
-    )
-    duration_ns = round(value * 1e9)
-    if duration_ns >= document["run"]["until_ns"]:
-        raise ValueError(
-            "knob accident_time_s: accident must occur before the run horizon"
-        )
-    action["duration_ns"] = duration_ns
-    document["behaviours"] = [package, *packages[1:]]
-
-
-def _decision_mode(document: dict[str, Any], base: Path, value: Any) -> None:
-    if value == "live":
-        from .demo import live_decisions
-
-        live_decisions(document, {"profile": "live-llm"})
-    else:
-        document["engines"]["decisions"]["config"]["fixture_path"] = str(
-            base / "fixtures/decisions.json"
-        )
-
-
-def _physics_hz(document: dict[str, Any], base: Path, value: Any) -> None:
-    step_ns = round(1e9 / value)
-    document["engines"]["road_motion"]["config"]["step_ns"] = step_ns
-    document["engines"]["air_motion"]["config"]["step_ns"] = step_ns
-    document["run"]["advance_ns"] = step_ns
-
-
-def _wind_east(document: dict[str, Any], base: Path, value: Any) -> None:
-    from aeroagentsim.packs.traffic_accident.knobs import set_wind
-
-    set_wind(document, 0, value)
-
-
-def _wind_north(document: dict[str, Any], base: Path, value: Any) -> None:
-    from aeroagentsim.packs.traffic_accident.knobs import set_wind
-
-    set_wind(document, 1, value)
-
-
-def _operator_mode(document: dict[str, Any], base: Path, value: Any) -> None:
-    operator = next(
-        stream for stream in document["ingress_streams"] if stream["id"] == "operator"
-    )
-    operator["initial_watermark_ns"] = {
-        "scheduled": document["run"]["until_ns"], "interactive": 0,
-    }[value]
-    if value == "interactive":
-        # Omission is the ingress schema's explicit unlimited-wait policy;
-        # null is not a valid numeric timeout. Stop remains available.
-        operator.pop("timeout_s", None)
-
-
-def _rescue_config(document: dict[str, Any]) -> dict[str, Any]:
-    return next(row["config"]["rescue"] for row in document["engines"].values()
-                if row["plugin"] == "lowalt_tasks" and "rescue" in row["config"])
-
-
-def _rescue_participation(document: dict[str, Any], base: Path, value: Any) -> None:
-    cfg = _rescue_config(document)
-    cfg["participation"] = {**cfg.get("participation", {}), "mode": value}
-    if value == "filter":
-        # This is an actual exported artifact supplied by the experiment owner.
-        # No demonstration weights or synthetic substitute are shipped.
-        path = Path(cfg["participation"]["filter"])
-        cfg["participation"]["filter"] = str((base / path).resolve())
-
-
-def _rescue_observation(document: dict[str, Any], base: Path, value: Any) -> None:
-    import json
-
-    cfg = _rescue_config(document)
-    cfg["observation"] = value
-    provider = cfg["provider"]
-    if provider.get("mode") == "stub":
-        responses = provider["responses"]["propose_plan"]
-        for response in responses[1:]:
-            call = response["message"]["tool_calls"][0]["function"]
-            call["arguments"] = json.dumps({"actions": ([{"id": "a3", "role": "relay", "after": []},
-                {"id": "a4", "role": "deliver", "after": ["a3"]}] if value == "positive" else []),
-                "reason": "Authored stub response to received " + value + " report"})
-
-
-def _rescue_radio_port(document: dict[str, Any], base: Path, value: Any) -> None:
-    _rescue_config(document)["radio"]["port"] = value
-
-
-def _rescue_radio(document: dict[str, Any], base: Path, value: Any) -> None:
-    cfg = _rescue_config(document)
-    if value == "off":
-        del cfg["radio"]
-
-
-def _rescue_deadline(document: dict[str, Any], base: Path, value: Any) -> None:
-    cfg = _rescue_config(document)
-    if value <= cfg["at_s"]:
-        raise ValueError("rescue deadline_s must follow the notice")
-    cfg["deadline_s"] = value
-    # Include the expiry tick, even when no report ever arrives.
-    document["run"]["until_ns"] = round(value * 1e9) + document["run"]["advance_ns"]
-
-
-def _rescue_fleet_variation(document: dict[str, Any], base: Path, value: Any) -> None:
-    # Materialization happens after the experiment runner supplies its seed.
-    _rescue_config(document)["fleet_variation"] = value
-
-
 class TemplateRegistry:
-    """Operator-owned template manifests and explicitly registered pure knob hooks."""
+    """Plugin-provided manifests and explicitly registered pure knob hooks."""
 
-    def __init__(self, root: Path | None = None) -> None:
-        from collections.abc import Callable
+    def __init__(
+        self,
+        root: Path | None = None,
+        *,
+        plugins: Iterable[ScenarioPlugin] | None = None,
+    ) -> None:
+        plugins = tuple(discover_scenario_plugins() if plugins is None else plugins)
+        self.root = root.resolve() if root is not None else None
+        self.hooks: dict[str, ApplyHook] = {}
+        self._templates: dict[str, tuple[dict[str, Any], TemplateSource]] = {}
+        self._owners: dict[str, str | None] = {}
+        hook_owners: dict[str, str] = {}
+        for plugin in plugins:
+            if not isinstance(plugin, ScenarioPlugin):
+                raise TypeError("scenario plugins: expected ScenarioPlugin instances")
+            for name, hook in plugin.apply_hooks.items():
+                if name in self.hooks:
+                    raise ValueError(
+                        f"Duplicate apply hook {name!r}: plugins "
+                        f"{hook_owners[name]!r} and {plugin.name!r}"
+                    )
+                self.register_apply_hook(name, hook)
+                hook_owners[name] = plugin.name
+        if self.root is None:
+            for plugin in plugins:
+                for source in plugin.templates:
+                    self._register(source, plugin.name)
+        else:
+            if not self.root.is_dir():
+                raise FileNotFoundError(
+                    f"Template registry directory missing: {self.root}"
+                )
+            # Matching directories retain providers without adding plugin templates.
+            manifests = sorted(self.root.glob("*/template.yaml"))
+            directories = {manifest.parent.resolve() for manifest in manifests}
+            sources: dict[Path, tuple[TemplateSource, str]] = {}
+            for plugin in plugins:
+                for source in plugin.templates:
+                    directory = source.directory.resolve()
+                    if directory not in directories:
+                        continue
+                    if directory in sources:
+                        raise ValueError(
+                            f"Duplicate template source {directory}: plugins "
+                            f"{sources[directory][1]!r} and {plugin.name!r}"
+                        )
+                    sources[directory] = (source, plugin.name)
+            for manifest in manifests:
+                matched = sources.get(manifest.parent.resolve())
+                source = (
+                    dataclasses.replace(matched[0], directory=manifest.parent)
+                    if matched else TemplateSource(manifest.parent)
+                )
+                self._register(source, None)
 
-        if root is None:
-            installed = importlib.resources.files("aeroagentsim") / "template_data"
-            source = Path(__file__).resolve().parents[3] / "scenarios/templates"
-            root = Path(str(installed)) if installed.is_dir() else source
-        self.root = root.resolve()
-        self.hooks: dict[str, Callable[[dict[str, Any], Path, Any], None]] = {
-            "traffic.accident_time": _accident_time,
-            "traffic.decision_mode": _decision_mode,
-            "traffic.physics_hz": _physics_hz,
-            "traffic.wind_east": _wind_east,
-            "traffic.wind_north": _wind_north,
-            "lowalt.operator_mode": _operator_mode,
-            "rescue.participation": _rescue_participation,
-            "rescue.observation": _rescue_observation,
-            "rescue.radio_port": _rescue_radio_port,
-            "rescue.radio": _rescue_radio,
-            "rescue.deadline_s": _rescue_deadline,
-            "rescue.fleet_variation": _rescue_fleet_variation,
-        }
-        self._templates: dict[str, tuple[dict[str, Any], Path]] = {}
-        if not self.root.is_dir():
-            raise FileNotFoundError(f"Template registry directory missing: {self.root}")
-        for manifest in sorted(self.root.glob("*/template.yaml")):
-            data = yaml.load(manifest.read_bytes(), Loader=UniqueLoader)
-            self._validate(data, manifest.parent.name)
-            if data["id"] in self._templates:
-                raise ValueError(f"Duplicate template id: {data['id']}")
-            if data["id"] == "traffic-accident":
-                from aeroagentsim.packs.traffic_accident.knobs import weather_knobs
+    def _register(self, source: TemplateSource, plugin: str | None) -> None:
+        identifier = source.directory.name
+        source = dataclasses.replace(source, directory=source.directory.resolve())
+        manifest = source.directory / "template.yaml"
+        data = yaml.load(manifest.read_bytes(), Loader=UniqueLoader)
+        if (
+            self.root is None
+            and isinstance(data, dict)
+            and isinstance(data.get("id"), str)
+        ):
+            identifier = data["id"]
+        self._validate(data, identifier)
+        if identifier in self._templates:
+            previous = self._templates[identifier][1]
+            raise ValueError(
+                f"Duplicate template id {identifier!r}: plugin "
+                f"{self._owners[identifier]!r} at {previous.directory} and "
+                f"plugin {plugin!r} at {source.directory}"
+            )
+        scenario = self._source(data, source)
+        if source.extra_knobs is not None:
+            document = yaml.load(scenario.read_bytes(), Loader=UniqueLoader)
+            if not isinstance(document, dict):
+                raise ValueError(f"template {identifier}: scenario must be a mapping")
+            extra = source.extra_knobs(document)
+            self._validate({**data, "knobs": extra}, identifier)
+            declared = {knob["id"] for knob in data["knobs"]}
+            data["knobs"].extend(
+                copy.deepcopy(knob) for knob in extra if knob["id"] not in declared
+            )
+        self._templates[identifier] = (data, source)
+        self._owners[identifier] = plugin
 
-                source = self._source(data, manifest.parent)
-                document = yaml.load(source.read_bytes(), Loader=UniqueLoader)
-                if not isinstance(document, dict):
-                    raise ValueError("template scenario must be a mapping / 模板场景须为映射")
-                declared = {knob["id"] for knob in data["knobs"]}
-                data["knobs"].extend(knob for knob in weather_knobs(document) if knob["id"] not in declared)
-            self._templates[data["id"]] = (data, manifest.parent)
-
-    def _source(self, metadata: dict[str, Any], directory: Path) -> Path:
+    def _source(self, metadata: dict[str, Any], template: TemplateSource) -> Path:
         relative = Path(metadata["scenario"])
         if relative.is_absolute():
             raise ValueError("template scenario path must be relative")
-        if metadata["id"] == "traffic-accident" and metadata["scenario"] == "../../demos/traffic-accident/scenario.yaml":
-            return demo_source(metadata["id"]) / "scenario.yaml"
-        source = (directory / relative).resolve()
-        if not source.is_relative_to(self.root.parent):
-            raise ValueError("template scenario escapes configured registry scope")
+        if template.scenario is not None:
+            source = template.scenario.resolve()
+            if self.root is None:
+                return source
+        else:
+            source = (template.directory / relative).resolve()
+        scope = self.root.parent if self.root is not None else template.directory.parent
+        if not source.is_relative_to(scope):
+            raise ValueError(
+                f"template {metadata['id']}: scenario escapes configured registry scope"
+            )
         return source
 
     @staticmethod
@@ -659,29 +597,32 @@ class TemplateRegistry:
     def get(self, identifier: str) -> dict[str, Any]:
         return copy.deepcopy(self._templates[identifier][0])
 
+    def plugin_of(self, identifier: str) -> str | None:
+        """Return the owning plugin, or None for a configured-root template."""
+        return self._owners[identifier]
+
+    def directory_of(self, identifier: str) -> Path:
+        """Locate template assets without assuming a shared registry directory."""
+        return self._templates[identifier][1].directory
+
     def apply(
         self, identifier: str, knobs: dict[str, Any] | None = None
     ) -> PreparedTemplate:
         from aeroagentsim.scenario import load_scenario
 
-        metadata, directory = self._templates[identifier]
+        metadata, template = self._templates[identifier]
         if knobs is not None and not isinstance(knobs, dict):
             raise ValueError("knobs: mapping required")
         overrides = {} if knobs is None else knobs
         declared = {knob["id"]: knob for knob in metadata["knobs"]}
         if extra := overrides.keys() - declared.keys():
             raise ValueError(f"Unknown knobs: {', '.join(sorted(extra))}")
-        source = self._source(metadata, directory)
+        source = self._source(metadata, template)
         document = yaml.load(source.read_bytes(), Loader=UniqueLoader)
         if not isinstance(document, dict):
             raise ValueError("template scenario must be a mapping")
         if "city" in metadata:
             document["city"] = metadata["city"]
-        elif identifier in {
-            "traffic-accident", "parcel-delivery", "medical-delivery",
-            "powerline-inspection", "crop-spraying", "air-taxi", "security-patrol", "city-day",
-        }:
-            document["city"] = "huangpu"
         values = {
             name: copy.deepcopy(
                 overrides[name] if name in overrides else knob["default"]
