@@ -1,5 +1,6 @@
 # Public Ubuntu 24.04 base.
 FROM ubuntu:24.04 AS build
+ARG BUILD_JOBS=16
 COPY apt-install.sh /usr/local/bin/aas-apt-install
 LABEL aeroagentsim.job="release"
 # Bootstrap the public CA store over Ubuntu's signed APT metadata; all later
@@ -20,12 +21,21 @@ COPY native/ /opt/ns-3.48/scratch/
 COPY bundle.py /opt/aeroagentsim-bundle.py
 WORKDIR /opt/ns-3.48
 # ns3 refuses privileged execution; configure directly with CMake as its wrapper does.
-RUN cmake -S . -B cmake-cache -G Ninja \
+RUN jobs_ok=0 \
+    && case "$BUILD_JOBS" in \
+         ''|*[!0-9]*) ;; \
+         *[1-9]*) jobs_ok=1 ;; \
+       esac \
+    && if [ "$jobs_ok" -ne 1 ]; then \
+         echo "BUILD_JOBS must be a positive integer, got '$BUILD_JOBS'" >&2; \
+         exit 2; \
+       fi \
+    && cmake -S . -B cmake-cache -G Ninja \
       -DCMAKE_BUILD_TYPE=release -DNS3_NATIVE_OPTIMIZATIONS=ON \
       -DNS3_ASSERT=OFF -DNS3_LOG=OFF \
       -DNS3_WARNINGS_AS_ERRORS=OFF -DNS3_EXAMPLES=OFF -DNS3_TESTS=OFF \
       -DNS3_ENABLED_MODULES="core;network;internet;mobility;propagation;traffic-control;wifi" \
-    && cmake --build cmake-cache --target scratch_aero-ns3-provider -j16 \
+    && cmake --build cmake-cache --target scratch_aero-ns3-provider -j${BUILD_JOBS} \
     && python3 /opt/aeroagentsim-bundle.py
 
 FROM scratch
