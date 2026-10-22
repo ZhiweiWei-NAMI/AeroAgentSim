@@ -69,6 +69,11 @@ class SessionStore:
         for path in sorted(self.root.glob("*/session.json")):
             session = json.loads(path.read_text(encoding="utf-8"))
             self.directory(session["id"])
+            from .scene import _SceneSummary
+
+            for plan in session["plans"].values():
+                if "_scene_contributions" in plan:
+                    plan["scene"] = _SceneSummary(plan["scene"], contributions=plan["_scene_contributions"])
             restore_provenance(session)
             self._sessions[session["id"]] = session
             if session["busy"]:
@@ -271,6 +276,13 @@ class SessionStore:
         return version, operations
 
     def put_plan(self, identifier: str, plan: dict[str, Any], *, current: bool = True) -> None:
+        from .scene import _SceneSummary
+
+        plan = copy.deepcopy(plan)
+        if isinstance(plan.get("scene"), _SceneSummary):
+            # JSON serializes dict subclasses without their ownership attributes.
+            # Persist those separately; the public scene card shape is unchanged.
+            plan["_scene_contributions"] = copy.deepcopy(plan["scene"].contributions)
         with self.edit(identifier) as session:
             key = str(plan["version"])
             if key in session["plans"]:

@@ -7,7 +7,6 @@ comes FROM (clockwise from north) and the compiler converts it to the vector.
 from __future__ import annotations
 
 import math
-import re
 
 
 def from_deg(east: float, north: float) -> float | None:
@@ -46,41 +45,8 @@ def wind_lines(wind: dict, *, gust: bool, zh: bool = False) -> list[str]:
 
 
 def ground_wind_prose(text: str, wind: dict, *, zh: bool = False) -> str:
-    """Replace directional wind claims with the selected input's vector-derived copy.
+    from .catalogue import callbacks
 
-    Preserve other sentences, list prefixes, tables and fenced code. Multiple
-    profiles/samples are all reported; an equal speed never selects a direction.
-    """
-    lines, fence, wind_context = [], False, False
-    for line in text.splitlines():
-        if line.lstrip().startswith(("```", "~~~")):
-            fence = not fence
-        if fence or not line.strip():
-            lines.append(line)
-            continue
-        mentions_wind = bool(re.search(r"\bwind\b|\bgust\b|风", line, re.I))
-        directional = bool(re.search(r"\b(?:north|east|south|west)(?:ward|ern|erly)?\b|\b(?:north|south)(?:east|west)(?:ward|ern|erly)?\b|[东西南北]|\bdirection\b|风向|流向", line, re.I))
-        if (mentions_wind or wind_context) and directional:
-            gust = bool(re.search(r"\bgust\b|阵风", line, re.I))
-            grounded = wind_lines(wind, gust=gust, zh=zh)
-            if grounded:
-                if line.lstrip().startswith("|"):
-                    cells = line.split("|")
-                    for index, cell in enumerate(cells):
-                        if re.search(r"\b(?:north|east|south|west)|[东西南北]|\bdirection\b|风向|流向", cell, re.I):
-                            cells[index] = " " + "; ".join(grounded) + " "
-                    line = "|".join(cells)
-                else:
-                    prefix = re.match(r"^(\s*(?:[-+*]|\d+[.)])\s+)", line)
-                    body = line[prefix.end():] if prefix else line
-                    sentences = re.split(r"(?<=[。！？])|(?<=[.!?])(?=\s+[^\d\s])", body)
-                    kept = []
-                    for sentence in sentences:
-                        if re.search(r"\bwind\b|\bgust\b|风", sentence, re.I) or len(sentences) == 1:
-                            kept.append("; ".join(grounded) + ("。" if zh else "."))
-                        else:
-                            kept.append(sentence)
-                    line = (prefix.group() if prefix else "") + "".join(kept)
-        wind_context = mentions_wind and bool(re.match(r"^\s*#{1,6}\s|^\s*\*\*", line))
-        lines.append(line)
-    return "\n".join(lines)
+    for callback in callbacks("ground_wind"):
+        text = callback(text, wind, zh=zh)
+    return text

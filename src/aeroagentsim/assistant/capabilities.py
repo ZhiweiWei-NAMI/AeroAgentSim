@@ -5,46 +5,25 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from .operations import ROLES, operation_catalogue
+from .catalogue import OperationCatalogue, metadata
 
-TOPICS = {
-    "places": ("Facilities and named places", "设施和命名地点"),
-    "participants": ("UAV participants", "无人机参与者"), "tasks": ("Orders and work", "订单和工作"),
-    "events": ("Weather and scheduled events", "天气和预设事件"), "responsibilities": ("Cooperation decisions", "协同决策"),
-    "rules": ("Safety and medical rules", "安全和医疗规则"), "algorithms": ("Installed algorithms", "已安装算法"),
-    "controls": ("Starting-point controls", "起点控件"),
-    "environment": ("Wind and environment", "风场和环境"),
-    "workload": ("Orders and work", "订单和工作"),
-    "region": ("Geographic region", "地理区域"),
-}
-TOPIC_ALIASES = {"wind": "environment", "orders": "workload", "order": "workload", "operation": "all", "operations": "all"}
-CAPABILITY_TOPICS = ["all", *TOPICS, *TOPIC_ALIASES]
-LIMITS = [
-    {"text": "Lowalt participants are UAVs; there are no ground courier or ground vehicle authoring operations.", "text_zh": "低空参与者为无人机；没有地面快递员或地面车辆创建操作。"},
-    {"text": "Incidents are points, without simulated human biomechanics.", "text_zh": "事件为点状设置，不模拟人体生物力学。"},
-    {"text": "Image artifacts require a configured city camera; a photograph event alone is not an image.", "text_zh": "照片文件需要已配置的城市相机；拍摄事件本身不是照片。"},
-    {"text": "Plans configure drafts and versions. Confirm never initializes or starts a run. Expectations are conditional, and stories use committed events.", "text_zh": "计划配置草稿和版本。确认不会初始化或启动运行。预期为条件性的，故事使用已提交事件。"},
-    {"text": "Meals need kitchens. Inspection, survey, spraying, patrol and incident-response orders require existing matching work routes.", "text_zh": "餐食需要厨房。巡检、测绘、喷洒、巡逻和事件响应订单需要已有匹配作业路线。"},
-    {"text": "Agent decisions require a connected provider. One generated base-fleet member cannot be edited independently; use an explicit added fleet for individual initial states.", "text_zh": "智能体决策需要已连接服务。基础生成机群中的单个成员无法独立编辑；单机初始状态请使用新增显式机群。"},
-]
-BRIEF = {
-    "set_region": ("Set map region", "设置地图区域"),
-    "add_lowalt_components": ("Install lowalt components", "安装低空组件"),
-    "set_control": ("Set template control", "设置模板控件"), "set_duration": ("Set duration", "设置时长"),
-    "set_run_mode": ("Set input mode", "设置输入模式"), "set_wind": ("Set wind", "设置风速"),
-    "add_gust": ("Add gust", "添加阵风"), "remove_gust": ("Remove gust", "移除阵风"),
-    "set_weather": ("Set visual weather", "设置视觉天气"), "set_rule": ("Set operating rule", "设置运行规则"),
-    "set_algorithm": ("Select installed algorithm", "选择已安装算法"), "add_place": ("Add facility", "添加设施"),
-    "update_place": ("Edit facility", "修改设施"), "remove_place": ("Remove unused facility", "删除未用设施"),
-    "add_fleet": ("Add UAV group", "添加无人机群"), "set_fleet": ("Adjust UAV group", "调整无人机群"),
-    "remove_fleet": ("Remove UAV group and references", "删除无人机群及引用"),
-    "set_vehicle": ("Adjust one explicit UAV", "调整显式单机"), "add_orders": ("Add task workload", "添加任务工作量"),
-    "set_orders": ("Edit workload", "修改工作量"), "set_task": ("Edit one task", "修改单个任务"),
-    "remove_orders": ("Remove workload", "删除工作量"), "add_incident": ("Schedule point incident", "安排点状事件"),
-    "set_incident": ("Edit incident", "修改事件"), "remove_incident": ("Remove incident", "删除事件"),
-    "schedule_event": ("Schedule declared injection", "安排已声明注入"),
-    "set_cooperation": ("Merge cooperation choices", "合并协同决策"), "remove_cooperation": ("Remove cooperation", "删除协同配置"),
-}
+
+def _topics(catalogue: OperationCatalogue) -> dict:
+    topics = metadata("topics", {}, catalogue=catalogue)
+    for spec in catalogue.operations.values():
+        topics.setdefault(spec.topic, (spec.topic, spec.topic))
+    return topics
+
+
+def capability_topics() -> list[str]:
+    catalogue = OperationCatalogue()
+    return ["all", *_topics(catalogue), *metadata("topic_aliases", {}, catalogue=catalogue)]
+
+
+# Compatibility constants; requests rebuild from the effective discovery snapshot.
+TOPICS = metadata("topics", {})
+TOPIC_ALIASES = metadata("topic_aliases", {})
+CAPABILITY_TOPICS = capability_topics()
 
 
 def _excerpt(text: str, length: int) -> str:
@@ -52,39 +31,41 @@ def _excerpt(text: str, length: int) -> str:
 
 
 def capabilities(topic: str | None, *, templates, algorithms) -> dict:
-    topic = TOPIC_ALIASES.get(topic, topic)
+    catalogue = OperationCatalogue()
+    topics = _topics(catalogue)
+    topic = metadata("topic_aliases", {}, catalogue=catalogue).get(topic, topic)
     if topic == "all":
         topic = None
-    if topic is not None and topic not in TOPICS:
-        raise ValueError(f"topic: {topic!r}; valid options: {CAPABILITY_TOPICS} / 请选择列出的能力主题")
+    if topic is not None and topic not in topics:
+        raise ValueError(f"topic: {topic!r}; valid options: {capability_topics()} / 请选择列出的能力主题")
     installed = algorithms() if callable(algorithms) else algorithms
     if not isinstance(installed, dict):
         raise TypeError("algorithms must be the installed slot catalogue / algorithms 必须是已安装算法槽目录")
-    metadata = templates.list()
+    template_metadata = templates.list()
+    rows = catalogue.display()
     if topic is None:
         operations = {}
-        for name in TOPICS:
-            operations[name] = {s["name"]: {"description": BRIEF[s["name"]][0], "description_zh": BRIEF[s["name"]][1]} for s in operation_catalogue(name)}
-        return {"topics": list(TOPICS), "operations": operations,
+        for name in topics:
+            operations[name] = {key: {"description": catalogue.resolve(key).title, "description_zh": catalogue.resolve(key).title_zh}
+                                for key, row in rows.items() if row["topic"] == name}
+        return {"topics": list(topics), "operations": operations,
                 "detail": "Select a topic for parameter schemas, ranges, defaults and examples / 选择主题查看参数、范围、默认值和示例",
                 "operation_shape": {"id": "op-N", "op": "operation name", "params": {}, "explain": "optional / 可选"},
-                "algorithms": {slot: [a["id"] for a in rows] for slot, rows in installed.items()},
-                "starting_points": [{"id": m["id"], "summary": _excerpt(m["summary"], 40), "summary_zh": _excerpt(m.get("summary_zh", m["summary"]), 16)} for m in metadata],
-                "limits": [
-                    {"text": "UAVs only; incidents are points. Photos require the city camera.", "text_zh": "仅无人机；事件为点。照片需要城市相机。"},
-                    {"text": "Meals need kitchens; work tasks need existing routes; agent choices need a connected model.", "text_zh": "餐食需厨房；作业需已有路线；智能体需连接模型。"},
-                    {"text": "Confirm saves a draft/version. Runs start separately. Stories use committed evidence. Individual base-fleet edits need an explicit fleet.", "text_zh": "确认保存草稿版本，运行另行启动。故事据已提交证据。基础单机修改需显式机群。"},
-                ]}
-    operation_topic = {"environment": "events", "workload": "tasks"}.get(topic, topic)
-    selected = operation_catalogue(operation_topic)
-    if topic == "environment":
-        selected = [row for row in selected if row["name"] in {"set_wind", "add_gust", "remove_gust", "set_weather"}]
-    result: dict[str, Any] = {"topic": topic, "label": TOPICS[topic][0], "label_zh": TOPICS[topic][1],
-                              "operations": selected, "limits": copy.deepcopy(LIMITS)}
-    if topic == "algorithms":
+                "algorithms": {slot: [algorithm["id"] for algorithm in choices] for slot, choices in installed.items()},
+                "starting_points": [{"id": row["id"], "summary": _excerpt(row["summary"], 40), "summary_zh": _excerpt(row.get("summary_zh", row["summary"]), 16)} for row in template_metadata],
+                "limits": metadata("overview_limits", [], catalogue=catalogue)}
+    operation_topic = metadata("operation_topics", {}, catalogue=catalogue).get(topic, topic)
+    selected = [row for row in rows.values() if row["topic"] == operation_topic]
+    names = metadata("topic_operations", {}, catalogue=catalogue).get(topic)
+    if names is not None:
+        selected = [row for row in selected if row["name"] in names]
+    result: dict[str, Any] = {"topic": topic, "label": topics[topic][0], "label_zh": topics[topic][1],
+                              "operations": selected, "limits": metadata("limits", [], catalogue=catalogue)}
+    if topic == metadata("algorithms_topic", None, catalogue=catalogue):
         result["algorithms"] = copy.deepcopy(installed)
-    if topic == "participants":
-        result["roles"] = {name: {"vehicle_class": role[0], "task_kinds": role[1], "label": role[2], "label_zh": role[3]} for name, role in ROLES.items()}
-    if topic == "controls":
-        result["starting_points"] = [{"id": m["id"], "title": m["title"], "title_zh": m.get("title_zh", m["title"]), "controls": copy.deepcopy(m["knobs"])} for m in metadata]
+    if topic == metadata("roles_topic", None, catalogue=catalogue):
+        result["roles"] = {name: {"vehicle_class": role[0], "task_kinds": role[1], "label": role[2], "label_zh": role[3]}
+                           for name, role in metadata("ROLES", {}, catalogue=catalogue).items()}
+    if topic == metadata("controls_topic", None, catalogue=catalogue):
+        result["starting_points"] = [{"id": row["id"], "title": row["title"], "title_zh": row.get("title_zh", row["title"]), "controls": copy.deepcopy(row["knobs"])} for row in template_metadata]
     return result

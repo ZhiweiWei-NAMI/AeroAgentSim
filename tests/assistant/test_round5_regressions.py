@@ -9,7 +9,7 @@ import pytest
 from aeroagentsim.assistant.compiler import CompileContext, compile_plan, resolve_base
 from aeroagentsim.assistant.diff_display import enrich_diff
 from aeroagentsim.assistant.harness import Harness, story_evidence, without_state_assertions
-from aeroagentsim.assistant.scene import diff, expectations, summarize
+from aeroagentsim.assistant.scene import _SceneSummary, diff, expectations, summarize
 from aeroagentsim.assistant.sessions import SessionStore
 from aeroagentsim.assistant.story import run_story
 from aeroagentsim.assistant.tools import ToolRunner
@@ -99,10 +99,12 @@ def test_t2_r5_003_keeps_each_equal_speed_vector_and_markdown_table(tmp_path):
 
 
 def workload_summary(count=100, mode="poisson"):
-    return {"workloads": [{"id": "parcels", "kind": "parcel", "label": "parcel orders", "label_zh": "包裹订单",
-                           "tasks": [f"parcel-{i}" for i in range(count)],
-                           "release": {"mode": mode, **({"rate_per_s": .08, "expected_released": 18} if mode == "poisson" else {"times_s": list(range(count))})}}],
-            "events": [], "fleets": []}
+    summary = {"workloads": [{"id": "parcels", "kind": "parcel", "label": "parcel orders", "label_zh": "包裹订单",
+                              "tasks": [f"parcel-{i}" for i in range(count)],
+                              "release": {"mode": mode, **({"rate_per_s": .08, "expected_released": 18} if mode == "poisson" else {"times_s": list(range(count))})}}],
+               "events": [], "fleets": []}
+    # The fixture supplies lowalt-owned cards, not an unowned merged JSON scene.
+    return _SceneSummary(summary, contributions={"lowalt": summary})
 
 
 def parcel_payload(schema, task):
