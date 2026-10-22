@@ -7,18 +7,23 @@ export interface Connection {
   has_key: boolean; status: 'untested' | 'ok' | 'error'; detail: string | null; tested_at: string | null;
 }
 
+export type TextSource = 'model' | 'platform' | 'unknown';
+export type TurnStatus = 'running' | 'completed' | 'budget_exhausted' | 'provider_error' | 'error' | 'cancelled' | 'interrupted' | 'unknown';
+/** Missing provenance in legacy payloads is unknown, never implicitly model-authored. */
+export interface TextPart { text: string; source?: TextSource }
+interface TextProvenance { parts?: TextPart[]; source?: TextSource; status?: TurnStatus; turn?: number }
 interface EventBase { seq: number; at: string }
 export type AssistantEvent = EventBase & (
   | { kind: 'user'; text: string; context?: MessageContext }
-  | { kind: 'assistant'; text: string; suggestions?: string[] }
+  | ({ kind: 'assistant'; text: string; suggestions?: string[] } & TextProvenance)
   | { kind: 'tool'; call_id: string; name: string; status: 'running' | 'ok' | 'error'; label: string; label_zh?: string; detail?: string }
   | { kind: 'plan'; version: number; note: string; variant?: string | null; versions?: number[] }
   | { kind: 'plan_validated'; version: number; valid: boolean; errors?: PlanIssue[] }
   | { kind: 'applied'; plan_version: number; workspace_id: string; version: number; report: ApplyReport }
-  | { kind: 'error'; message: string; code?: string }
+  | ({ kind: 'error'; message: string; code?: string } & TextProvenance)
   | { kind: 'turn_started'; turn: number }
-  | { kind: 'turn_finished'; turn: number; elapsed_s?: number; model_calls?: number; tokens?: number }
-  | { kind: 'notice'; text: string }
+  | { kind: 'turn_finished'; turn: number; status?: TurnStatus; elapsed_s?: number; model_calls?: number; tokens?: number }
+  | ({ kind: 'notice'; text: string } & TextProvenance)
 );
 export interface MessageContext { selected_entity?: string; run_id?: string; locale?: string }
 
@@ -88,9 +93,16 @@ export function compiledParts(plan: PlanVersion): PlanVersion {
 export interface PlanVersionRow { version: number; note: string; variant?: string | null; parent?: number | null; created_at: string; compile_ok: boolean; validation_state: 'pending' | 'valid' | 'invalid' }
 export interface ApplyReport { created: DiffItem[]; changed: DiffItem[]; removed: DiffItem[]; entities?: Diff['entities']; summary_text?: string; validation?: unknown }
 export interface ApplyRecord { plan_version: number; workspace_id: string; version: number; revision: number; applied_at: string; report: ApplyReport }
+export interface SessionTurn {
+  turn: number; status: TurnStatus; parts: TextPart[];
+  /** Exact provider final-message text, not the transport envelope; null means no text. */
+  model_reply?: string | null;
+  elapsed_s?: number; model_calls?: number; tokens?: number;
+}
 export interface Session {
   id: string; created_at: string; updated_at: string; workspace_id: string | null; title: string; locale?: string; busy: boolean; last_seq: number;
   events: AssistantEvent[]; plan: PlanVersion | null; plan_versions: PlanVersionRow[]; alternatives: number[]; applied: ApplyRecord[];
+  turns?: SessionTurn[];
   connection?: { configured: boolean; model: string | null; status?: string };
 }
 export interface SessionRow { id: string; title: string; workspace_id: string | null; updated_at: string; plan_version?: number | null; applied_versions?: number[] }

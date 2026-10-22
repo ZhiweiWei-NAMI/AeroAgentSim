@@ -11,9 +11,47 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .connection import now
+
+TextSource = Literal["model", "platform", "unknown"]
+TurnStatus = Literal["running", "completed", "budget_exhausted", "provider_error", "error", "cancelled", "interrupted", "unknown"]
+
+
+def text_provenance(record: dict[str, Any], text: str, *, default: TextSource = "unknown") -> None:
+    """Missing authorship is unknown, including on older records."""
+    sources = {"model", "platform", "unknown"}
+    parts = record.get("parts")
+    if parts is None:
+        source = record.get("source", default)
+        source = source if source in sources else "unknown"
+        parts = [{"text": text, "source": source}] if text else []
+    else:
+        parts = [{"text": part["text"], "source": part.get("source") if part.get("source") in sources else "unknown"} for part in parts]
+    record["parts"] = parts
+    authors = {part["source"] for part in parts}
+    if len(authors) == 1:
+        record["source"] = next(iter(authors))
+    elif authors:
+        record.pop("source", None)
+    else:
+        record.setdefault("source", default)
+
+
+def restore_provenance(session: dict[str, Any]) -> None:
+    session.setdefault("turns", [])
+    for event in session["events"]:
+        if event["kind"] in {"assistant", "notice", "error"}:
+            text_provenance(event, event.get("text", event.get("message", "")))
+        if event["kind"] in {"assistant", "turn_finished"}:
+            event.setdefault("status", "unknown")
+    for message in session["transcript"]:
+        if message.get("role") == "assistant":
+            text_provenance(message, message.get("content") or "")
+    for turn in session["turns"]:
+        text_provenance(turn, "")
+        turn.setdefault("status", "unknown")
 
 
 class SessionBusy(ValueError):
@@ -31,10 +69,15 @@ class SessionStore:
         for path in sorted(self.root.glob("*/session.json")):
             session = json.loads(path.read_text(encoding="utf-8"))
             self.directory(session["id"])
+            restore_provenance(session)
             self._sessions[session["id"]] = session
             if session["busy"]:
+                self._event(session, "notice", status="interrupted", text="The previous turn was interrupted by a service restart / 上一轮对话因服务重启中断")
                 session["busy"] = False
-                self._event(session, "notice", text="The previous turn was interrupted by a service restart / 上一轮对话因服务重启中断")
+                for turn in session["turns"]:
+                    if turn["turn"] == session["turn"]:
+                        turn["status"] = "interrupted"
+                self._event(session, "turn_finished", turn=session["turn"], status="interrupted")
                 answered = {m.get("tool_call_id") for m in session["transcript"] if m.get("role") == "tool"}
                 for message in list(session["transcript"]):
                     for call in message.get("tool_calls", []):
@@ -82,7 +125,7 @@ class SessionStore:
         session = {
             "id": "assist-" + uuid.uuid4().hex, "created_at": now(), "updated_at": now(),
             "workspace_id": workspace_id, "title": "New scenario / 新场景", "locale": locale,
-            "transcript": [], "events": [], "last_seq": 0, "plans": {},
+            "transcript": [], "events": [], "turns": [], "last_seq": 0, "plans": {},
             "plan_version": None, "alternatives": [], "applied": [], "busy": False,
             "turn": 0, "next_op": 1, "next_version": 1,
         }
@@ -93,7 +136,9 @@ class SessionStore:
 
     def get(self, identifier: str) -> dict[str, Any]:
         with self.lock:
-            return copy.deepcopy(self._read(identifier))
+            session = copy.deepcopy(self._read(identifier))
+            restore_provenance(session)
+            return session
 
     def list(self, workspace_id: str | None = None) -> list[dict[str, Any]]:
         with self.lock:
@@ -109,6 +154,14 @@ class SessionStore:
     def _event(session: dict[str, Any], kind: str, **data: Any) -> dict[str, Any]:
         session["last_seq"] += 1
         event = {"seq": session["last_seq"], "at": now(), "kind": kind, **data}
+        if kind in {"assistant", "notice", "error"}:
+            text_provenance(event, event.get("text", event.get("message", "")), default="platform" if kind != "assistant" else "unknown")
+            if session["busy"]:
+                event["turn"] = session["turn"]
+                for turn in session.get("turns", []):
+                    if turn["turn"] == session["turn"]:
+                        turn["parts"].extend(copy.deepcopy(event["parts"]))
+                        text_provenance(turn, "")
         session["events"].append(event)
         return event
 
@@ -118,8 +171,29 @@ class SessionStore:
         return copy.deepcopy(event)
 
     def append(self, identifier: str, message: dict[str, Any]) -> None:
+        message = copy.deepcopy(message)
+        if message.get("role") == "assistant":
+            text_provenance(message, message.get("content") or "")
         with self.edit(identifier) as session:
-            session["transcript"].append(copy.deepcopy(message))
+            session["transcript"].append(message)
+
+    def record_model_reply(self, identifier: str, content: str | None) -> None:
+        """Keep only final message text, never a provider envelope or connection data."""
+        with self.edit(identifier) as session:
+            for turn in session.get("turns", []):
+                if turn["turn"] == session["turn"]:
+                    turn["model_reply"] = content
+
+    def answer(self, identifier: str, parts: list[dict[str, str]], suggestions: list[str], *,
+               model_reply: str | None, status: TurnStatus) -> None:
+        text = "\n\n".join(part["text"] for part in parts)
+        message: dict[str, Any] = {"role": "assistant", "content": text + ("\nSuggestions: " + " | ".join(suggestions) if suggestions else ""),
+                                   "parts": copy.deepcopy(parts), "model_reply": model_reply, "status": status}
+        text_provenance(message, text)
+        with self.edit(identifier) as session:
+            message["turn"] = session["turn"]
+            session["transcript"].append(message)
+            self._event(session, "assistant", text=text, parts=parts, suggestions=suggestions, status=status)
 
     def begin_turn(self, identifier: str, text: str, context: dict[str, Any] | None = None) -> dict[str, int]:
         if not isinstance(text, str) or not text.strip() or len(text) > 16000:
@@ -129,6 +203,7 @@ class SessionStore:
                 raise SessionBusy("A turn is already running / 已有一轮对话正在处理")
             session["busy"] = True
             session["turn"] += 1
+            session.setdefault("turns", []).append({"turn": session["turn"], "status": "running", "model_reply": None, "parts": []})
             if context and context.get("locale"):
                 session["locale"] = context["locale"]
             self._event(session, "user", text=text, **({"context": context} if context else {}))
@@ -137,11 +212,15 @@ class SessionStore:
             result = {"turn": session["turn"], "seq": session["last_seq"]}
         return result
 
-    def finish_turn(self, identifier: str, turn: int, **statistics: Any) -> None:
+    def finish_turn(self, identifier: str, turn: int, *, status: TurnStatus = "unknown", **statistics: Any) -> None:
+        statistics = {key: statistics[key] for key in ("elapsed_s", "model_calls", "tokens") if key in statistics}
         with self.edit(identifier) as session:
             if session["turn"] == turn:
                 session["busy"] = False
-            self._event(session, "turn_finished", turn=turn, **statistics)
+            for record in session.get("turns", []):
+                if record["turn"] == turn:
+                    record.update(status=status, **statistics)
+            self._event(session, "turn_finished", turn=turn, status=status, **statistics)
         with self.lock:
             self._cancelled.discard((identifier, turn))
 
@@ -165,8 +244,13 @@ class SessionStore:
             while session["last_seq"] <= after and time.monotonic() < deadline:
                 self.condition.wait(deadline - time.monotonic())
                 session = self._read(identifier)
-            return {"events": copy.deepcopy([e for e in session["events"] if e["seq"] > after]),
-                    "last_seq": session["last_seq"], "busy": session["busy"]}
+            events = copy.deepcopy([e for e in session["events"] if e["seq"] > after])
+            for event in events:
+                if event["kind"] in {"assistant", "notice", "error"}:
+                    text_provenance(event, event.get("text", event.get("message", "")))
+                if event["kind"] in {"assistant", "turn_finished"}:
+                    event.setdefault("status", "unknown")
+            return {"events": events, "last_seq": session["last_seq"], "busy": session["busy"]}
 
     def allocate(self, identifier: str, operations: list[dict[str, Any]], *, retained: set[str] | None = None) -> tuple[int, list[dict[str, Any]]]:
         operations = copy.deepcopy(operations)
