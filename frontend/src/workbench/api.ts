@@ -8,8 +8,19 @@ import type { RunInfo } from '../feeds/http';
 export class ApiError extends TransportError {}
 
 /** Keep the workbench's long-standing error type while preserving the transport classification. */
-function classified(error: unknown): never {
-  if (error instanceof TransportError) throw new ApiError(error.status, error.detail);
+function classified(error: unknown, rawDetail = false): never {
+  if (error instanceof TransportError) {
+    let detail = error.body;
+    if (!rawDetail && error.status !== 0) {
+      try {
+        // A JSON answer without `detail` historically leaves the HTTP fallback
+        // to consumers; keep structured operation details serialized as before.
+        const value: unknown = JSON.parse(error.body).detail;
+        detail = typeof value === 'string' ? value : JSON.stringify(value) ?? '';
+      } catch { /* Keep the raw server text. */ }
+    }
+    throw new ApiError(error.status, detail, error.body);
+  }
   throw error;
 }
 
@@ -61,7 +72,7 @@ export class WorkbenchApi {
   saveVersion(id: string, revision: number, note?: string) { return this.request<VersionInfo>(`/v1/studio/workspaces/${encodeURIComponent(id)}/versions`, { body: { revision, ...(note ? { note } : {}) } }); }
   async exportYaml(id: string) {
     try { return await requestText(this.base, `/v1/studio/workspaces/${encodeURIComponent(id)}/export`); }
-    catch (error) { return classified(error); }
+    catch (error) { return classified(error, true); }
   }
   importYaml(id: string, text: string, revision: number) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}/import`, { body: { yaml: text, revision } }); }
   // Templates.

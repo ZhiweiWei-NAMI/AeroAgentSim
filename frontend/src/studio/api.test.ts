@@ -90,6 +90,7 @@ describe('StudioApi', () => {
 
     const error = await new StudioApi(BASE).request('/v1/studio/workspaces', { name: 'protected' }).catch(value => value);
     expect(error).toBeInstanceOf(TransportError);
+    if (!(error instanceof TransportError)) throw error;
     expect(error.status).toBe(401);
     expect(error.kind).toBe('authentication');
     expect(error.en).toContain('local unprotected server');
@@ -104,6 +105,7 @@ describe('StudioApi', () => {
 
     const error = await new StudioApi(BASE).request('/v1/studio/workspaces').catch(value => value);
     expect(error).toBeInstanceOf(TransportError);
+    if (!(error instanceof TransportError)) throw error;
     expect(error.status).toBe(501);
     expect(error.kind).toBe('unsupported');
     expect(error.unavailable).toBe(true);

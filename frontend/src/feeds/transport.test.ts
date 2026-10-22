@@ -98,6 +98,19 @@ describe('transport error policy', () => {
     expect(error.message).toBe('HTTP 404: missing');
   });
 
+  it.each([
+    ['{"detail":"server says no"}', 'server says no'],
+    ['{"detail":{"field":"seconds","message":"Invalid duration"}}', '{"field":"seconds","message":"Invalid duration"}'],
+    ['{}', '{}'],
+    ['upstream unavailable', 'upstream unavailable'],
+  ])('retains the raw error body alongside its normalized detail: %j', async (body, detail) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { status: 500 })));
+    const error = await failure(requestJson('http://api.test', '/v1/runs'));
+    expect(error.status).toBe(500);
+    expect(error.detail).toBe(detail);
+    expect(error.body).toBe(body);
+  });
+
   it('probes a read-only endpoint without credentials or a request body', async () => {
     const fetcher = vi.fn().mockResolvedValue(json([]));
     vi.stubGlobal('fetch', fetcher);

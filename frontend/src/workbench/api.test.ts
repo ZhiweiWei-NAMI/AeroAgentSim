@@ -85,6 +85,27 @@ it('does not retry a failed mutation', async () => {
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
+it.each([
+  ['{}', ''],
+  ['{"detail":""}', ''],
+  ['', ''],
+  ['upstream unavailable', 'upstream unavailable'],
+  ['{"detail":{"operation":"op-1","field":"seconds","message":"Invalid duration"}}', '{"operation":"op-1","field":"seconds","message":"Invalid duration"}'],
+])('preserves the legacy request detail for body %j', async (body, detail) => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { status: 500 })));
+  const request = new WorkbenchApi('http://api').request('/v1/assistant/sessions', { body: {} });
+  await expect(request).rejects.toBeInstanceOf(ApiError);
+  await expect(request).rejects.toMatchObject({ status: 500, detail, body });
+});
+
+it('keeps the raw error body for YAML exports', async () => {
+  const body = '{"detail":"export unavailable"}';
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { status: 503 })));
+  const request = new WorkbenchApi('http://api').exportYaml('project');
+  await expect(request).rejects.toBeInstanceOf(ApiError);
+  await expect(request).rejects.toMatchObject({ status: 503, detail: body, body });
+});
+
 it('sends lossless integer tags as raw JSON tokens', async () => {
   const fetch = vi.fn().mockResolvedValue(response({})); vi.stubGlobal('fetch', fetch);
   await new WorkbenchApi('http://api').request('/v1/studio/workspaces/project/validate', { body: { until_ns: { $integer: '9223372036854775815' } } });

@@ -50,11 +50,14 @@ function classifyStatus(status: number): TransportErrorKind {
 export class TransportError extends Error {
   readonly status: number;
   readonly detail: string;
+  /** Raw response text, retained for clients with their own detail policy. */
+  readonly body: string;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, body = detail) {
     super(status === 0 ? `Connection failed: ${detail || 'network request failed'}` : `HTTP ${status}: ${detail}`);
     this.status = status;
     this.detail = detail;
+    this.body = body;
   }
 
   get kind(): TransportErrorKind { return classifyStatus(this.status); }
@@ -136,7 +139,7 @@ async function transportFetch(base: string, path: string, init?: RequestInit): P
 export async function transportErrorFromResponse(response: Response): Promise<TransportError> {
   let text = '';
   try { text = await response.text(); } catch { /* Keep the status even when the body cannot be read. */ }
-  return new TransportError(response.status, responseDetail(text) || response.statusText || 'request failed');
+  return new TransportError(response.status, responseDetail(text) || response.statusText || 'request failed', text);
 }
 
 export async function ensureResponseOk(response: Response): Promise<Response> {
