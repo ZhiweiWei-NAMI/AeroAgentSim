@@ -31,12 +31,16 @@ it('reads tagged rule parameters for numeric controls without defaulting missing
   expect(controlValue({ $integer: '42' })).toBe(42);
   expect(controlValue(undefined)).toBeUndefined(); expect(controlValue(null)).toBeUndefined();
 });
-it('reads compound physics frequency from actual engine periods, preserving the draft',()=>{
- const knob={id:'physics_hz',label:'Physics updates per second',type:'number' as const,default:1,apply:'traffic.physics_hz'};
- const scenario={run:{advance_ns:1e9},engines:{road_motion:{config:{step_ns:66666667}},air_motion:{config:{step_ns:66666667}}}};
- expect(controlSource(knob,scenario,{physics_hz:1})).toBe(15);expect(scenario.engines.road_motion.config.step_ns).toBe(66666667);
- expect(controlSource(knob,{engines:{road_motion:{config:{step_ns:1e9}},air_motion:{config:{step_ns:1e9}}}},{physics_hz:15})).toBe(1);
- expect(controlSource(knob,{engines:{road_motion:{config:{step_ns:1e9}},air_motion:{config:{step_ns:5e8}}}},{physics_hz:1})).toBeUndefined();
+it('reads pointer controls from the draft and apply hooks from the last applied record',()=>{
+ const pointer={id:'seed',label:'Random seed',type:'integer' as const,default:1,pointer:'/run/seed'};
+ const scenario={run:{seed:42},engines:{road_motion:{config:{step_ns:66666667}},air_motion:{config:{step_ns:66666667}}}};
+ expect(controlSource(pointer,scenario,{seed:1})).toBe(42);
+ const hook={id:'physics_hz',label:'Physics updates per second',type:'number' as const,default:1,apply:'traffic.physics_hz'};
+ // Metadata wins over a draft the control cannot invert; a missing record stays unknown.
+ expect(controlSource(hook,scenario,{physics_hz:1})).toBe(1);
+ expect(controlSource(hook,scenario,{physics_hz:15})).toBe(15);
+ expect(controlSource(hook,scenario,{})).toBeUndefined();
+ expect(scenario.engines.road_motion.config.step_ns).toBe(66666667);
 });
 
 const trafficWind = (value: unknown = [[5, 2]], vectorIndex: number | null = 0) => ({
@@ -46,37 +50,34 @@ const trafficWind = (value: unknown = [[5, 2]], vectorIndex: number | null = 0) 
   },
 });
 
-it('T2-R4-004 / D5: reads both traffic wind components from the runtime consumer, including tagged numbers and a flat vector', () => {
+it('R3-06 / F2: apply-hook controls report the last applied value instead of reading the mutated document', () => {
   const east = { id: 'wind_east_mps', label: 'Eastward wind (m/s)', type: 'number' as const, default: 3, apply: 'traffic.wind_east' };
-  const north = { ...east, id: 'wind_north_mps', apply: 'traffic.wind_north' };
-  expect(controlSource(east, trafficWind(), { wind_east_mps: 3 })).toBe(5);
-  expect(controlSource(north, trafficWind(), { wind_north_mps: 0 })).toBe(2);
-  expect(controlSource(east, trafficWind([[{ $number: '5.0' }, 2]]), { wind_east_mps: 3 })).toBe(5);
-  expect(controlSource(north, trafficWind([5, 2, 0], null), { wind_north_mps: 0 })).toBe(2);
-  for (const value of [{}, null, [[null, 2]], [[5]], [['invalid', 2]]]) {
-    expect(controlSource(east, trafficWind(value), { wind_east_mps: 3 })).toBeUndefined();
-  }
-  expect(controlSource(east, {}, { wind_east_mps: 3 })).toBeUndefined();
+  expect(controlSource(east, trafficWind([[5, 2]]), { wind_east_mps: 3 })).toBe(3);
+  expect(controlSource(east, trafficWind([[9, 2]]), { wind_east_mps: 4.5 })).toBe(4.5);
+  expect(controlSource(east, trafficWind([[5, 2]]), {})).toBeUndefined();
+  expect(controlSource(east, {}, { wind_east_mps: 3 })).toBe(3);
 });
 
-it('T2-R4-004: displays 5 m/s after generic edits and sends only the unrelated edited control', async () => {
+it('R3-06 / F2: labels a hook control as last applied after generic edits and sends only the edited control', async () => {
   catalog.template.mockResolvedValue({ id: 'traffic', knobs: [
     { id: 'wind_east_mps', label: 'Eastward wind (m/s)', type: 'number', default: 3, apply: 'traffic.wind_east' },
     { id: 'accident_time_s', label: 'Accident time (seconds)', type: 'number', default: 20, pointer: '/accident_time_s' },
   ] });
-  const initial = { ...project, template: { id: 'traffic', knobs: { wind_east_mps: 3, accident_time_s: 20 } }, scenario: { ...trafficWind(), accident_time_s: 20 } };
+  const initial = { ...project, template: { id: 'traffic', knobs: { wind_east_mps: 3, accident_time_s: 20 } }, scenario: { ...trafficWind([[5, 2]]), accident_time_s: 20 } };
   const knobs = vi.fn().mockResolvedValue({ ...initial, revision: 3, scenario: { ...initial.scenario, accident_time_s: 25 } });
   setup(initial, 'controls', { knobs });
   const wind = await screen.findByRole('spinbutton', { name: 'Eastward wind (m/s)' });
-  expect(Number((wind as HTMLInputElement).value)).toBe(5);
+  expect(Number((wind as HTMLInputElement).value)).toBe(3);
+  expect(screen.getByTestId('knob-wind_east_mps-provenance')).toHaveTextContent('last applied · effective value unknown');
+  expect(screen.queryByTestId('knob-accident_time_s-provenance')).toBeNull();
   fireEvent.change(screen.getByRole('spinbutton', { name: 'Accident time (seconds)' }), { target: { value: '25' } });
   fireEvent.click(screen.getByRole('button', { name: 'Apply controls to draft' }));
   await screen.findByText('Controls applied to the draft.');
   expect(knobs).toHaveBeenCalledWith(initial.id, { accident_time_s: 25 }, initial.revision);
-  expect(Number((wind as HTMLInputElement).value)).toBe(5);
+  expect(Number((wind as HTMLInputElement).value)).toBe(3);
 });
 
-it.each(['en-US', 'zh-CN'])('T3-R5-001: reads the gust background and validates/saves the actual scenario in %s', async locale => {
+it.each(['en-US', 'zh-CN'])('R3-06: labels hook controls as last applied while validation and versioning stay available in %s', async locale => {
   localStorage.setItem('aeroagentsim.locale', locale);
   const zh = locale === 'zh-CN';
   catalog.template.mockResolvedValue({ id: 'traffic', knobs: [
@@ -94,8 +95,9 @@ it.each(['en-US', 'zh-CN'])('T3-R5-001: reads the gust background and validates/
   const version = { version: 1, revision: initial.revision, digest: 'gust-version', created_at: '', validation };
   const read = vi.fn().mockResolvedValueOnce(validated).mockResolvedValueOnce({ ...validated, latest_version: version });
   const { api } = setup(initial, 'controls', { validate: vi.fn().mockResolvedValue(validation), project: read, saveVersion: vi.fn().mockResolvedValue(version) });
-  expect(Number((await screen.findByRole('spinbutton', { name: zh ? '向东风速（米/秒）' : 'Eastward wind (m/s)' }) as HTMLInputElement).value)).toBe(5);
-  expect(Number((screen.getByRole('spinbutton', { name: zh ? '向北风速（米/秒）' : 'Northward wind (m/s)' }) as HTMLInputElement).value)).toBe(2);
+  expect(Number((await screen.findByRole('spinbutton', { name: zh ? '向东风速（米/秒）' : 'Eastward wind (m/s)' }) as HTMLInputElement).value)).toBe(3);
+  expect(Number((screen.getByRole('spinbutton', { name: zh ? '向北风速（米/秒）' : 'Northward wind (m/s)' }) as HTMLInputElement).value)).toBe(0);
+  expect(screen.getAllByText(zh ? '上次应用值 · 当前生效值未知' : 'last applied · effective value unknown')).toHaveLength(2);
   expect(screen.getByTestId('wb-validate')).toBeEnabled();
   fireEvent.click(screen.getByTestId('wb-validate'));
   await waitFor(() => expect(screen.getByTestId('wb-save-version')).toBeEnabled());

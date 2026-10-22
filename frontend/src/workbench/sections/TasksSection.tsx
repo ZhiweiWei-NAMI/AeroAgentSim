@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BehavioursPanel } from '../../studio/BehavioursPanel';
 import type { TypeRow, Workspace } from '../../studio/api';
 import { issueSection } from './issues';
-import { operation } from './operations';
+import { capabilities, operation } from './operations';
 import type { Project } from '../api';
 import { Leaf, pointer } from '../form';
 import type { SectionProps } from './types';
@@ -22,26 +22,29 @@ export function TasksSection({ api, studioApi, project, draft, edit, replaceDraf
   useEffect(() => { if (!ruleEditor || catalog) return; setRuleError(undefined); void studioApi.request<Catalog>(`/v1/studio/types?workspace=${encodeURIComponent(project.id)}`).then(setCatalog).catch(problem => setRuleError(String(problem))); }, [ruleEditor, project.id]);
   useEffect(() => { if (ruleEditor && catalog) ruleRoot.current?.scrollIntoView({ block: 'start' }); }, [ruleEditor, catalog]);
   const behaviours = (Array.isArray(draft.behaviours) ? draft.behaviours : []) as Array<Record<string, any>>;
-  const tasks = engineOf(draft, 'lowalt_tasks') ?? ((draft.engines as Record<string, any> | undefined)?.tasks ? { name: 'tasks', engine: (draft.engines as Record<string, any>).tasks as Record<string, any> } : undefined);
+  // Low-altitude task editing belongs to the plugin the server installs, never to an engine merely called `tasks`.
+  const tasks = engineOf(draft, 'lowalt_tasks');
   const config = taskConfig(draft);
-  // When the low-altitude pack is absent the operations API can install it; no dead end (C11 add_lowalt_components).
-  const lowaltMissing = !tasks;
+  const lowalt = capabilities(project)?.lowalt ?? !!tasks;
+  // Installing the pack is an explicit opt-in for a valid generic scenario, not a repair step.
+  const installOptional = !tasks && !lowalt;
   const opProps = { api, project, onProject, saveDraft, zh, goTo };
   return <>
     <p className="hint">{L('Orders, cooperation and rules that drive the work.', '订单、协同与规则——驱动任务的部分。')}</p>
-    {lowaltMissing && <div className="wb-empty" data-testid="wb-lowalt-missing">
-      {L('This scenario has no low-altitude components (tasks engine, places, fleets), so order streams and cooperation have nothing to attach to.', '该场景没有低空组件（任务引擎、设施、机群），订单流与协同没有可依附的对象。')}
+    {installOptional && <div className="wb-empty" data-testid="wb-lowalt-missing">
+      <strong>{L('Standard low-altitude components are optional', '标准低空组件为可选项')}</strong>
+      <p className="hint">{L('Order streams and cooperation need the standard low-altitude task engine. This scenario can stay generic; edit its engines under Execution components or File (YAML).', '订单流与协同需要标准低空任务引擎。此场景可以保持通用；可在“执行组件”或“文件”（YAML）中编辑其引擎。')}</p>
       <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft}
         operations={[operation('add_lowalt_components', {})]}
-        label={L('Start with standard low-altitude components', '安装标准低空组件')} labelZh="安装标准低空组件" primary />
+        label={L('Preview installation', '预览安装')} labelZh="预览安装" primary />
     </div>}
     {config?.generators && <><h4>{L('Order streams', '订单流')}</h4>
       <OrderStreams config={config} draft={draft} edit={edit} focus={focus} L={L} {...opProps} /></>}
-    {!config?.generators && !lowaltMissing && <><h4>{L('Order streams', '订单流')}</h4>
+    {!config?.generators && tasks && <><h4>{L('Order streams', '订单流')}</h4>
       <div className="wb-empty">{L('The tasks engine exists but declares no generators array; add one in File (YAML).', '任务引擎存在但没有生成器数组；请在“文件”（YAML）中添加。')}</div></>}
     {config && tasks && <><h4>{L('Cooperation', '协同')}</h4>
       <CooperationEditor config={config} engineName={tasks.name} draft={draft} edit={edit} focus={focus} L={L} replaceDraft={replaceDraft} {...opProps} /></>}
-    {!config && !lowaltMissing && <><h4>{L('Cooperation', '协同')}</h4>
+    {!config && tasks && <><h4>{L('Cooperation', '协同')}</h4>
       <div className="wb-empty">{L('The tasks engine exists but its config carries no cooperation yet — set one up above.', '任务引擎存在但尚未配置协同——请在上方配置。')}</div></>}
     {behaviours.map((behaviour, b) => <div key={b}>
       <h4>{L('Rules', '规则')} · <span className="wb-mono">{behaviour.id ?? b}</span></h4>

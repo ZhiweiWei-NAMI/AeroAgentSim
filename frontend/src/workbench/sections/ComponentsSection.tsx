@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { JsonEditor, pointer, TreeForm } from '../form';
 import { KeyTrees, keysPresent } from './KeyTrees';
-import { operation } from './operations';
+import { capabilities, operation } from './operations';
 import type { SectionProps } from './types';
 import { engineOf, nsToS, taskConfig } from './tasks/model';
 import { WeatherBlock } from './tasks/Weather';
@@ -10,14 +10,18 @@ import { OpApply, type FormNavigation } from './tasks/op-ui';
 
 export function ComponentsSection({ api, project, draft, edit, focus, zh, L, onProject, saveDraft, goTo }: SectionProps & FormNavigation) {
   const environment = engineOf(draft, 'environment');
+  const tasks = engineOf(draft, 'lowalt_tasks');
   const config = taskConfig(draft);
+  const lowalt = capabilities(project)?.lowalt ?? !!tasks;
+  // The pack is an explicit opt-in for a valid generic scenario, not a repair step.
+  const installOptional = !tasks && !lowalt;
   const installOperations = useMemo(() => [operation('add_lowalt_components', {})], []);
   const opProps = { api, project, onProject, saveDraft, zh, goTo };
   return <div className="wb-form-section">
     <p className="hint">{L('Engines that move drones, run tasks, use energy and make weather.', '驱动飞行、任务、能耗与天气的引擎。')}</p>
-    {!engineOf(draft, 'lowalt_tasks') && <div className="wb-empty" data-testid="wb-lowalt-missing">
-      <strong>{L('Start with standard low-altitude components', '添加标准低空组件')}</strong>
-      <p className="hint">{L('Adds the wind engine, task engine and execution components a drone scene needs. Review the changes before applying.', '添加无人机场景所需的风场引擎、任务引擎与执行组件，应用前请核对变更。')}</p>
+    {installOptional && <div className="wb-empty" data-testid="wb-lowalt-missing">
+      <strong>{L('Standard low-altitude components are optional', '标准低空组件为可选项')}</strong>
+      <p className="hint">{L('Install the wind, task and execution components only if this scenario needs drone operations. Generic engines remain editable under Advanced and in File (YAML).', '仅当此场景需要无人机运行时，才需安装风场、任务与执行组件。通用引擎仍可在“高级”和“文件”（YAML）中编辑。')}</p>
       <OpApply {...opProps} operations={installOperations} label={L('Preview', '预览')} primary />
     </div>}
     {environment && <>

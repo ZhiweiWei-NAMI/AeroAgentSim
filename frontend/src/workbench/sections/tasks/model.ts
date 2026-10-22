@@ -30,8 +30,9 @@ export function engineOf(draft: Draft, plugin: string): { name: string; engine: 
   return undefined;
 }
 
+/** The server identifies the low-altitude task capability by this plugin; an engine key named `tasks` proves nothing. */
 export function taskConfig(draft: Draft): Draft | undefined {
-  return (engineOf(draft, 'lowalt_tasks') ?? (draft.engines?.tasks ? { name: 'tasks', engine: draft.engines.tasks } : undefined))?.engine?.config;
+  return engineOf(draft, 'lowalt_tasks')?.engine?.config;
 }
 
 /** Facility ids the order forms may pick endpoints from. */
