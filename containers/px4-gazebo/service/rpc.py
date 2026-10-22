@@ -12,7 +12,13 @@ from .runtime import Runtime
 
 PROTOCOL = "aeroagentsim.px4/v1"
 MAX_FRAME = 8 * 1024 * 1024  # Includes LF.
-TIMEOUTS = {"hello": 10, "reset": 180, "advance": 30, "command": 30, "close": 20}
+# Framing stays v1/minor 0. Hello minor 1 advertises additive operations;
+# legacy clients can still use the unchanged base profile.
+HELLO_MINOR = 1
+OPERATIONS = ("hello", "reset", "advance", "command", "cancel", "capture", "payload", "close")
+FEATURES = ("rgbd_camera", "source_clock_estimates", "payload_contact_receipts", "observed_cancel_hold")
+TIMEOUTS = {"hello": 10, "reset": 180, "advance": 30, "command": 30,
+            "cancel": 10, "capture": 10, "payload": 10, "close": 20}
 LOG = logging.getLogger("px4-backend")
 
 
@@ -116,8 +122,10 @@ class Server:
                             return {
                                 "protocol": PROTOCOL,
                                 "major": 1,
-                                "minor": 0,
+                                "minor": HELLO_MINOR,
                                 "capabilities": {
+                                    "operations": list(OPERATIONS),
+                                    "features": list(FEATURES),
                                     "physics_step_ns": 4_000_000,
                                     "vehicles": sorted(catalog()),
                                     "sensors": [
@@ -150,6 +158,12 @@ class Server:
                             return await runtime.advance(payload)
                         if state == "READY" and op == "command":
                             return runtime.command(payload)
+                        if state == "READY" and op == "cancel":
+                            return runtime.cancel(payload)
+                        if state == "READY" and op == "capture":
+                            return runtime.capture(payload)
+                        if state == "READY" and op == "payload":
+                            return runtime.payload(payload)
                         raise ValueError(f"{op} is invalid in state {state}")
 
                     result = await asyncio.wait_for(execute(), TIMEOUTS[op])

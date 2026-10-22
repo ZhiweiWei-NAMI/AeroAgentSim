@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from aerokernel.registry import MemoryRegistry, MessageDescriptor
+from aerokernel.values import thaw
 
 __all__ = [
     "BACKENDS",
     "backend_registry",
     "command_descriptors",
     "event_descriptors",
+    "vehicle_estimate_schema",
 ]
 
 PX4_GAZEBO = "px4_gazebo"
@@ -368,6 +370,168 @@ def _link_event() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Closed native-primitives v1 contracts. Legacy descriptor meanings stay intact.
+# ---------------------------------------------------------------------------
+
+
+def _all(members: dict[str, Any]) -> dict[str, Any]:
+    return _schema(members, tuple(members))
+
+
+def _nullable(schema: dict[str, Any]) -> dict[str, Any]:
+    result = {**schema, "nullable": True}
+    if "enum" in schema:
+        result["enum"] = [*schema["enum"], None]
+    return result
+
+
+def vehicle_estimate_schema() -> dict[str, Any]:
+    """Source-clock evidence, not an invented boundary-time PX4 acquisition."""
+    clock_map = _all({
+        "source_anchor_ns": _int(), "native_anchor_ns": _int(),
+        "method": _str(), "uncertainty_ns": _nullable(_int()),
+        "source_resolution_ns": {"type": "integer", "minimum": 1},
+        "mapping_assumption": _str(), "clock_epoch": _str(), "source_clock": _str(),
+        "residual_ns": _nullable({"type": "integer", "minimum": -1_000_000, "maximum": 1_000_000}),
+    })
+    raw_fields = _schema({
+        "time_boot_ms": _int(),
+        **{key: _num() for key in ("x", "y", "z", "vx", "vy", "vz", "q1", "q2", "q3", "q4")},
+    }, ("time_boot_ms",))
+    source_record = _all({
+        "message_name": _enum(("LOCAL_POSITION_NED", "ATTITUDE_QUATERNION")),
+        "fields": raw_fields, "px4_instance": _int(),
+        "system_id": {"type": "integer", "minimum": 1, "maximum": 255},
+        "component_id": {"type": "integer", "enum": [1]},
+        "received_wall_time": _int(), "available_native_ns": _int(),
+        "clock_epoch": _str(), "run_id": _str(), "source_ns": _int(),
+    })
+    return _schema({
+        "status": _enum(("available", "unavailable")),
+        "source": _enum(("PX4_MavlinkDirect",)),
+        "run_id": _str(), "uav_id": _str(), "clock_epoch": _str(),
+        "source_sim_ns": _nullable(_int()), "available_sim_ns": _int(),
+        "reason": _str(), "position_enu_m": _vector(3, -_BOUND, _BOUND),
+        "velocity_enu_m_s": _vector(3, -_BOUND, _BOUND),
+        "attitude_body_frd_to_world_enu_xyzw": _vector(4, -1.0, 1.0),
+        "attitude_source_sim_ns": _int(), "source_clock": _str(),
+        "clock_map": clock_map, "origin_version": _str(),
+        "local_ned_origin_world_enu_m": _vector(3, -_BOUND, _BOUND),
+        "height_datum": _enum(("amsl",)),
+        "origin_source": _enum(("GPS_GLOBAL_ORIGIN",)),
+        "source_messages": {"type": "array", "items": source_record, "min_length": 2, "max_length": 2},
+        "horizontal_sigma_m": _nullable({"type": "number", "minimum": 0}),
+    }, ("status", "source", "run_id", "uav_id", "clock_epoch", "source_sim_ns", "available_sim_ns"))
+
+
+def payload_state_schema() -> dict[str, Any]:
+    return _schema({
+        "vehicle": _str(), "package_id": _str(), "clock_epoch": _str(),
+        "status": _enum(("attached", "detached", "unavailable")),
+        "released": _bool(), "source": _enum(("gazebo_detachable_joint",)),
+        "source_clock": _nullable(_enum(("episode_sim",))),
+        "source_time_ns": _nullable(_int()), "observed_sim_ns": _int(),
+        "command_id": _nullable(_str()), "reason": _str(),
+        "release_interval_ns": {"type": "vector", "length": 2, "items": _int()},
+    }, ("vehicle", "package_id", "clock_epoch", "status", "released", "source", "source_clock", "source_time_ns", "observed_sim_ns", "command_id"))
+
+
+def receiver_receipt_schema() -> dict[str, Any]:
+    return _all({
+        "command_id": _str(), "vehicle": _str(), "package_id": _str(),
+        "receiver_id": _str(), "receipt_id": _str(),
+        "source": _enum(("gazebo_contact_sensor",)), "source_topic": _str(),
+        "clock_epoch": _str(), "source_clock": _enum(("gazebo_sim",)),
+        "episode_origin_ns": _int(), "contact_start_ns": _int(),
+        "contact_end_ns": _int(), "contact_start_sim_ns": _int(),
+        "contact_end_sim_ns": _int(), "contact_duration_ns": _int(),
+    })
+
+
+def payload_ack_schema() -> dict[str, Any]:
+    return _schema({
+        "status": _enum(("accepted", "rejected", "unavailable", "failed")),
+        "command_id": _str(), "vehicle": _str(), "package_id": _str(),
+        "sim_ns": _int(), "reason": _str(),
+    }, ("status", "command_id", "vehicle", "package_id", "sim_ns"))
+
+
+def _capture_observation() -> dict[str, Any]:
+    calibration = _all({
+        "K": _vector(9, -_BOUND, _BOUND),
+        "width": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "height": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "distortion": {"type": "array", "items": _num(), "max_length": 16},
+        "distortion_model": _enum(("plumb_bob", "rational_polynomial", "equidistant")),
+        "camera_info_source_ns": _int(), "native_frame_id": _str(), "source_topic": _str(),
+        "horizontal_fov_deg": {"type": "number", "minimum": 0, "maximum": 180},
+        "vertical_fov_deg": {"type": "number", "minimum": 0, "maximum": 180},
+        "fov_source": _str(), "registered_rgb_depth": {"type": "boolean", "enum": [True]},
+        "version": _str(), "depth_convention": _enum(("optical_z",)),
+        "depth_min_m": {"type": "number", "minimum": 0},
+        "depth_max_m": {"type": "number", "minimum": 0},
+        "invalid_depth_rule": _str(),
+        "T_body_frd_from_camera_optical": {"type": "matrix", "rows": 4, "columns": 4, "items": _num()},
+        "extrinsic_source": _str(),
+    })
+    return _all({
+        "run_id": _str(), "uav_id": _str(), "sensor_id": _str(), "frame_id": _str(),
+        "source": _enum(("gazebo_transport",)), "source_clock": _enum(("gazebo_sim",)),
+        "source_topic": _str(), "native_frame_id": _str(),
+        "source_time": _int(), "clock_epoch": _str(), "observed_at": _int(),
+        "depth_observed_at": _int(), "available_sim_ns": _int(),
+        "received_wall_time": _int(), "coordinate_frame": _enum(("camera_optical",)),
+        "calibration": calibration, "vehicle_estimate": vehicle_estimate_schema(),
+        "localization_status": _enum(("available", "unavailable")),
+        "localization_reason": _nullable(_str()), "rgb_sha256": {"type": "string", "min_length": 64, "max_length": 64},
+        "sensing_model": _enum(("gazebo_geometric_rgbd",)),
+        "physical_ranging": {"type": "boolean", "enum": [False]},
+    })
+
+
+def capture_response_schema(*, read: bool) -> dict[str, Any]:
+    members: dict[str, Any] = {
+        "status": _enum(("succeeded", "pending", "unavailable")), "reason": _str(),
+    }
+    if read:
+        members.update({
+            "vehicle": _str(), "frame_id": _str(), "kind": _enum(("rgb", "depth")),
+            "offset": _int(), "total_bytes": {"type": "integer", "minimum": 1, "maximum": 64 * 1024 * 1024},
+            "data_base64": {"type": "string", "max_length": 349528}, "eof": _bool(),
+        })
+    else:
+        blob = _all({
+            "bytes": {"type": "integer", "minimum": 1, "maximum": 64 * 1024 * 1024},
+            "sha256": {"type": "string", "min_length": 64, "max_length": 64},
+            "encoding": _enum(("png", "zlib-float32-le-metres")),
+        })
+        members.update({"observation": _capture_observation(), "blobs": _all({"rgb": blob, "depth": blob})})
+    return _schema(members, ("status",))
+
+
+def _recorded(schema: dict[str, Any]) -> dict[str, Any]:
+    return _schema({**schema["members"], "available_ns": _int(), "kernel_command_id": _str()},
+                   (*schema["required"], "available_ns", "kernel_command_id"))
+
+
+def _native_descriptors() -> tuple[MessageDescriptor, ...]:
+    release_result = _schema({
+        "status": _enum(("succeeded", "rejected")), "reason": _str(),
+        "ack": payload_ack_schema(), "receipt": receiver_receipt_schema(),
+        "available_ns": _int(),
+    }, ("status",))
+    state = payload_state_schema()
+    status_result = _schema({"status": _enum(("succeeded", "rejected")), "reason": _str(), "observation": state, "available_ns": _int()}, ("status",))
+    commands = (
+        _descriptor("payload_release_v1", PX4_GAZEBO, _px4_payload("release", {"package_id": _str()}, ("package_id",)), release_result),
+        _descriptor("payload_status_v1", PX4_GAZEBO, _px4_payload("status", {"package_id": _str()}, ("package_id",)), status_result),
+        _descriptor("capture_poll_v1", PX4_GAZEBO, _px4_payload("poll", {"after_sim_ns": {"type": "integer", "minimum": -1}}, ("after_sim_ns",)), _recorded(capture_response_schema(read=False))),
+        _descriptor("capture_read_v1", PX4_GAZEBO, _px4_payload("read", {"frame_id": _str(), "kind": _enum(("rgb", "depth")), "offset": _int(), "max_bytes": {"type": "integer", "minimum": 1, "maximum": 262144}}, ("frame_id", "kind", "offset", "max_bytes")), _recorded(capture_response_schema(read=True))),
+    )
+    return commands
+
+
+# ---------------------------------------------------------------------------
 # Command payload schemas (flattened backend parameters).
 # ---------------------------------------------------------------------------
 
@@ -432,9 +596,12 @@ def _descriptor(
     backend: str,
     payload: dict[str, Any],
     result: dict[str, Any],
+    *,
+    cancel_support: bool = False,
 ) -> MessageDescriptor:
     return MessageDescriptor(
-        f"adapters.{backend}.{ident}", "command", payload, result_schema=result
+        f"adapters.{backend}.{ident}", "command", payload, result_schema=result,
+        cancel_support=cancel_support,
     )
 
 
@@ -442,7 +609,7 @@ def _command_descriptors(backend: str) -> tuple[MessageDescriptor, ...]:
     """Backend command descriptors, ordered by descriptor ID."""
     if backend == PX4_GAZEBO:
         px4_result = _result_schema(PX4_GAZEBO)
-        return (
+        legacy = (
             _descriptor("arm", PX4_GAZEBO, _px4_payload("arm"), px4_result),
             _descriptor("disarm", PX4_GAZEBO, _px4_payload("disarm"), px4_result),
             _descriptor(
@@ -467,6 +634,14 @@ def _command_descriptors(backend: str) -> tuple[MessageDescriptor, ...]:
                 px4_result,
             ),
         )
+        cancel = tuple(
+            _descriptor(
+                f"{descriptor.id.rsplit('.', 1)[1]}_cancel_v1", PX4_GAZEBO,
+                cast(dict[str, Any], thaw(descriptor.schema)), px4_result, cancel_support=True,
+            )
+            for descriptor in legacy
+        )
+        return tuple(sorted(legacy + cancel + _native_descriptors(), key=lambda d: d.id))
     if backend == SUMO:
         sumo_result = _result_schema(SUMO)
         return (
@@ -543,11 +718,17 @@ def _command_descriptors(backend: str) -> tuple[MessageDescriptor, ...]:
 def _event_descriptors(backend: str) -> tuple[MessageDescriptor, ...]:
     """Backend event descriptors, ordered by descriptor ID."""
     if backend == PX4_GAZEBO:
-        return (
+        events = (
             MessageDescriptor(
                 f"adapters.{PX4_GAZEBO}.contact", "event", _contact_event()
             ),
+            MessageDescriptor(f"adapters.{PX4_GAZEBO}.payload_release_ack_v1", "event", _recorded(payload_ack_schema())),
+            MessageDescriptor(f"adapters.{PX4_GAZEBO}.payload_state_v1", "event", _schema({**payload_state_schema()["members"], "available_ns": _int()}, (*payload_state_schema()["required"], "available_ns"))),
+            MessageDescriptor(f"adapters.{PX4_GAZEBO}.receiver_receipt_v1", "event", _schema({**receiver_receipt_schema()["members"], "available_ns": _int()}, (*receiver_receipt_schema()["required"], "available_ns"))),
+            MessageDescriptor(f"adapters.{PX4_GAZEBO}.capture_frame_v1", "event", _recorded(capture_response_schema(read=False))),
+            MessageDescriptor(f"adapters.{PX4_GAZEBO}.capture_chunk_v1", "event", _recorded(capture_response_schema(read=True))),
         )
+        return tuple(sorted(events, key=lambda descriptor: descriptor.id))
     if backend == SUMO:
         return (
             MessageDescriptor(f"adapters.{SUMO}.arrived", "event", _entity_event()),

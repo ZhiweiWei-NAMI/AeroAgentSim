@@ -160,7 +160,9 @@ def finish(client: JsonLinesClient | None, server: FakeServer) -> None:
 
 
 def test_default_timeouts_are_positive_and_finite() -> None:
-    assert set(TIMEOUTS) == {"hello", "reset", "advance", "command", "close"}
+    assert set(TIMEOUTS) == {
+        "hello", "reset", "advance", "command", "cancel", "capture", "payload", "close"
+    }
     for seconds in TIMEOUTS.values():
         assert type(seconds) is float and 0 < seconds < math.inf
 
@@ -185,6 +187,41 @@ def test_non_positive_or_non_numeric_timeouts_rejected(seconds) -> None:
 def test_zero_timeout_rejected_for_every_operation(operation: str) -> None:
     with pytest.raises(ValueError):
         JsonLinesClient(HOST, 1, PROTOCOL, timeouts={operation: 0.0})
+
+
+@pytest.mark.parametrize("overrides", [{"unknown": 1.0}, ["hello"], True, 1.0])
+def test_timeout_override_requires_known_keyed_object(overrides) -> None:
+    with pytest.raises(ValueError):
+        JsonLinesClient(HOST, 1, PROTOCOL, timeouts=overrides)
+
+
+@pytest.mark.parametrize("operation", ["cancel", "capture", "payload", "unknown"])
+def test_unadmitted_operations_never_connect(monkeypatch, operation: str) -> None:
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unadmitted operation touched the socket")
+
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+    client = JsonLinesClient(HOST, 1, PROTOCOL)
+    with pytest.raises(KernelError) as excinfo:
+        client.request(operation, {})
+    assert excinfo.value.code == "ADAPTER_CAPABILITY"
+    assert client.sequence == 0 and client.socket is None and not client.tainted
+
+
+def test_new_hello_result_preserves_minor_zero_envelope(fake_server) -> None:
+    result = {"protocol": PROTOCOL, "major": 1, "minor": 1, "capabilities": {}}
+
+    def handler(server: FakeServer, connection: socket.socket) -> None:
+        request = read_request(server, connection)
+        assert request["major"] == 1 and request["minor"] == 0
+        connection.sendall(envelope(request, result))
+
+    server = fake_server(handler)
+    client = JsonLinesClient(HOST, server.port, PROTOCOL)
+    try:
+        assert client.request("hello", {}) == result
+    finally:
+        finish(client, server)
 
 
 # ---------------------------------------------------------------------------

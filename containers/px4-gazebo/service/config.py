@@ -21,9 +21,103 @@ def integer(value, label, minimum=0, maximum=2**63 - 1):
 
 
 def number(value, label):
-    if type(value) not in (int, float) or not math.isfinite(value):
+    if type(value) not in (int, float):
         raise ValueError(f"{label} must be finite numeric data")
-    return float(value)
+    try:
+        result = float(value)
+    except (OverflowError, ValueError) as error:
+        raise ValueError(f"{label} must be finite numeric data") from error
+    if not math.isfinite(result):
+        raise ValueError(f"{label} must be finite numeric data")
+    return result
+
+
+def bounded(value, label, minimum, maximum, *, positive=False):
+    result = number(value, label)
+    if not minimum <= result <= maximum or (positive and result <= minimum):
+        raise ValueError(f"{label} outside configured bounds")
+    return result
+
+
+def vector(value, label, length, minimum, maximum):
+    if not isinstance(value, list) or len(value) != length:
+        raise ValueError(f"{label} requires {length} numeric values")
+    return [bounded(v, label, minimum, maximum) for v in value]
+
+
+def topic(value):
+    # No coercion, empty segments, traversal, whitespace or transport metacharacters.
+    if (
+        not isinstance(value, str)
+        or len(value) > 240
+        or not re.fullmatch(r"(?:/[A-Za-z0-9_][A-Za-z0-9_-]*)+", value)
+    ):
+        raise ValueError("topic must be an absolute Gazebo topic with nonempty segments")
+    return value
+
+
+def camera_config(value):
+    fields(value, (
+        "sensor_id", "topic_prefix", "pose_flu", "width", "height",
+        "update_rate_hz", "horizontal_fov_rad", "near_m", "far_m",
+    ))
+    result = dict(value)
+    result["sensor_id"] = identifier(value["sensor_id"])
+    result["topic_prefix"] = topic(value["topic_prefix"])
+    if len(result["topic_prefix"]) > 96:
+        raise ValueError("camera topic prefix exceeds 96 characters")
+    result["pose_flu"] = vector(value["pose_flu"], "pose_flu", 6, -100, 100)
+    for angle in result["pose_flu"][3:]:
+        bounded(angle, "camera rotation", -2 * math.pi, 2 * math.pi)
+    for key in ("width", "height"):
+        result[key] = integer(value[key], key, 1, 2048)
+    if result["width"] * result["height"] > 1_048_576:
+        raise ValueError("camera dimensions exceed the pixel budget")
+    result["update_rate_hz"] = bounded(value["update_rate_hz"], "update_rate_hz", 0, 240, positive=True)
+    result["horizontal_fov_rad"] = bounded(value["horizontal_fov_rad"], "horizontal_fov_rad", 0.01, math.pi - 0.01)
+    result["near_m"] = bounded(value["near_m"], "near_m", 0, 10_000, positive=True)
+    result["far_m"] = bounded(value["far_m"], "far_m", 0, 10_000, positive=True)
+    if result["near_m"] >= result["far_m"]:
+        raise ValueError("camera requires near_m < far_m")
+    return result
+
+
+def payload_config(value, vehicle_ids, physics_step_ns):
+    physics_step_ns = integer(physics_step_ns, "physics_step_ns", minimum=1)
+    fields(value, (
+        "carrier", "package_id", "receiver_id", "detach_topic", "state_topic",
+        "contact_topic", "attachment_offset_enu_m", "package_size_m",
+        "package_mass_kg", "receiver_pose", "receiver_size", "contact_duration_ns",
+    ), ("parent_link", "child_link", "receiver_link", "receiver_collision", "package_orientation_rpy"))
+    result = dict(value)
+    for key in ("carrier", "package_id", "receiver_id"):
+        result[key] = identifier(value[key])
+    if result["carrier"] not in vehicle_ids:
+        raise ValueError("payload carrier must name a declared vehicle")
+    reserved = set(vehicle_ids) | {"aas_" + vid for vid in vehicle_ids}
+    if result["package_id"] == result["receiver_id"] or {result["package_id"], result["receiver_id"]} & reserved:
+        raise ValueError("payload and receiver IDs must be distinct from vehicle IDs")
+    for key, default in (("parent_link", "base_link"), ("child_link", "parcel"),
+                         ("receiver_link", "surface"), ("receiver_collision", "receiver_collision")):
+        result[key] = identifier(value.get(key, default))
+    for key in ("detach_topic", "state_topic", "contact_topic"):
+        result[key] = topic(value[key])
+        if result[key] == "/stats" or result[key].startswith("/world/"):
+            raise ValueError("payload topics must not shadow native world transport")
+    if len({result[key] for key in ("detach_topic", "state_topic", "contact_topic")}) != 3:
+        raise ValueError("payload transport topics must be distinct")
+    result["attachment_offset_enu_m"] = vector(value["attachment_offset_enu_m"], "attachment_offset_enu_m", 3, -100, 100)
+    result["package_orientation_rpy"] = vector(value.get("package_orientation_rpy", [0, 0, 0]), "package_orientation_rpy", 3, -2 * math.pi, 2 * math.pi)
+    result["receiver_pose"] = vector(value["receiver_pose"], "receiver_pose", 6, -1_000_000, 1_000_000)
+    for angle in result["receiver_pose"][3:]:
+        bounded(angle, "receiver rotation", -2 * math.pi, 2 * math.pi)
+    for key in ("package_size_m", "receiver_size"):
+        result[key] = vector(value[key], key, 3, 0.001, 100)
+    result["package_mass_kg"] = bounded(value["package_mass_kg"], "package_mass_kg", 0.001, 1000)
+    result["contact_duration_ns"] = integer(value["contact_duration_ns"], "contact_duration_ns", physics_step_ns, 60_000_000_000)
+    if result["contact_duration_ns"] % physics_step_ns:
+        raise ValueError("contact duration must align to the physics step")
+    return result
 
 
 def identifier(value):
@@ -82,10 +176,17 @@ class Config:
     warmup: int
     physics_step_ns: int
     origin_wgs84: tuple
+    payload: dict | None = None
+    altitude_datum: str | None = None
+    rgbd_camera: dict | None = None
 
 
 def prepare(payload, directory):
-    fields(payload, ("seed", "world", "vehicles", "warmup"))
+    fields(payload, ("seed", "world", "vehicles", "warmup"), ("payload", "altitude_datum", "rgbd_camera"))
+    camera = camera_config(payload["rgbd_camera"]) if "rgbd_camera" in payload else None
+    datum = payload.get("altitude_datum")
+    if "altitude_datum" in payload and datum != "amsl":
+        raise ValueError("altitude_datum must explicitly be amsl or be omitted")
     seed = integer(payload["seed"], "seed", maximum=2**32 - 1)
     warmup = integer(payload["warmup"], "warmup", minimum=1, maximum=120_000_000_000)
     world_ref = payload["world"]
@@ -158,6 +259,34 @@ def prepare(payload, directory):
         ET.SubElement(include, "uri").text = f"model://{model}"
         ET.SubElement(include, "name").text = vehicle.model_name
         ET.SubElement(include, "pose").text = " ".join(format(v, ".17g") for v in pose)
+    physical_payload = (
+        payload_config(payload["payload"], ids, step) if "payload" in payload else None
+    )
+    model_names = {v.model_name for v in vehicles}
+    if physical_payload is not None:
+        if {physical_payload["package_id"], physical_payload["receiver_id"]} & existing:
+            raise ValueError("payload/receiver model ID already exists in the world")
+        if {physical_payload["child_link"], physical_payload["receiver_link"]} & model_names:
+            raise ValueError("payload link names must not alias vehicle model poses")
+    if camera is not None:
+        from .configure_rgbd import attach_rgbd, sensor_topic
+
+        if "aas_rgbd_" + camera["sensor_id"] + "_link" in model_names:
+            raise ValueError("camera link name must not alias a vehicle model pose")
+
+        for vehicle in vehicles:
+            base = sensor_topic(camera, vehicle.id)
+            topic(base + "/depth_image")
+            if physical_payload is not None and any(
+                t == base or t.startswith(base + "/")
+                for t in (physical_payload["detach_topic"], physical_payload["state_topic"], physical_payload["contact_topic"])
+            ):
+                raise ValueError("payload and camera topics must not overlap")
+        attach_rgbd(world, vehicles, directory, camera)
+    if physical_payload is not None:
+        from .payload_adapter import attach_payload
+
+        attach_payload(world, vehicles, directory, physical_payload)
     # Preserve the installed system list, changing only pose publication.
     # SceneBroadcaster's dynamic topic has native model poses and timestamps;
     # 1000 Hz bounds wall-time publication delay (pose/info is fixed at 60 Hz).
@@ -172,4 +301,5 @@ def prepare(payload, directory):
     server.write(directory / "server.config", encoding="utf-8", xml_declaration=True)
     destination = directory / "world.sdf"
     ET.ElementTree(root).write(destination, encoding="utf-8", xml_declaration=True)
-    return Config(seed, name, destination, vehicles, warmup, step, origin)
+    return Config(seed, name, destination, vehicles, warmup, step, origin,
+                  physical_payload, datum, camera)
