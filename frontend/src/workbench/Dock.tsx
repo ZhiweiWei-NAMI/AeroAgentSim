@@ -18,8 +18,6 @@ import type { RunSession } from './useRunSession';
 export type DockTab = 'events' | 'results' | 'photos' | 'why' | 'agents';
 
 const AGENT_SCHEMAS = new Set<string>(AGENT_RECORD_SCHEMAS);
-const SUBJECT_KEY = /^(?:entity|entities|vehicle|vehicles|actor|actors|drone|drones|uav|uavs|aircraft|subject|subjects|responder|helpers?|self|target|source)$/i;
-const SUBJECT_CONTAINER = /(?:vehicle|drone|uav|aircraft|actor|entity|subject|responder|helper|self)/i;
 interface ObservedRef { id: string; generation?: string }
 
 /** Preserve kernel generations without turning them into JavaScript numbers. */
@@ -33,31 +31,59 @@ function generationText(value: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Entity identities recorded in one decision payload. An identity with no
- * generation is kept separately: it can associate a decision with a drone id,
- * but it cannot distinguish two generations of the same id.
- */
-function observedRefs(value: unknown, parent = '', depth = 0, result: ObservedRef[] = []): ObservedRef[] {
-  if (value === null || value === undefined || depth > 12) return result;
-  if (Array.isArray(value)) {
-    for (const item of value) observedRefs(item, parent, depth + 1, result);
-    return result;
-  }
-  if (typeof value === 'string') {
-    if (SUBJECT_KEY.test(parent) && value && !/\s/.test(value)) result.push({ id: value });
-    else if (parent.endsWith('_json') && /^[\[{]/.test(value.trim())) {
-      try { observedRefs(JSON.parse(value), parent, depth + 1, result); } catch { /* a non-JSON string is not an identity */ }
+function objectOf(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function entityRef(value: unknown): ObservedRef[] {
+  const row = objectOf(value);
+  return typeof row?.id === 'string' && row.id
+    ? [{ id: row.id, generation: generationText(row.generation ?? row.generation_index) }] : [];
+}
+
+/** Only an explicit typed reference grants identity during arbitrary traversal. */
+function typedRefs(value: unknown, depth = 0): ObservedRef[] {
+  if (depth > 12) return [];
+  if (Array.isArray(value)) return value.flatMap(child => typedRefs(child, depth + 1));
+  const row = objectOf(value);
+  if (!row) return [];
+  if (Object.keys(row).length === 1 && '$ref' in row) return entityRef(row.$ref);
+  return Object.entries(row).flatMap(([key, child]) => {
+    if (key.endsWith('_json') && typeof child === 'string' && /^[\[{]/.test(child.trim())) {
+      try { return typedRefs(JSON.parse(child), depth + 1); } catch { return []; }
     }
-    return result;
+    return typedRefs(child, depth + 1);
+  });
+}
+
+/**
+ * Bare identities need a declared subject path or an observation-schema path.
+ * In particular, proposal target/source strings name engine partitions, never
+ * entities, and must not reach generation-evidence resolution.
+ */
+function observedRefs(value: unknown, phase: string): ObservedRef[] {
+  const result = typedRefs(value);
+  const row = objectOf(value);
+  if (!row) return result;
+  // Explicit scalar subject paths on the record body. Schema-specific authored
+  // paths arrive as projected subjects, not as guesses from payload field names.
+  for (const value of [row.subject, row.subjects].flat()) {
+    if (typeof value === 'string' && value && !/\s/.test(value)) result.push({ id: value });
   }
-  if (typeof value !== 'object') return result;
-  const row = value as Record<string, unknown>;
-  const contextual = SUBJECT_KEY.test(parent) || SUBJECT_CONTAINER.test(parent);
-  if (typeof row.id === 'string' && (contextual || row.generation !== undefined || row.generation_index !== undefined)) {
-    result.push({ id: row.id, generation: generationText(row.generation ?? row.generation_index) });
+  if (phase !== 'observation') return result;
+  const observation = objectOf(objectOf(row.initial)?.observation) ?? row;
+  if (Array.isArray(observation.fields)) {
+    for (const field of observation.fields) result.push(...entityRef(objectOf(field)?.entity));
   }
-  for (const [key, child] of Object.entries(row)) observedRefs(child, key, depth + 1, result);
+  if (Array.isArray(observation.relations)) {
+    for (const relation of observation.relations) {
+      const edges = objectOf(relation)?.edges;
+      if (!Array.isArray(edges)) continue;
+      for (const edge of edges) {
+        result.push(...entityRef(objectOf(edge)?.source), ...entityRef(objectOf(edge)?.target));
+      }
+    }
+  }
   return result;
 }
 
@@ -94,7 +120,8 @@ function decisionIdentities(decision: CanonicalDecision, subjects: Map<string, E
   };
   for (const phase of decision.phases) {
     for (const rawId of phase.rawIds) for (const key of subjects.get(rawId) ?? []) add({ id: key.id, generation: generationText(key.generation) });
-    for (const data of [phase.data, ...phase.views.map(view => view.data)]) observedRefs(data).forEach(add);
+    observedRefs(phase.data, phase.phase).forEach(add);
+    for (const view of phase.views) observedRefs(view.data, view.phase).forEach(add);
   }
   const firstCut = decision.phases[0]?.cut ?? -1;
   for (const [id, generations] of identities) {

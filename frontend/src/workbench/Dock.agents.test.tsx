@@ -135,6 +135,64 @@ describe('Dock agent decisions', () => {
     },
   );
 
+  it.each(['command', 'output'])('does not attribute %s routing partitions to unrelated entities with the same id', phase => {
+    const other = { id: 'drone.b', generation: 2 };
+    const store = storeWith([], [{ ...selected, typeId: 'vehicle' }, { ...other, typeId: 'vehicle' }]);
+    const proposal = {
+      kind: 'command', call_id: 'call-1', schema: 'demo.move', target: selected.id,
+      source: selected.id, payload: {}, decision_summary: 'Move the observed drone',
+    };
+    store.ingest({ ...emptyCommit(2, '20'), messages: [
+      record('arbitrary-engine/1', 'observation', observation(other.id, other.generation), 0),
+      record('arbitrary-engine/1', phase, proposal, 1),
+    ] });
+    store.seek('20', 2);
+    const session = { ...sessionFor(store), cut: 2 };
+    const view = render(<Harness session={session} tracked={selected} />);
+    fireEvent.click(screen.getByRole('button', { name: /Agents/ }));
+    expect(screen.queryByTestId('wb-agent-decision')).toBeNull();
+    expect(screen.getByTestId('wb-agent-list')).toHaveTextContent(/No agent decisions for the selected drone and generation/);
+    view.rerender(<Harness session={session} tracked={other} />);
+    expect(screen.getByTestId('wb-agent-decision')).toHaveAttribute('data-decision-id', 'arbitrary-engine/1');
+    expect(screen.queryByTestId('wb-agent-generation-unknown')).toBeNull();
+  });
+
+  it.each([
+    { target: selected.id, source: selected.id },
+    { vehicle_status: selected },
+    { metadata: selected },
+    { entity: selected },
+    { fields: [{ entity: selected }] },
+  ])('does not treat arbitrary model data as an entity identity: %j', data => {
+    const store = storeWith([record('arbitrary-engine/1', 'model_call', data, 0)]);
+    const session = sessionFor(store), view = render(<Harness session={session} tracked={selected} />);
+    fireEvent.click(screen.getByRole('button', { name: /Agents/ }));
+    expect(screen.queryByTestId('wb-agent-decision')).toBeNull();
+    view.rerender(<Harness session={session} />);
+    expect(screen.getByTestId('wb-agent-generation-unknown')).toHaveTextContent('generation unknown');
+  });
+
+  it('retains explicit typed references inside a command payload, including entity target/source fields', () => {
+    const store = storeWith([record('arbitrary-engine/1', 'command', {
+      call_id: 'call-1', schema: 'demo.move', target: 'engine-partition', decision_summary: 'Move',
+      payload: { target: { $ref: selected }, source: { $ref: { id: 'drone.b', generation: 1 } } },
+    }, 0)]);
+    render(<Harness session={sessionFor(store)} tracked={selected} />);
+    fireEvent.click(screen.getByRole('button', { name: /Agents/ }));
+    expect(screen.getByTestId('wb-agent-decision')).toHaveAttribute('data-decision-id', 'arbitrary-engine/1');
+    expect(screen.queryByTestId('wb-agent-generation-unknown')).toBeNull();
+  });
+
+  it.each(['source', 'target'])('retains schema-defined observation relation %s identities', endpoint => {
+    const store = storeWith([record('arbitrary-engine/1', 'observation', {
+      fields: [], relations: [{ schema: 'demo.link', edges: [{ [endpoint]: selected }] }],
+    }, 0)]);
+    render(<Harness session={sessionFor(store)} tracked={selected} />);
+    fireEvent.click(screen.getByRole('button', { name: /Agents/ }));
+    expect(screen.getByTestId('wb-agent-decision')).toHaveAttribute('data-decision-id', 'arbitrary-engine/1');
+    expect(screen.queryByTestId('wb-agent-generation-unknown')).toBeNull();
+  });
+
   it('uses exact recorded subjects even when punctuation and case distinguish otherwise similar ids', () => {
     const subject = { id: 'drone_a', generation: 1 };
     const store = storeWith([{ ...record('rescue_uav_drone_a/1', 'model_call', {}, 0), subjects: [subject] }], [
