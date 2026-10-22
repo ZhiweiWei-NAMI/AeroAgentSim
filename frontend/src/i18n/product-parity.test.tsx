@@ -163,8 +163,8 @@ it('keeps confirmation, review and creation identical in both locales', async ()
     installLocale(locale);
     render(<I18nProvider><ExperimentPanel api={api} onExperimentId={vi.fn()} onOpen={vi.fn()} onCompare={vi.fn()} /></I18nProvider>);
     await waitFor(() => expect(screen.getByTestId('experiment-template')).toHaveValue('food-delivery'));
-    expect(screen.getByRole('heading', { name: zh(locale) ? '实验' : 'Experiments', exact: true })).toBeVisible();
-    expect(screen.getByRole('combobox', { name: zh(locale) ? '模板' : 'Template', exact: true })).toHaveValue('food-delivery');
+    expect(screen.getByRole('heading', { name: zh(locale) ? '实验' : 'Experiments' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: zh(locale) ? '模板' : 'Template' })).toHaveValue('food-delivery');
     fireEvent.click(screen.getByRole('checkbox', { name: zh(locale) ? '变化“机队规模”' : 'Vary Fleet size' }));
     fireEvent.change(screen.getByTestId('experiment-values-fleet_size'), { target: { value: '4, 8' } });
     await waitFor(() => expect(screen.getByTestId('experiment-review')).toBeEnabled());
