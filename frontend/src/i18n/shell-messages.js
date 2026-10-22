@@ -24,7 +24,7 @@ export default {
   'Controls: {engines}': '控制器：{engines}', 'Ready to run': '可以运行', 'Needs a check': '需要检查',
   'Unexpected workspace list shape': '工作区列表格式不正确', 'Retry': '重试', 'Welcome': '欢迎',
   'Pick a scenario. See what happens.': '选一个场景，看看会发生什么。',
-  'Start with ready-made settings, watch the vehicles, then change one thing and compare.': '用默认设置开始，观察车辆和无人机，再改一个参数比较结果。',
+  'Start with ready-made settings, watch the vehicles, then change one thing and compare.': '用默认设置开始，观察载具，再改一个参数比较结果。',
   'Choose your scenario': '选择场景', 'How it works': '使用方法', 'Go to Studio': '进入场景工作室',
   'Show the welcome walkthrough': '查看新手引导', 'Open traffic demo in Studio': '在工作室打开交通事故演示',
   'Recent workspaces': '最近的工作区', 'Loading workspaces…': '正在加载工作区…', 'Could not load workspaces.': '无法加载工作区。',
@@ -32,6 +32,6 @@ export default {
   'Show recent six': '只显示最近 6 个', 'Show all {count} workspaces': '显示全部 {count} 个工作区',
   'Recent runs': '最近的运行', 'Loading runs…': '正在加载运行记录…', 'Could not load runs.': '无法加载运行记录。',
   'No runs recorded. Run a scenario above to see it here.': '还没有运行记录。运行上方的场景后，就会显示在这里。', 'Watch live': '查看实时运行',
-  'running': '运行中', 'completed': '已完成', 'paused': '已暂停', 'stopped': '已停止', 'faulted': '运行失败',
+  'running': '运行中', 'completed': '已完成', 'paused': '已暂停', 'stopped': '已停止', 'faulted': '运行出错',
   'interrupted': '已中断', 'queued': '等待运行', 'loading': '加载中', 'waiting_for_input': '等待外部输入', 'input_timeout': '输入超时',
 };
