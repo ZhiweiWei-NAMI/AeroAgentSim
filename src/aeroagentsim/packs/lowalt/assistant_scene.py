@@ -16,6 +16,10 @@ from aeroagentsim.services.narratives import TASK_NOUN, TASK_NOUN_ZH, _chinese_l
 from .assistant import PLACE_TYPES, ROLES
 
 SECOND = 1_000_000_000
+POSITION_PRECEDENCE = (
+    "lowalt.position", "lowalt.site_position", "lowalt.incident_position", "he.aircraft.position_enu_m",
+    "traffic.road.position_enu_m", "traffic.incident.position_enu_m", "aas.studio.position_enu_m",
+)
 RULE_LABELS = {
     "battery_reserve_pct": ("Battery reserve", "预留电量", "%"),
     "safety_distance_m": ("Safety distance", "安全间隔", "m"),
@@ -119,12 +123,11 @@ def _tasks_config(document: dict) -> dict:
     return next((e["config"] for e in document.get("engines", {}).values() if e["plugin"] == "lowalt_tasks"), {})
 
 
-def _position(entity: dict) -> list | None:
+def _position(entity: dict, fields=None) -> list | None:
+    if fields is None:
+        fields = POSITION_PRECEDENCE
     facts = entity.get("facts", {})
-    for key in ("lowalt.position", "lowalt.site_position", "lowalt.incident_position", "he.aircraft.position_enu_m", "traffic.road.position_enu_m", "traffic.incident.position_enu_m", "aas.studio.position_enu_m"):
-        if key in facts:
-            return facts[key]
-    return None
+    return next((facts[key] for key in fields if key in facts), None)
 
 
 def _plain_payload(value: Any) -> Any:
@@ -256,7 +259,7 @@ def summarize(context: CompileContext) -> dict:
         kinds = list(dict.fromkeys(kind for e in members for kind in tasks.get("vehicle_task_kinds", {}).get(e["id"], tasks.get("vehicle_kinds", {}).get(e["facts"].get("lowalt.vehicle_class"), []))))
         role = _role(cls, kinds)
         en, zh = ROLES[role][2:] if role in ROLES else (first.get("label", identity), first.get("label_zh", identity))
-        start_position = _common([_position(e) for e in members])
+        start_position = _common([_position(e, context.data.get("position_fields")) for e in members])
         start = next((p for p in places if p["position"] == start_position), None)
         fleets.append({"id": identity, "role": role, "label": en, "label_zh": zh, "count": len(members),
                        "members": [e["id"] for e in members], "vehicle_class": cls, "task_kinds": kinds,
@@ -264,7 +267,7 @@ def summarize(context: CompileContext) -> dict:
                        "battery_pct": _common([e["facts"]["lowalt.soc"] * 100 if "lowalt.soc" in e["facts"] else None for e in members]),
                        "payload_capacity_kg": _common([e["facts"].get("lowalt.payload_capacity_kg") for e in members]),
                        "contract": contract(first["type"]),
-                       "member_states": [{"id": e["id"], "label": e.get("label", e["id"]), "label_zh": e.get("label_zh", e.get("label", e["id"])), "position": _position(e),
+                       "member_states": [{"id": e["id"], "label": e.get("label", e["id"]), "label_zh": e.get("label_zh", e.get("label", e["id"])), "position": _position(e, context.data.get("position_fields")),
                                           "battery_pct": e["facts"]["lowalt.soc"] * 100 if "lowalt.soc" in e["facts"] else None,
                                           "payload_capacity_kg": e["facts"].get("lowalt.payload_capacity_kg"),
                                           "task_kinds": tasks.get("vehicle_task_kinds", {}).get(e["id"], tasks.get("vehicle_kinds", {}).get(cls, []))} for e in members]})
@@ -333,7 +336,7 @@ def summarize(context: CompileContext) -> dict:
         schema = next((p["emits"] for spec in packages for p in spec.get("injection_points", []) if p["id"] == point), None)
         events.append({"id": f"scheduled-{i + 1}", "kind": kind, "label": en, "label_zh": zh,
                        "at_s": command["at_ns"] / SECOND, "place": place,
-                       "position": _position(entities[place]) if place in entities else None, "layer": "setup",
+                       "position": _position(entities[place], context.data.get("position_fields")) if place in entities else None, "layer": "setup",
                        "injection_point": point, "params": copy.deepcopy(params), "schema": schema})
     rules = []
     package = next((p for p in packages if p.get("id") == "lowalt.rules"), None)
@@ -448,7 +451,32 @@ def _response_estimate(summary: dict, incident: dict) -> dict | None:
                      f"{len(states)} 架观察机中 {len(eligible)} 架初始满足电量 ≥ {minimum:g}%、距离 ≤ {radius:g} 米。真实决策使用发现时状态和任务保护规则。")
 
 
+def _own_summary(summary: dict) -> dict:
+    # Legacy builtin cards have no domain tag. Never interpret another domain's
+    # cards when called directly with an already-merged/serialized summary.
+    return {**summary, **{section: [row for row in summary.get(section, []) if row.get("domain") is None]
+                         for section in ("fleets", "places", "workloads", "events", "rules", "routine")}}
+
+
+def projection_order(section: str, rows, summary) -> list[int]:
+    if section == "lanes":
+        priorities = {"system": 0, "vehicle": 10, "fleet": 10, "place": 20, "person": 30}
+        return [priorities[row["kind"]] for row in rows]
+    if section == "steps":
+        # Use the actual workload/cooperation prefix, not authored ID spelling:
+        # a workload is allowed to have an ID such as "event:deliveries".
+        prefix = len(interactions({**summary, "events": []})["steps"])
+        return [0 if index < prefix else 20 for index in range(len(rows))]
+    return [20 if row["id"].startswith("event:") else 0 for row in rows]
+
+
+def repeated_expectation_ids(summary: dict) -> list[str]:
+    return [identity for event in _own_summary(summary)["events"] if event["kind"] == "wind_gust"
+            for identity, *_ in _weather_steps(event)]
+
+
 def expectations(document: dict, summary: dict) -> list[dict]:
+    summary = _own_summary(summary)
     result = []
     def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=(), count: int | None = None, released: str | None = None, demand: dict | None = None, alternatives=()) -> str:
         match = {"schema": schema, "where": where, **({"count": count} if count is not None else {}), **({"released_schema": released} if released else {}),
@@ -533,6 +561,7 @@ def expectations(document: dict, summary: dict) -> list[dict]:
 
 
 def interactions(summary: dict) -> dict:
+    summary = _own_summary(summary)
     lanes = [{"id": "system", "label": "Task allocation", "label_zh": "任务分配", "kind": "system"}]
     for fleet in summary["fleets"]:
         lanes.append({"id": fleet["id"], "label": fleet["label"], "label_zh": fleet["label_zh"], "kind": "vehicle" if fleet["members"] == [fleet["id"]] else "fleet"})

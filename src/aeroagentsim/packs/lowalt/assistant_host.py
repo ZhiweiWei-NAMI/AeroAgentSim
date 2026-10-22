@@ -18,7 +18,7 @@ from aeroagentsim.authoring.templates import _knob_value, _pointer
 from aeroagentsim.packs.lowalt.template import has_lowalt_components
 from .assistant import (
     _fail, _group_id, _cooperation_module, _allocation_provider, _engine,
-    _fleet_entities,
+    _fleet_entities, _workload_creators,
 )
 
 SECOND = 1_000_000_000
@@ -182,58 +182,6 @@ def _time_bounds(document: dict, operations: list[dict], errors: list[dict], war
             check(at_ns / SECOND, field_name, None, ns=at_ns)
 
 
-def _operation_order(operations: list[dict], document: dict) -> dict[int, set[int]]:
-    """Stable dependency order; authored operation ids/order remain unchanged."""
-    creators: dict[str, int] = {}
-    existing = {e["id"] for e in document.get("entities", [])}
-    existing.update(_group_id(group) for spec in document.get("engines", {}).values() if spec.get("plugin") == "lowalt_tasks"
-                    for group in spec["config"].get("generators", []))
-    for i, operation in enumerate(operations):
-        if not isinstance(operation, dict) or not isinstance(operation.get("params"), dict):
-            continue
-        p, name = operation["params"], operation.get("op")
-        if name in {"add_place", "add_fleet", "add_orders", "add_incident"} and isinstance(p.get("id"), str):
-            creators.setdefault(p["id"], i)
-            if name in {"add_fleet", "add_orders"} and type(p.get("count")) is int and 0 < p["count"] <= 1000:
-                for member in range(1, p["count"] + 1):
-                    creators.setdefault(f"{p['id']}-{member}", i)
-        if name == "set_cooperation":
-            for point in p.get("handoff_points", []):
-                if isinstance(point, dict) and isinstance(point.get("id"), str):
-                    creators.setdefault(point["id"], i)
-
-    selectors = {"at", "start", "from", "to", "fleet", "vehicle", "task", "destination", "vehicles", "handoff_points", "site", "origin", "restaurant"}
-    def references(value, key=""):
-        if isinstance(value, dict):
-            return set().union(*(references(v, k) for k, v in value.items())) if value else set()
-        if isinstance(value, list):
-            return set().union(*(references(v, key) for v in value)) if value else set()
-        return {value} if key in selectors and isinstance(value, str) else set()
-
-    deps: dict[int, set[int]] = {i: set() for i in range(len(operations))}
-    installers = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "add_lowalt_components"]
-    regions = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_region"]
-    durations = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_duration"]
-    workloads = {o.get("id"): o["params"]["id"] for o in operations if isinstance(o, dict) and o.get("op") == "add_orders" and isinstance(o.get("params"), dict) and "id" in o["params"]}
-    for i, operation in enumerate(operations):
-        if not isinstance(operation, dict):
-            continue
-        params = operation.get("params", {})
-        refs = references(params)
-        if operation.get("op") in {"update_place", "remove_place", "set_orders", "remove_orders", "set_incident", "remove_incident"} and isinstance(params, dict):
-            target = params.get("id")
-            refs.add(workloads.get(target, target) if operation.get("op") in {"set_orders", "remove_orders"} and isinstance(target, str) and target not in existing else target)
-        deps[i].update(creators[r] for r in refs if r not in existing and r in creators and creators[r] != i)
-        if installers and i not in installers:
-            deps[i].add(installers[0])
-        if regions and i not in regions and i not in installers:
-            deps[i].add(regions[-1])
-        # Release defaults use the final requested horizon, regardless of list order.
-        if operation.get("op") in {"add_orders", "set_orders", "set_task", "add_gust", "add_incident", "set_incident", "schedule_event"}:
-            deps[i].update(durations)
-    return deps
-
-
 def _places_needed(document: dict, name: str, params: dict) -> bool:
     values = []
     if name in {"add_place", "update_place", "add_incident", "set_incident"}:
@@ -306,18 +254,16 @@ class LowaltStaging:
         row["op"] = self.operation_name(spec) or row.get("op")
         return row
 
-    def dependencies(self, operations: list[dict], document: dict) -> dict[int, set[int]]:
-        legacy = [self.legacy(row) for row in operations]
-        self.workload_creators = {o["id"]: o["params"]["id"] for o in legacy if isinstance(o, dict) and o.get("op") == "add_orders" and
-                                 isinstance(o.get("params"), dict) and isinstance(o["params"].get("id"), str) and isinstance(o.get("id"), str)}
-        return _operation_order(legacy, document)
+    def prepare_operations(self, operations: list[dict]) -> None:
+        # Diagnostic bookkeeping only; dependency semantics live in the pure spec.
+        self.workload_creators = _workload_creators([self.legacy(row) for row in operations])
 
     def prepare(self, spec, operation: dict, document: dict, params: dict, warnings: list[dict]) -> dict:
         name = self.operation_name(spec)
         if name is None:
             return {}
         op_id = operation.get("id")
-        data: dict = {"workload_creators": self.workload_creators}
+        data: dict = {}
         if name in {"add_incident", "set_incident", "remove_incident", "set_cooperation", "remove_cooperation"} or name == "add_place" and params.get("role") == "handoff_point":
             _cooperation_module()
         if name == "set_algorithm":

@@ -293,13 +293,16 @@ OVERVIEW_LIMITS = [
 
 def metadata() -> dict:
     from .assistant import PLACE_TYPES
+    from .assistant_scene import POSITION_PRECEDENCE
+    positions = ["lowalt.position", "lowalt.site_position", "lowalt.incident_position", "aas.studio.position_enu_m"]
     return {
         "ROLES": ROLES, "PLACE_TYPES": PLACE_TYPES, "topics": TOPICS, "topic_aliases": TOPIC_ALIASES,
         "limits": LIMITS, "overview_limits": OVERVIEW_LIMITS, "operation_labels": LABELS,
         "parameters": PARAMETERS, "values": VALUES, "units": UNITS,
         "kind_labels": KIND_LABELS, "field_labels": DIFF_FIELD_LABELS,
         "enum_labels": DIFF_ENUM_LABELS, "units_zh": UNITS_ZH,
-        "position_fields": ["lowalt.position", "lowalt.site_position", "lowalt.incident_position", "aas.studio.position_enu_m"],
+        "position_fields": positions,
+        "position_field_priority": {name: POSITION_PRECEDENCE.index(name) for name in positions},
         "position_display_fields": sorted(POSITION_FIELDS), "mirrored": {key: sorted(value) for key, value in MIRRORED.items()},
         "section_labels": SECTION_LABELS, "system_prompt": LEGACY_SYSTEM_PROMPT,
         "leaf_expand_prefixes": ["wind.profiles.", "weather"], "indexed_leaf_prefixes": ["wind.profiles."],

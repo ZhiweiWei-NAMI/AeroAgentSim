@@ -31,10 +31,10 @@ from aeroagentsim.assistant_api import (
 def annotate(context, params):
     text = params["text"]
     return CompileResult(
-        patches=({"op": "add", "path": "/title", "value": text},),
-        resources=(ResourceProposal("notes/title.txt", text.encode("utf-8")),),
-        effects=({"group": "changed", "kind": "configuration", "id": "example:title",
-                  "label": "Scene title", "label_zh": "场景标题"},),
+        patches=({"op": "replace", "path": "/id", "value": text},),
+        resources=(ResourceProposal("notes/identifier.txt", text.encode("utf-8")),),
+        effects=({"group": "changed", "kind": "configuration", "id": "example:identifier",
+                  "label": "Scene identifier", "label_zh": "场景标识"},),
     )
 
 
@@ -47,8 +47,8 @@ def plugin():
                 "text": {"type": "string", "minLength": 1, "maxLength": 80},
             }, "required": ["text"], "additionalProperties": False},
             title="Annotate scene", title_zh="标注场景",
-            description="Propose a scene title and text resource",
-            description_zh="提议场景标题和文本资源",
+            description="Propose a scenario identifier and text resource",
+            description_zh="提议场景标识和文本资源",
             compile=annotate,
         ),),
     )
@@ -56,6 +56,8 @@ def plugin():
 
 The host still validates the resulting **whole scenario**. A valid operation
 schema does not make arbitrary scenario fields or engine configurations valid.
+The example edits the supported scenario `id`; a top-level `title` is not a
+scenario field and remains a loader error.
 
 ## Discovery and ownership
 
@@ -97,6 +99,23 @@ copy. Tool admission also accepts canonical IDs. The compatibility
 `assistant.operations.OPERATION_SPECS` import is a derived catalogue view, not a
 second semantic operation table.
 
+### Explicit compatibility exception: `set_region` rejection
+
+Builtin behavior and diagnostic copy otherwise follow `origin/main`. One
+intentional diagnostic correction is retained: requesting `set_region` (or
+`lowalt.set_region`) through a host context with `allow_region=False` raises an
+`OperationError` at field **`op`**, with this exact bilingual message:
+
+```text
+set_region is an assistant proposal operation. Use the Region map's /region preview/apply endpoint for form edits / set_region 用于助手方案；表单请使用区域地图的 /region 预览和应用接口
+```
+
+The older branch called the three-argument `_fail` helper with two arguments,
+accidentally producing a `TypeError` diagnostic at field `params`. That bug is
+**not** compatibility behavior to restore. The corrected field and text above
+are an explicit exception to diagnostic parity; this does not enable region
+edits through the form compilation path.
+
 ## Operation contract
 
 `OperationSpec` contains:
@@ -135,6 +154,16 @@ evaluated against the supplied input snapshot; they are not runtime monitors or
 claims that a task has been completed. The builtin lowalt prerequisite retains
 the visible `add_lowalt_components` recipe and its existing warnings.
 
+A family may also contribute the pure
+`AssistantOperationPlugin.dependencies(context, operations)` callback. It
+receives a read-only operation tuple with aliases resolved to canonical IDs and
+returns a mapping of operation indices to tuples of prerequisite indices. Indices
+must refer to other operations in that snapshot; invalid edges and cycles fail
+closed. These edges order existing recipes, rather than installing prerequisites.
+Both compilation entry points consume the same catalogue dependency graph.
+Builtin creation/forward references, region/component ordering and duration-first
+release defaults live here, not in the private resource-staging adapter.
+
 ### Pure compile context
 
 The **public** `assistant_api.CompileContext` contains only snapshots:
@@ -148,16 +177,23 @@ Nested mappings are read-only and sequences are snapshotted as tuples. Use
 stores, paths, callbacks and LLM handles, are rejected as context data. A profile
 selector is authored configuration, not a resolved provider or its credentials.
 
-Compilers and applicability/prerequisite predicates must be deterministic and
-perform **no I/O**: no files, sockets, environment-dependent discovery, provider
+Compilers, dependency callbacks and applicability/prerequisite predicates must
+be deterministic and perform **no I/O**: no files, sockets, environment-dependent discovery, provider
 calls, engine construction, workspace writes or runtime commands. Resources
 must already have been supplied by the host. A compiler must not mutate its
 inputs or obtain runtime authority.
 
 For in-memory integration, `assistant.compiler.compile_operations(context,
-operations, catalogue=...)` expands/orders prerequisites and combines proposals
-without discovery, resource I/O or scenario loading. It is not whole-scenario
-validation. Do not apply a result containing error issues.
+operations, catalogue=...)` expands prerequisites, applies the shared pure
+dependency ordering, and combines proposals without discovery, resource I/O or
+scenario loading. For builtins whose resource inputs are already supplied, its
+ordering semantics match `compile_plan`: for example, a later `set_duration`
+sets the default Poisson release end before `add_orders`, and forward creation
+references are resolved first. The host also supplies the effective recipe
+snapshot as `context.data["operations"]` for pure creation-ID lookup. In-memory
+compilation does not perform template hooks, generator expansion or whole-scenario
+validation; recipes needing host-prepared resources still require those inputs.
+Do not apply a result containing error issues.
 
 The older `assistant.compiler.CompileContext` is a **host staging context** used
 by workspace/Form/tool integrations, not the context handed to operation
@@ -194,25 +230,47 @@ empty, drive or backslash components. Host-owned workspace/plan records
 `region.plan.json`) are not public resource targets. The host stages only inside
 isolated plan files. Public family writes/removals produce explicit resource rows in the
 approval diff; builtin compatibility adapters retain their existing
-component/region diff presentation.
+component/region diff presentation. Confirm applies the final validated removal
+for each exact workspace-relative path, after the usual plan digest, validation,
+workspace identity and revision checks and before saving the version. Removal
+records are covered by the plan digest, targets cannot escape via workspace
+symlinks, and earlier immutable versions are untouched. A subsequent write to
+the same resource cancels its removal.
 
 Expectations use the existing schema/`where` match format, optional bounded
 counts, release-based demand, dependencies and conditional alternatives. A
-result/combined expectation set is limited to 4096 entries. IDs must be unique;
-identical compile/read projections may share one ID, but conflicting duplicates
-fail. Callables and nonfinite data are not expectation predicates. If a family
-needs expectations reconstructed from a pinned run input, contribute its pure
-read projection too; a chat recipe alone is not pinned runtime evidence.
+result/combined expectation set is limited to 4096 entries. Public contribution
+IDs must be unique; identical compile/read projections may share one ID, but
+conflicting duplicates fail. The host preserves the legacy repeated weather
+expectation IDs/rows for builtin simultaneous gusts across multiple profiles;
+this private read-compatibility allowance does not relax public `CompileResult`
+admission or permit cross-provider ID collisions. Callables and nonfinite data
+are not expectation predicates. If a family needs expectations reconstructed
+from a pinned run input, contribute its pure read projection too; a chat recipe
+alone is not pinned runtime evidence.
 
 ## Contributed reads
 
 Optional `AssistantReadSpec` projections provide pure `summarize(context)`,
 `expectations(document, summary)`, `interactions(summary)` and missing-event
-explanations. Summary card lists concatenate, dictionaries merge and conflicting
-card IDs fail. `priority` can order contributed sections. Families can provide
-bilingual topic/section copy through metadata. Lowalt and traffic own their
-existing domain summaries and expectations, including traffic stage receipts
-and lowalt cooperation/weather conditions.
+explanations. Summary card lists concatenate, dictionaries merge and card IDs
+owned by different providers conflict. Repeated rows from the same provider
+remain intact, including legacy multi-profile gust IDs. `priority` can order
+contributed sections. Families can provide bilingual topic/section copy through
+metadata. Collection ownership is retained in-memory without adding serialized
+scene fields: expectation/interaction callbacks receive their own contributed
+card collections alongside shared scene context. A card is not permission for
+another family to manufacture an expectation. Builtin projections also filter
+foreign domain tags when called directly on a serialized/merged summary.
+
+Traffic owns its activation expectation, setup interaction, actor/incident lanes
+and stage receipts, even when lowalt reads are replaced. Lowalt owns its
+cooperation/weather conditions. Private builtin projection ordering preserves
+the original workload/cooperation → traffic setup → other events → traffic
+receipts sequence and lane copy. Explicit contributed spatial priorities preserve
+the original lowalt → aircraft → road → incident → studio position precedence
+for both cards and host `find_places(near=...)`. Projection failures return normal
+located compiler diagnostics, rather than escaping `compile_plan`.
 
 ## Guarantees and non-guarantees
 

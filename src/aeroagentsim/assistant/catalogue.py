@@ -184,6 +184,36 @@ class OperationCatalogue:
                     require(spec, params)
         return additions + result, notes, warnings
 
+    def dependencies(self, context: CompileContext, operations: list[dict]) -> dict[int, set[int]]:
+        """Collect pure family edges over a read-only, canonical operation list."""
+        from .operations import OperationError
+
+        canonical = thaw(freeze(operations))
+        for row in canonical:
+            if isinstance(row, dict):
+                try:
+                    row["op"] = self.resolve(row.get("op")).id
+                except OperationError:
+                    pass  # Invalid recipes still receive the normal located diagnostic.
+        snapshot = freeze(canonical)
+        dependencies = {index: set() for index in range(len(operations))}
+        invoked = []
+        for plugin in self.plugins:
+            callback = plugin.dependencies
+            if callback is None or any(callback is previous for previous in invoked):
+                continue
+            invoked.append(callback)
+            edges = callback(context, snapshot)
+            if not isinstance(edges, Mapping):
+                raise TypeError(f"{plugin.name}: dependency mapping required")
+            for index, required in edges.items():
+                if type(index) is not int or index not in dependencies or not isinstance(required, (list, tuple, set, frozenset)):
+                    raise ValueError(f"{plugin.name}: invalid dependency indices")
+                if any(type(other) is not int or other not in dependencies or other == index for other in required):
+                    raise ValueError(f"{plugin.name}: invalid dependency indices")
+                dependencies[index].update(required)
+        return dependencies
+
     def display(self, *, namespaced: bool = False) -> dict[str, dict]:
         """Keep legacy forms/model copy byte-for-byte; expose canonical ids on request."""
         result = {}
@@ -240,6 +270,14 @@ def metadata(key: str, default: Any = None, *, catalogue: OperationCatalogue | N
         elif result != value:
             raise ValueError(f"Conflicting assistant metadata {key}")
     return result
+
+
+def position_fields(*, catalogue: OperationCatalogue | None = None) -> list[str]:
+    """Order spatial metadata explicitly, not by provider discovery order."""
+    selected = OperationCatalogue() if catalogue is None else catalogue
+    fields = metadata("position_fields", [], catalogue=selected)
+    priorities = metadata("position_field_priority", {}, catalogue=selected)
+    return sorted(fields, key=lambda name: priorities.get(name, 1000))
 
 
 def callbacks(name: str, *, catalogue: OperationCatalogue | None = None):

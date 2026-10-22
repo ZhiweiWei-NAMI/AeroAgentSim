@@ -10,7 +10,7 @@ from functools import partial
 from aeroagentsim.assistant_api import (
     AssistantOperationPlugin, AssistantReadSpec, CompileContext, OperationSpec, thaw,
 )
-from aeroagentsim.packs.lowalt.assistant_scene import _common, _plain_payload, _position
+from aeroagentsim.packs.lowalt.assistant_scene import POSITION_PRECEDENCE, _common, _plain_payload, _position
 from aeroagentsim.services.narratives import _chinese_label
 
 from .narratives import EVENT_NARRATIVES
@@ -42,7 +42,7 @@ def summarize(context: CompileContext) -> dict:
         engines = [e["config"] for e in document.get("engines", {}).values() if e["config"].get("type_id") == type_id]
         capacity = next((e["energy"]["capacity_j"] for e in engines if "capacity_j" in e.get("energy", {})), None)
         states = [{"id": e["id"], "label": e.get("label", e["id"]), "label_zh": e.get("label_zh", _chinese_label(e.get("label", e["id"]))),
-                   "position": _position(e), "battery_pct": e["facts"]["traffic.uav.energy_j"] / capacity * 100 if capacity is not None and capacity > 0 and "traffic.uav.energy_j" in e["facts"] else None,
+                   "position": _position(e, context.data.get("position_fields")), "battery_pct": e["facts"]["traffic.uav.energy_j"] / capacity * 100 if capacity is not None and capacity > 0 and "traffic.uav.energy_j" in e["facts"] else None,
                    "payload_capacity_kg": None, "task_kinds": [], "current_task": _plain_payload(e["facts"].get("traffic.actor.current_task")),
                    "details": copy.deepcopy(e["facts"])} for e in members]
         fleets.append({"id": identity, "role": None, "domain": "traffic", "label": en, "label_zh": zh, "count": len(members),
@@ -69,7 +69,7 @@ def summarize(context: CompileContext) -> dict:
         for incident in incidents:
             events.append({"id": "traffic-incident:" + incident["id"], "domain": "traffic", "kind": "traffic_accident", "label": "Traffic accident", "label_zh": "交通事故",
                            "at_s": delay if incident["facts"].get("traffic.incident.source_kind") == "authored_staged" else None,
-                           "place": incident["id"], "position": _position(incident), "layer": "setup", "schema": "traffic.incident.activated", "params": {"incident": incident["id"]}})
+                           "place": incident["id"], "position": _position(incident, context.data.get("position_fields")), "layer": "setup", "schema": "traffic.incident.activated", "params": {"incident": incident["id"]}})
     return {"fleets": fleets, "workloads": workloads, "events": events,
             "routine": [{"kind": work["kind"], "text": f"Follow the configured {work['kind']} task and route; recorded events determine the outcome.", "text_zh": f"执行已配置的 {work['kind']} 任务和路线；结果以记录事件为准。"} for work in workloads],
             "traffic": {"bound_chains": sorted(bound & {name for name in chains if name.startswith("traffic.")}),
@@ -84,6 +84,10 @@ def expectations(document: dict, summary: dict) -> list[dict]:
         result.append({"id": identity, "text": en, "text_zh": zh, "layer": layer, "match": match,
                        "approx_s": at, "precheck": precheck, "depends_on": list(depends), **({"alternatives": list(alternatives)} if alternatives else {})})
         return identity
+    for event in summary.get("events", []):
+        if event.get("domain") == "traffic" and event.get("schema") is not None:
+            add("event:" + event["id"], event["schema"], event["params"], event["label"], event["label_zh"],
+                layer="setup", at=event["at_s"])
     traffic = summary.get("traffic", {})
     chains = traffic.get("bound_chains", [])
     if traffic.get("incidents") and "traffic.incident_report" in chains:
@@ -103,22 +107,46 @@ def expectations(document: dict, summary: dict) -> list[dict]:
     return result
 
 
+def projection_order(section: str, rows, summary) -> list[int]:
+    if section == "lanes":
+        priorities = {"system": 0, "vehicle": 10, "fleet": 10, "incident": 40}
+        return [priorities[row["kind"]] for row in rows]
+    return [10 if row["id"].startswith("event:") else 30 for row in rows]
+
+
 def interactions(summary: dict) -> dict:
-    lanes, steps = [], []
+    lanes = [{"id": "system", "label": "Task allocation", "label_zh": "任务分配", "kind": "system"}]
+    steps = []
+    for fleet in summary.get("fleets", []):
+        if fleet.get("domain") != "traffic":
+            continue
+        lanes.append({"id": fleet["id"], "label": fleet["label"], "label_zh": fleet["label_zh"],
+                      "kind": "vehicle" if fleet["members"] == [fleet["id"]] else "fleet"})
+        if summary.get("cooperation"):
+            for state in fleet.get("member_states", []):
+                if state["id"] != fleet["id"]:
+                    lanes.append({"id": state["id"], "label": state.get("label", state["id"]),
+                                  "label_zh": state.get("label_zh", state["id"]), "kind": "vehicle"})
     for event in summary.get("events", []):
         if event.get("domain") == "traffic":
-            lanes.append({"id": event["place"], "label": event["label"], "label_zh": event["label_zh"], "kind": "incident"})
+            if not any(lane["id"] == event["place"] for lane in lanes):
+                lanes.append({"id": event["place"], "label": event["label"], "label_zh": event["label_zh"], "kind": "incident"})
+            steps.append({"id": "event:" + event["id"], "from": "system", "to": event["place"] or "system",
+                          "text": event["label"], "text_zh": event["label_zh"], "layer": "setup", "decided_by": None,
+                          "branch": None, "at_s": event["at_s"], "expect": "event:" + event["id"] if event.get("schema") else None})
     for expected in expectations({}, summary):
-        steps.append({"id": expected["id"], "from": "system", "to": "system", "text": expected["text"], "text_zh": expected["text_zh"],
-                      "layer": "behaviour", "decided_by": "prescribed", "branch": None, "at_s": None, "expect": expected["id"]})
+        if expected["id"].startswith("traffic:"):
+            steps.append({"id": expected["id"], "from": "system", "to": "system", "text": expected["text"], "text_zh": expected["text_zh"],
+                          "layer": "behaviour", "decided_by": "prescribed", "branch": None, "at_s": None, "expect": expected["id"]})
     return {"lanes": lanes, "steps": steps}
 
 
 def plugin() -> AssistantOperationPlugin:
-    from aeroagentsim.packs.lowalt.assistant import OPERATION_SPECS, compile_operation, _staging
+    from aeroagentsim.packs.lowalt.assistant import OPERATION_SPECS, compile_operation, operation_dependencies, _staging
     from aeroagentsim.packs.lowalt.assistant_display import BRIEF
 
     names = ("set_control", "set_duration", "set_run_mode", "set_wind", "add_gust", "remove_gust", "schedule_event")
+    positions = ["he.aircraft.position_enu_m", "traffic.road.position_enu_m", "traffic.incident.position_enu_m"]
     operations = tuple(OperationSpec(
         id="traffic." + name, parameters=OPERATION_SPECS[name]["parameters"], title=BRIEF[name][0], title_zh=BRIEF[name][1],
         description=OPERATION_SPECS[name]["description"], description_zh=OPERATION_SPECS[name]["description_zh"],
@@ -127,11 +155,13 @@ def plugin() -> AssistantOperationPlugin:
     ) for name in names)
     return AssistantOperationPlugin(name="traffic", api_version=1, operations=operations,
                                     read=AssistantReadSpec(summarize=summarize, expectations=expectations, interactions=interactions,
-                                                           missing=missing, priority={"events": -1}),
-                                    metadata={"position_fields": ["he.aircraft.position_enu_m", "traffic.road.position_enu_m", "traffic.incident.position_enu_m"],
+                                                           missing=missing, priority={"events": -1},
+                                                           _callbacks={"projection_order": projection_order}),
+                                    metadata={"position_fields": positions,
+                                              "position_field_priority": {name: POSITION_PRECEDENCE.index(name) for name in positions},
                                               "failure_labels": {"traffic.capture.failed": ["Capture failures", "拍摄失败"]},
                                               "failure_priority": {"traffic.capture.failed": 0}, "summary_defaults": {"traffic": {}}},
-                                    _host=_staging)
+                                    dependencies=operation_dependencies, _host=_staging)
 
 
 def missing(expectation: dict, events: list[dict], approaches: dict, terminal: bool, last_ns: int | None) -> dict | None:

@@ -13,10 +13,28 @@ import yaml
 from aeroagentsim.assistant_api import CompileContext, freeze, thaw, validate_expectations
 from aeroagentsim.scenario.loader import UniqueLoader
 
-from .catalogue import OperationCatalogue, callbacks, metadata
+from .catalogue import OperationCatalogue, callbacks, metadata, position_fields
 from .diff_display import enrich_diff
 
 SECOND = 1_000_000_000
+_COLLECTIONS = {"fleets", "places", "workloads", "events", "rules", "routine"}
+
+
+class _SceneSummary(dict):
+    """Keep read ownership out of the serialized, backwards-compatible scene."""
+
+    def __init__(self, value: dict) -> None:
+        super().__init__(value)
+        self.contributions: dict[str, dict] = {}
+
+
+def _family_summary(summary: dict, provider: str) -> dict:
+    result = copy.deepcopy(dict(summary))
+    if isinstance(summary, _SceneSummary):
+        own = summary.contributions.get(provider, {})
+        for section in _COLLECTIONS:
+            result[section] = copy.deepcopy(own.get(section, []))
+    return result
 
 
 def _registry_types(document: dict, directory: Path | None) -> dict[str, dict]:
@@ -30,12 +48,12 @@ def _registry_types(document: dict, directory: Path | None) -> dict[str, dict]:
     return types
 
 
-def _position(entity: dict) -> list | None:
+def _position(entity: dict, *, catalogue: OperationCatalogue | None = None) -> list | None:
     facts = entity.get("facts", {})
-    return next((facts[key] for key in metadata("position_fields", []) if key in facts), None)
+    return next((facts[key] for key in position_fields(catalogue=catalogue) if key in facts), None)
 
 
-def _read_inputs(document: dict, directory: Path | None, catalog=None) -> dict:
+def _read_inputs(document: dict, directory: Path | None, catalog=None, *, catalogue: OperationCatalogue | None = None) -> dict:
     types = _registry_types(document, directory)
     if catalog is not None:
         pending = [entity["type"] for entity in document.get("entities", [])]
@@ -51,7 +69,7 @@ def _read_inputs(document: dict, directory: Path | None, catalog=None) -> dict:
     packages = [package.get("document", package) for package in document.get("behaviours", [])]
     if directory is not None:
         packages = [yaml.load((directory / package["path"]).read_bytes(), Loader=UniqueLoader) if "path" in package else package for package in packages]
-    return {"types": types, "packages": packages}
+    return {"types": types, "packages": packages, "position_fields": position_fields(catalogue=catalogue)}
 
 
 def summarize(document: dict, *, directory: Path | None = None, catalog=None, controls: dict | None = None,
@@ -66,16 +84,18 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
                **metadata("summary_defaults", {}, catalogue=catalogue), "entity_ids": sorted(entity["id"] for entity in document.get("entities", [])),
                "entity_facts": {entity["id"]: hashlib.sha256(json.dumps(entity, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
                                 for entity in document.get("entities", [])}}
-    context = CompileContext(document, data=_read_inputs(document, directory, catalog), controls=controls or {})
+    context = CompileContext(document, data=_read_inputs(document, directory, catalog, catalogue=catalogue), controls=controls or {})
     contributions = []
     for plugin in catalogue.plugins:
         if plugin.read is not None and plugin.read.summarize is not None:
             row = thaw(freeze(plugin.read.summarize(context)))
             if not isinstance(row, dict):
                 raise TypeError(f"{plugin.name}: scene summary must be a mapping")
-            contributions.append((plugin.read, row))
-    collections = {"fleets", "places", "workloads", "events", "rules", "routine"}
-    for read, row in contributions:
+            contributions.append((plugin, row))
+    summary = _SceneSummary(summary)
+    summary.contributions = {plugin.name: row for plugin, row in contributions}
+    collections = _COLLECTIONS
+    for plugin, row in contributions:
         for key, value in row.items():
             if key not in collections:
                 if isinstance(summary.get(key), dict) and isinstance(value, dict):
@@ -83,36 +103,70 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
                 else:
                     summary[key] = value
     for key in collections:
-        rows = []
-        for read, contribution in sorted(contributions, key=lambda item: item[0].priority.get(key, 0)):
-            rows.extend(contribution.get(key, []))
-        identities = [row["id"] for row in rows if isinstance(row, dict) and "id" in row]
-        if len(identities) != len(set(identities)):
-            raise ValueError(f"Conflicting assistant summary ids in {key}")
+        rows, owners = [], {}
+        for plugin, contribution in sorted(contributions, key=lambda item: item[0].read.priority.get(key, 0)):
+            for row in contribution.get(key, []):
+                if isinstance(row, dict) and "id" in row:
+                    identity = row["id"]
+                    if identity in owners and owners[identity] != plugin.name:
+                        raise ValueError(f"Conflicting assistant summary ids in {key}")
+                    owners[identity] = plugin.name
+                # Legacy projections can repeat a gust ID across wind profiles.
+                # Keep every row; only a different provider is an ownership collision.
+                rows.append(row)
         summary[key] = rows
     return summary
 
 
+def _ordered_projection(read, section: str, rows: list[dict], summary: dict) -> list[tuple[int, dict]]:
+    callback = read._callbacks.get("projection_order")
+    priorities = callback(section, freeze(rows), freeze(summary)) if callback is not None else [read.priority.get(section, 0)] * len(rows)
+    if len(priorities) != len(rows) or any(type(priority) is not int for priority in priorities):
+        raise TypeError("assistant projection order: one integer per row required")
+    return list(zip(priorities, rows))
+
+
+def validate_scene_expectations(rows: list[dict], summary: dict, *, catalogue: OperationCatalogue) -> None:
+    # Preserve the shipped multi-profile weather identities and rows, without
+    # relaxing admission of public CompileResult expectations.
+    repeated = frozenset(identity for callback in callbacks("repeated_expectation_ids", catalogue=catalogue)
+                         for identity in callback(copy.deepcopy(summary)))
+    validate_expectations(rows, _repeated_ids=repeated)
+
+
 def expectations(document: dict, summary: dict, *, catalogue: OperationCatalogue | None = None) -> list[dict]:
     catalogue = OperationCatalogue() if catalogue is None else catalogue
-    rows = []
+    rows, owners = [], {}
     for plugin in catalogue.plugins:
         if plugin.read is not None and plugin.read.expectations is not None:
-            rows.extend(thaw(freeze(plugin.read.expectations(copy.deepcopy(document), copy.deepcopy(summary)))))
-    validate_expectations(rows)
-    return rows
+            projected = thaw(freeze(plugin.read.expectations(copy.deepcopy(document), _family_summary(summary, plugin.name))))
+            # Exceptions are provider-local: another family cannot reuse a legacy ID.
+            duplicate_ids = plugin.read._callbacks.get("repeated_expectation_ids", lambda summary: ())
+            validate_expectations(projected, _repeated_ids=frozenset(duplicate_ids(copy.deepcopy(summary))))
+            for row in projected:
+                if row["id"] in owners and owners[row["id"]] != plugin.name:
+                    raise ValueError("assistant expectations: unique nonempty ids required")
+                owners[row["id"]] = plugin.name
+            rows.extend(_ordered_projection(plugin.read, "expectations", projected, _family_summary(summary, plugin.name)))
+    result = [row for _, row in sorted(rows, key=lambda item: item[0])]
+    validate_scene_expectations(result, summary, catalogue=catalogue)
+    return result
 
 
 def interactions(summary: dict, *, catalogue: OperationCatalogue | None = None) -> dict:
     catalogue = OperationCatalogue() if catalogue is None else catalogue
-    lanes, steps = [], []
+    projected = {"lanes": [], "steps": []}
     for plugin in catalogue.plugins:
         if plugin.read is not None and plugin.read.interactions is not None:
-            row = thaw(freeze(plugin.read.interactions(copy.deepcopy(summary))))
-            for lane in row.get("lanes", []):
-                if not any(existing["id"] == lane["id"] for existing in lanes):
-                    lanes.append(lane)
-            steps.extend(row.get("steps", []))
+            own = _family_summary(summary, plugin.name)
+            contribution = thaw(freeze(plugin.read.interactions(own)))
+            for section in projected:
+                projected[section].extend(_ordered_projection(plugin.read, section, contribution.get(section, []), own))
+    lanes, steps = [], []
+    for _, lane in sorted(projected["lanes"], key=lambda item: item[0]):
+        if not any(existing["id"] == lane["id"] for existing in lanes):
+            lanes.append(lane)
+    steps.extend(row for _, row in sorted(projected["steps"], key=lambda item: item[0]))
     return {"lanes": lanes, "steps": steps}
 
 

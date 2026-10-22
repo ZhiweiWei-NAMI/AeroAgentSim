@@ -20,7 +20,7 @@ from aeroagentsim.scenario import load_scenario
 
 from aeroagentsim.assistant_api import CompileContext as OperationContext
 from aeroagentsim.assistant_api import CompileResult as OperationResult
-from aeroagentsim.assistant_api import thaw
+from aeroagentsim.assistant_api import ResourceProposal, thaw
 
 from .catalogue import OperationCatalogue
 from .operations import OperationError, validate_operation
@@ -142,7 +142,18 @@ def _rebase(value: Any, source: Path, target: Path) -> Any:
     return value
 
 
-def _digest(document: dict, directory: Path | None) -> str:
+def _resource_removals(contributions: dict) -> tuple[str, ...]:
+    """Retain the final validated action for each proposed resource path."""
+    actions = {}
+    for row in contributions.get("resources", []):
+        ResourceProposal(row["path"], None)  # Recheck portable, non-host-owned paths.
+        if row["action"] not in {"write", "remove"}:
+            _fail("resources", "Unknown resource action", "资源操作未知")
+        actions[row["path"]] = row["action"]
+    return tuple(sorted(path for path, action in actions.items() if action == "remove"))
+
+
+def _digest(document: dict, directory: Path | None, removals: tuple[str, ...] = ()) -> str:
     digest = hashlib.sha256(json.dumps(document, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode())
     paths = sorted(p for p in directory.rglob("*") if p.is_file()) if directory is not None else []
     for path in paths:
@@ -152,6 +163,11 @@ def _digest(document: dict, directory: Path | None) -> str:
         digest.update(relative)
         digest.update(len(data).to_bytes(8, "big"))
         digest.update(data)
+    if removals:
+        # Tombstones are approved plan inputs too; changing only compile.json
+        # must not be able to widen or suppress workspace deletions.
+        digest.update(b"\x00assistant-resource-removals\x00")
+        digest.update(json.dumps(removals, ensure_ascii=False, separators=(",", ":")).encode())
     return "sha256:" + digest.hexdigest()
 
 
@@ -214,9 +230,9 @@ def compile_operations(context: OperationContext, operations: list[dict], *, cat
     document, resources, controls = thaw(context.document), dict(context.resources), thaw(context.controls)
     patches, proposals, issues, effective, effects, references, expected = [], {}, [], [], [], [], []
     issues.extend({"severity": "warning", **warning} for warning in warnings)
-    for index in _operation_order(operations, document, catalogue, []):
+    for index in _operation_order(operations, context, catalogue):
         operation = operations[index]
-        current = OperationContext(document, resources=resources, data=context.data, controls=controls,
+        current = OperationContext(document, resources=resources, data={**thaw(context.data), "operations": operations}, controls=controls,
                                    operation_id=operation.get("id", f"op-{index + 1}"),
                                    agent_profile=context.agent_profile, locale=context.locale)
         result = catalogue.compile(current, operation)
@@ -277,11 +293,8 @@ def _stage_resources(files: Path, proposals) -> list[dict]:
     return changes
 
 
-def _operation_order(operations: list[dict], document: dict, catalogue: OperationCatalogue, adapters: list) -> list[int]:
-    dependencies = {index: set() for index in range(len(operations))}
-    for adapter in adapters:
-        for index, required in adapter.dependencies(operations, document).items():
-            dependencies[index].update(required)
+def _operation_order(operations: list[dict], context: OperationContext, catalogue: OperationCatalogue) -> list[int]:
+    dependencies = catalogue.dependencies(context, operations)
     canonical = []
     for operation in operations:
         try:
@@ -306,7 +319,7 @@ def _operation_order(operations: list[dict], document: dict, catalogue: Operatio
 
 
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
-    from .scene import _registry_types, diff, expectations, interactions, summarize
+    from .scene import _registry_types, diff, expectations, interactions, summarize, validate_scene_expectations
     from .diff_display import enrich_diff
 
     out_dir = Path(out_dir)
@@ -353,7 +366,9 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         operations, notes, prerequisite_warnings = catalogue.prerequisites(prerequisite_context, operations)
         warnings.extend(prerequisite_warnings)
         seen: set[str] = set()
-        ordered_indices = _operation_order(operations, document, catalogue, adapters)
+        for adapter in adapters:
+            adapter.prepare_operations(operations)
+        ordered_indices = _operation_order(operations, prerequisite_context, catalogue)
         effective = {}
         for index in ordered_indices:
             operation = operations[index]
@@ -366,7 +381,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                 seen.add(op_id)
                 name, params = validate_operation(operation, catalogue=catalogue)
                 spec = catalogue.resolve(name)
-                data = {"template_id": scene.template_id}
+                data = {"template_id": scene.template_id, "operations": operations}
                 for adapter in adapters:
                     data.update(adapter.prepare(spec, operation, document, params, warnings))
                 resources, resource_names = _resource_inputs(files)
@@ -424,22 +439,33 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     except Exception as exc:  # noqa: BLE001 - return real compiler/loader diagnostics
         errors.append({"op_id": operations[-1].get("id", f"op-{len(operations)}") if isinstance(operations, list) and operations and isinstance(operations[-1], dict) else None,
                        "field": getattr(exc, "field", getattr(exc, "path", "base")), "message": f"{type(exc).__name__}: {exc}"})
-    summary = summarize(document, directory=files, controls=scene.controls, catalogue=catalogue) if not errors else {}
-    for work in summary.get("workloads", []):
-        if "note" in work["release"]:
-            warnings.append({"op_id": None, "field": f"workloads.{work['id']}.release", "message": f"{work['release']['note']} / {work['release']['note_zh']}"})
-    expected = expectations(document, summary, catalogue=catalogue) if not errors else []
-    for row in contributed_expectations if not errors else []:
-        previous = next((entry for entry in expected if entry["id"] == row["id"]), None)
-        if previous is None or previous != row:
-            expected.append(row)  # Conflicting duplicate ids fail validation below.
-    from aeroagentsim.assistant_api import validate_expectations
-    try:
-        validate_expectations(expected)
-    except (TypeError, ValueError) as exc:
-        errors.append({"op_id": None, "field": "expectations", "message": str(exc)})
-    result = CompileResult(not errors, errors, warnings, document, files, _digest(document, files), summary,
-                           diff(base_summary, summary) if not errors else {}, interactions(summary, catalogue=catalogue) if not errors else {}, expected if not errors else [])
+    summary, expected, difference, diagram = {}, [], {}, {}
+    if not errors:
+        projection = "summary"
+        try:
+            summary = summarize(document, directory=files, controls=scene.controls, catalogue=catalogue)
+            for work in summary.get("workloads", []):
+                if "note" in work["release"]:
+                    warnings.append({"op_id": None, "field": f"workloads.{work['id']}.release", "message": f"{work['release']['note']} / {work['release']['note_zh']}"})
+            projection = "expectations"
+            expected = expectations(document, summary, catalogue=catalogue)
+            for row in contributed_expectations:
+                previous = next((entry for entry in expected if entry["id"] == row["id"]), None)
+                if previous is None:
+                    expected.append(row)
+                elif previous != row:
+                    _fail("expectations", "assistant expectations: unique nonempty ids required", "预期事件标识必须唯一")
+            validate_scene_expectations(expected, summary, catalogue=catalogue)
+            projection = "interactions"
+            diagram = interactions(summary, catalogue=catalogue)
+            projection = "summary"
+            difference = diff(base_summary, summary)
+        except Exception as exc:  # noqa: BLE001 - contributed projections are compiler inputs
+            errors.append({"op_id": operations[-1].get("id", f"op-{len(operations)}") if operations else None,
+                           "field": getattr(exc, "field", projection), "message": f"{type(exc).__name__}: {exc}"})
+            summary, expected, difference, diagram = {}, [], {}, {}
+    result = CompileResult(not errors, errors, warnings, document, files, _digest(document, files, _resource_removals(contributions)), summary,
+                           difference, diagram, expected)
     result.notes = notes
     result.contributions = contributions
     result.operations = copy.deepcopy(operations) if isinstance(operations, list) else []
@@ -466,7 +492,7 @@ def validate_compiled(ctx: CompileContext, out_dir: Path) -> dict:
     try:
         if not record["ok"]:
             raise ValueError("Plan has compile errors / 计划存在编译错误")
-        if _digest(document, out_dir / "files") != record["digest"]:
+        if _digest(document, out_dir / "files", _resource_removals(record.get("contributions", {}))) != record["digest"]:
             raise PlanConflict("Compiled plan files changed / 编译后的计划文件已改变")
         validate_configuration(document, base=out_dir / "files", directory=out_dir)
         result = {"valid": True, "errors": [], "issues": []}
@@ -480,7 +506,8 @@ def apply_plan(ctx: CompileContext, out_dir: Path, *, base: dict, workspace_id: 
     out_dir = Path(out_dir)
     record = json.loads((out_dir / "compile.json").read_text())
     document = json.loads((out_dir / "scenario.json").read_text())
-    if base != record["base"] or not record["ok"] or _digest(document, out_dir / "files") != record["digest"]:
+    removals = _resource_removals(record.get("contributions", {}))
+    if base != record["base"] or not record["ok"] or _digest(document, out_dir / "files", removals) != record["digest"]:
         raise PlanConflict("Plan or files changed; compile it again / 计划或文件已改变，请重新编译")
     validation_path = out_dir / "validation.json"
     if not validation_path.exists():
@@ -502,12 +529,25 @@ def apply_plan(ctx: CompileContext, out_dir: Path, *, base: dict, workspace_id: 
             draft = ctx.store.import_template(base["template"], base.get("controls", {}), registry=ctx.templates)
             workspace_id = draft["id"]
         directory = ctx.store.directory(workspace_id)
+        # Resolve and check every exact target before any workspace mutation.
+        # Never follow a workspace symlink outside the revision-checked draft.
+        targets = []
+        root = directory.resolve()
+        for relative in removals:
+            target = directory / relative
+            if not target.resolve().is_relative_to(root) or target.is_dir():
+                raise PlanConflict(f"Resource removal escapes workspace files: {relative} / 资源删除超出工作区文件范围")
+            if (out_dir / "files" / relative).exists():
+                raise PlanConflict(f"Removed resource is still staged: {relative} / 待删除资源仍存在于计划文件中")
+            targets.append(target)
         from .regions import apply as apply_region
 
         region_draft = apply_region(ctx.store, workspace_id, out_dir / "files")
         if region_draft is not None:
             draft = region_draft
         _copy_files(out_dir / "files", directory)
+        for target in targets:
+            target.unlink(missing_ok=True)
         document = _rebase(document, out_dir / "files", directory)
         changes: dict = {"scenario": document, "name": name, "revision": draft["revision"]}
         saved = ctx.store.save(workspace_id, changes)

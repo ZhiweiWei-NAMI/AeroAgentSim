@@ -61,7 +61,7 @@ def expected_completion() -> dict:
 
 def external_plugin() -> AssistantOperationPlugin:
     def prepare(context, params):
-        return CompileResult(patches=({"op": "add", "path": "/title", "value": "prepared:" + context.document.get("title", "")},))
+        return CompileResult(patches=({"op": "add", "path": "/id", "value": "prepared:" + context.document.get("id", "")},))
 
     def annotate(context, params):
         assert context.operation_id
@@ -70,7 +70,7 @@ def external_plugin() -> AssistantOperationPlugin:
         prefix = context.resources.get("annotation.prefix", b"")
         operation = {"id": context.operation_id, "op": "external.annotate", "params": thaw(params)}
         return CompileResult(
-            patches=({"op": "add", "path": "/title", "value": "external:" + params["text"]},),
+            patches=({"op": "add", "path": "/id", "value": "external:" + params["text"]},),
             resources=(ResourceProposal("notes/annotation.txt", prefix + params["text"].encode("utf-8")),),
             issues=({"severity": "warning", "field": "text", "message": "Configuration only / 仅配置"},),
             effective_operations=(operation,),
@@ -81,10 +81,10 @@ def external_plugin() -> AssistantOperationPlugin:
         )
 
     def read(context):
-        return {"external": {"title": context.document.get("title")}}
+        return {"external": {"id": context.document.get("id")}}
 
     def expectations(document, summary):
-        return [expected_completion()] if str(document.get("title", "")).startswith("external:") else []
+        return [expected_completion()] if str(document.get("id", "")).startswith("external:") else []
 
     prerequisite = OperationSpec(
         id="external.prepare", parameters=obj({}), title="Prepare annotation", title_zh="准备标注",
@@ -93,10 +93,10 @@ def external_plugin() -> AssistantOperationPlugin:
     )
     operation = OperationSpec(
         id="external.annotate", parameters=obj({"text": {"type": "string", "minLength": 1, "maxLength": 80}}, ("text",)),
-        title="Annotate the scene", title_zh="标注场景", description="Propose a title and text resource",
-        description_zh="提议标题和文本资源", compile=annotate,
+        title="Annotate the scene", title_zh="标注场景", description="Propose a scenario identifier and text resource",
+        description_zh="提议场景标识和文本资源", compile=annotate,
         applicable=lambda context, params: context.document.get("run", {}).get("until_ns", 0) > 0,
-        prerequisites=(Prerequisite("external.prepare", when=lambda context, params: not str(context.document.get("title", "")).startswith("prepared:"),
+        prerequisites=(Prerequisite("external.prepare", when=lambda context, params: not str(context.document.get("id", "")).startswith("prepared:"),
                                     automatic_id="external-prerequisite", note="Prepare metadata / 准备元数据"),),
         topic="annotations",
     )
@@ -126,7 +126,8 @@ def test_novel_installed_operation_compiles_through_the_real_host(installed, tmp
     operation = {"id": "novel", "op": "external.annotate", "params": {"text": "New capability / 新能力"}}
     result = compile_plan(context, {"template": "food-delivery"}, [operation], tmp_path / "plan")
     assert result.ok, result.errors
-    assert result.document["title"] == "external:New capability / 新能力"
+    assert result.document["id"] == "external:New capability / 新能力"
+    assert "title" not in result.document  # The scenario loader intentionally rejects this field.
     assert (result.files_dir / "notes/annotation.txt").read_bytes() == "New capability / 新能力".encode()
     assert result.operations == [{"id": "external-prerequisite", "op": "external.prepare", "params": {}}, operation]
     assert result.notes == ["Prepare metadata / 准备元数据"]
@@ -134,7 +135,7 @@ def test_novel_installed_operation_compiles_through_the_real_host(installed, tmp
     assert not any(row["id"] == "notes/annotation.txt" for row in result.diff_base["removed"])
     assert any(row["id"] == "external:annotation" for row in result.diff_base["changed"])
     assert result.expectations.count(expected_completion()) == 1
-    assert result.summary["external"]["title"] == result.document["title"]
+    assert result.summary["external"]["id"] == result.document["id"]
     assert result.contributions["references"] == [{"kind": "resource", "id": "notes/annotation.txt", "relation": "configured_input"}]
     assert result.contributions["resources"][0]["path"] == "notes/annotation.txt"
     assert result.contributions["resources"][0]["digest"].startswith("sha256:")
@@ -145,7 +146,7 @@ def test_novel_installed_operation_compiles_through_the_real_host(installed, tmp
 def test_external_schema_is_available_to_tools_without_a_host_switch(installed) -> None:
     schema, descriptions = operation_catalog()
     validate_arguments(schema, [{"op": "external.annotate", "params": {"text": "Data"}}])
-    assert "external.annotate(text): Propose a title and text resource" in descriptions
+    assert "external.annotate(text): Propose a scenario identifier and text resource" in descriptions
     with pytest.raises(ValueError):
         validate_arguments(schema, [{"op": "external.annotate", "params": {"text": 12}}])
     assert OperationCatalogue().resolve("set_duration").id == "lowalt.set_duration"
@@ -153,7 +154,7 @@ def test_external_schema_is_available_to_tools_without_a_host_switch(installed) 
 
 def test_compile_is_data_only_with_file_and_network_io_disabled(installed, monkeypatch) -> None:
     catalogue = OperationCatalogue()
-    document = {"id": "memory", "title": "Before", "run": {"until_ns": 10}}
+    document = {"id": "Before", "run": {"until_ns": 10}}
     before = copy.deepcopy(document)
     context = CompileContext(document, resources={"annotation.prefix": b"prefix:"})
     operation = {"id": "novel", "op": "external.annotate", "params": {"text": "Pure"}}
@@ -171,7 +172,7 @@ def test_compile_is_data_only_with_file_and_network_io_disabled(installed, monke
         result = compile_operations(context, [operation], catalogue=catalogue)
         changed = apply_patches(document, result.patches)
     assert document == before and thaw(context.document) == before
-    assert changed["title"] == "external:Pure"
+    assert changed["id"] == "external:Pure"
     assert result.resources == (ResourceProposal("notes/annotation.txt", b"prefix:Pure"),)
     assert thaw(result.references) == [{"kind": "resource", "id": "notes/annotation.txt", "relation": "configured_input"}]
     assert thaw(result.expectations) == [expected_completion()]
@@ -211,7 +212,7 @@ def test_prerequisites_are_explicit_visible_and_ordered(installed) -> None:
                                               "note": "Prepare metadata / 准备元数据", "warning": None}]
     assert catalogue.display()["external.annotate"]["prerequisites"] == descriptor["prerequisites"]
     assert catalogue.describe("add_place")["prerequisites"][0]["operation"] == "lowalt.add_lowalt_components"
-    context = CompileContext({"title": "Before", "run": {"until_ns": 1}})
+    context = CompileContext({"id": "Before", "run": {"until_ns": 1}})
     operations = [{"id": "novel", "op": "external.annotate", "params": {"text": "Data"}},
                   {"id": "explicit", "op": "external.prepare", "params": {}}]
     result = compile_operations(context, operations, catalogue=catalogue)
@@ -368,7 +369,7 @@ def test_acceptance_does_not_complete_and_empty_expectations_are_unassessed(tmp_
 def test_external_read_summary_is_contributed_not_host_dispatched(installed) -> None:
     prepared = TemplateRegistry().apply("traffic-accident")
     summary = summarize(prepared.document, directory=prepared.base)
-    assert summary["external"] == {"title": prepared.document.get("title")}
+    assert summary["external"] == {"id": prepared.document.get("id")}
     assert summary["traffic"]["bound_chains"]
     assert any(fleet.get("domain") == "traffic" for fleet in summary["fleets"])
 

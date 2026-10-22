@@ -157,8 +157,8 @@ class CompileResult:
             json.dumps(thaw(self.controls), allow_nan=False)
 
 
-def validate_expectations(rows: Any) -> None:
-    """Bound conditional, data-only event matches without implying completion."""
+def validate_expectations(rows: Any, *, _repeated_ids: frozenset[str] = frozenset()) -> None:
+    """Bound event matches; only host-declared legacy read IDs may repeat."""
     if len(rows) > MAX_EXPECTATIONS:
         raise ValueError(f"assistant expectations: at most {MAX_EXPECTATIONS} entries")
     identities = set()
@@ -166,7 +166,7 @@ def validate_expectations(rows: Any) -> None:
         if not isinstance(row, Mapping):
             raise TypeError("assistant expectation: mapping required")
         identity, match = row.get("id"), row.get("match")
-        if not isinstance(identity, str) or not identity or identity in identities:
+        if not isinstance(identity, str) or not identity or (identity in identities and identity not in _repeated_ids):
             raise ValueError("assistant expectations: unique nonempty ids required")
         identities.add(identity)
         if any(not isinstance(row.get(key), str) or not row[key] for key in ("text", "text_zh")):
@@ -360,6 +360,8 @@ class AssistantOperationPlugin:
     operations: tuple[OperationSpec, ...] = ()
     read: AssistantReadSpec | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    # Pure dependencies between indices in the canonical operation snapshot.
+    dependencies: Callable[[CompileContext, tuple[Mapping[str, Any], ...]], Mapping[int, tuple[int, ...]]] | None = None
     # Private compatibility seam for the shipped authoring/resource adapters.
     # Not part of the external v1 operation API; never enters CompileContext.
     _host: Callable[..., Any] | None = field(default=None, repr=False, compare=False)
@@ -381,6 +383,8 @@ class AssistantOperationPlugin:
             seen.add(operation.id)
         if self.read is not None and not isinstance(self.read, AssistantReadSpec):
             raise TypeError("assistant plugin read: AssistantReadSpec required")
+        if self.dependencies is not None and not callable(self.dependencies):
+            raise TypeError("assistant plugin dependencies: callable required")
         if self._host is not None and not callable(self._host):
             raise TypeError("assistant plugin _host: callable required")
         if not isinstance(self.metadata, Mapping):
