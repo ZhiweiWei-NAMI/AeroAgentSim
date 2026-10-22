@@ -448,6 +448,83 @@ def test_v1_yaml_engine_date_matches_independent_legacy_admission(
     assert load_scenario(source, base=tmp_path).preparation == current.preparation
 
 
+@pytest.mark.parametrize("source_kind", ("file", "mapping"))
+@pytest.mark.parametrize("yaml_value,expected_type", [
+    pytest.param("null", type(None), id="null"),
+    pytest.param("true", bool, id="bool"),
+    pytest.param("123", int, id="int"),
+    pytest.param("1.25", float, id="finite-float"),
+    pytest.param("'text'", str, id="str"),
+    pytest.param("[1, 'two']", list, id="list"),
+    pytest.param("{first: 1, second: 'two'}", dict, id="dict"),
+    pytest.param("!!pairs [{first: 1}, {second: 2}]", list, id="pairs-tuples"),
+    pytest.param("!!omap [{first: 1}, {second: 2}]", list, id="omap-tuples"),
+    pytest.param(".inf", float, id="positive-infinity"),
+    pytest.param("-.inf", float, id="negative-infinity"),
+    pytest.param(".nan", float, id="nan"),
+    pytest.param("!!pairs [{ceiling: .inf}]", list, id="pairs-infinity"),
+    pytest.param("!!omap [{ceiling: .nan}]", list, id="omap-nan"),
+    pytest.param("!!binary aGVsbG8=", bytes, id="binary"),
+    pytest.param("!!set {second: null, first: null}", set, id="set"),
+    pytest.param("!!set {.inf: null, -.inf: null, .nan: null}", set, id="nonfinite-set"),
+    pytest.param("2026-07-13", date, id="date"),
+    pytest.param("2026-07-13T12:34:56.123456+02:00", datetime, id="datetime"),
+    pytest.param(
+        "!!omap [{limits: !!pairs [{ceiling: .inf}, {floor: -.inf}, {unknown: .nan}]}, "
+        "{data: [!!binary aGVsbG8=, !!set {2026-07-13: null, .nan: null}, "
+        "2026-07-13T12:34:56Z]}]",
+        list, id="nested-safe-loader-types",
+    ),
+])
+def test_v1_engine_safe_loader_values_load_with_stable_legacy_digest(
+    yaml_value: str, expected_type: type, source_kind: str,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document = _minimal_document()
+    del document["engines"]
+    # The historical v1 finiteness walker stops at tuples. Keep that admission
+    # boundary rather than requiring formerly rejected bare .inf/.nan to load.
+    source_text = yaml.safe_dump(document, sort_keys=False) + (
+        "engines:\n  probe:\n    plugin: probe\n    config:\n"
+        f"      value: !!pairs [{{payload: {yaml_value}}}]\n"
+    )
+    path = tmp_path / "safe-loader.yaml"
+    if source_kind == "file":
+        path.write_text(source_text, encoding="utf-8")
+    monkeypatch.setattr(preparation_driver, "discover_preparers", _forbid_discovery)
+
+    def load() -> Scenario:
+        # Parse independently on each load, including for mapping inputs.
+        source = path if source_kind == "file" else yaml.load(source_text, Loader=UniqueLoader)
+        return load_scenario(source, base=tmp_path)
+
+    first, second = load(), load()
+    assert first.preparation is not None
+    assert second.preparation is not None
+    authored = yaml.load(source_text, Loader=UniqueLoader)
+    digest = preparation_api.document_digest(authored, legacy_yaml=True)
+    for scenario in (first, second):
+        assert scenario.preparation is not None
+        identity = scenario.preparation.contribution_selections[0]
+        assert identity["authored_document_digest"] == digest
+        for engines in (scenario.engines, scenario.preparation.document["engines"]):
+            pairs = engines["probe"]["config"]["value"]
+            assert type(pairs[0]) is tuple
+            assert type(pairs[0][1]) is expected_type
+    assert (
+        first.preparation.contribution_selections[0]["contribution_digest"]
+        == second.preparation.contribution_selections[0]["contribution_digest"]
+    )
+    # An independent pre-extraction admission path must also accept the input;
+    # don't compare NaN-containing structures using Python equality or JSON.
+    with monkeypatch.context() as scoped:
+        scoped.setattr(preparation_driver, "prepare_scenario", _frozen_v1_preparation)
+        legacy = load()
+    assert preparation_api.document_digest(first.document, legacy_yaml=True) == (
+        preparation_api.document_digest(legacy.document, legacy_yaml=True)
+    )
+
+
 def test_v2_yaml_engine_date_is_rejected_before_discovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

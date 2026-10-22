@@ -43,17 +43,24 @@ prepared scenario; a preparer may elaborate authored shorthand into this shape.
 | `city` | no | Display metadata; supported values are preparer/presentation policy, not generic loader dispatch. |
 
 Unknown top-level keys are rejected. The YAML loader is YAML-1.2-style for
-booleans (`yes`/`no`/`on`/`off` are strings, `true`/`false` are booleans),
-rejects duplicate keys and non-string mapping keys, and rejects any
-non-finite numeric value anywhere in the document.
+booleans (`yes`/`no`/`on`/`off` are strings, `true`/`false` are booleans) and
+rejects duplicate keys and non-string keys in ordinary mappings. Special YAML
+collections (`!!pairs`, `!!omap`, `!!set`) retain their SafeLoader semantics.
 
 V1 retains historical YAML value admission in otherwise loadable fields; it is
 **not JSON-only**. For example, `engines.calendar.config.start_date: 2026-07-13`
 loads as a Python `datetime.date` and remains that type in the prepared/effective
-document and engine config. Its preparation digest uses tagged canonical YAML
-evidence without rewriting values. V2 requires finite, JSON-compatible authored
-and prepared documents; quote dates/timestamps (for example, `"2026-07-13"`) to
-keep them strings. See [digest encoding](preparation-plugins.md#public-contract).
+document and engine config. Its historical finiteness walker checks dictionaries
+and lists but does not descend into tuples or sets. Thus previously admitted
+non-finite floats inside pairs/ordered maps or sets remain admitted; ordinary
+numeric fields still require finite values. The **legacy v1 digest** is total over
+SafeLoader values, using deterministic, type-tagged canonical evidence when finite
+JSON encoding fails. Neither that digest nor `PreparedScenario` output validation
+adds v1 admission restrictions or rewrites values.
+
+V2 remains strict: authored and prepared documents must be finite, JSON-compatible
+data, including nested values. Quote dates/timestamps (for example, `"2026-07-13"`)
+to keep them strings. See [digest encoding](preparation-plugins.md#public-contract).
 
 ## Preparation and final seed
 

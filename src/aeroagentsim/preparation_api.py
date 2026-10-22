@@ -46,47 +46,80 @@ def _canonical_json(value: Any) -> bytes:
     ).encode("utf-8")
 
 
-def _yaml_evidence(value: Any) -> Any:
-    """Tagged projection of SafeLoader values; never rewrite effective data.
+def _yaml_evidence(value: Any) -> bytes:
+    """Total, type-tagged canonical encoding of SafeLoader values.
 
-    Tag every node, not just special scalars, so authored mappings cannot imitate
-    evidence tags. Sort mappings/sets by encoded nodes, not Python value ordering.
+    Work bottom-up without Python/JSON recursion limits. Ancestor-relative refs
+    encode recursive aliases without object addresses; other aliases expand by
+    value. Mapping rows and set members sort by encoded bytes, not Python values.
     """
-    if value is None or type(value) in (str, bool, int):
-        return [type(value).__name__, value]
-    if type(value) is float:
-        return ["float", value.hex()]
-    if isinstance(value, datetime):  # datetime is also a date.
-        return ["datetime", value.isoformat()]
-    if isinstance(value, date):
-        return ["date", value.isoformat()]
-    if isinstance(value, bytes):
-        return ["bytes", value.hex()]
-    if isinstance(value, dict):
-        rows = [[_yaml_evidence(key), _yaml_evidence(child)] for key, child in value.items()]
-        return ["dict", sorted(rows, key=_canonical_json)]
-    if isinstance(value, (set, frozenset)):
-        return [type(value).__name__, sorted(map(_yaml_evidence, value), key=_canonical_json)]
-    if isinstance(value, (list, tuple)):
-        return [type(value).__name__, [_yaml_evidence(child) for child in value]]
-    raise ValueError(f"preparation data: unsupported YAML value {type(value).__name__}")
+    pending = [(value, False)]
+    encoded: list[bytes] = []
+    ancestors: dict[int, int] = {}
+    while pending:
+        node, finishing = pending.pop()
+        if finishing:
+            count = len(node) * (2 if isinstance(node, dict) else 1)
+            children = encoded[-count:] if count else []
+            if count:
+                del encoded[-count:]
+            if isinstance(node, dict):
+                children = sorted(
+                    b"[" + key + b"," + child + b"]"
+                    for key, child in zip(children[::2], children[1::2])
+                )
+            elif isinstance(node, (set, frozenset)):
+                children.sort()
+            tag = type(node).__name__.encode("ascii")
+            encoded.append(b'["' + tag + b'",[' + b",".join(children) + b"]]")
+            del ancestors[id(node)]
+            continue
+        if isinstance(node, (dict, list, tuple, set, frozenset)):
+            if id(node) in ancestors:
+                tagged = ["ref", len(ancestors) - 1 - ancestors[id(node)]]
+            else:
+                ancestors[id(node)] = len(ancestors)
+                pending.append((node, True))
+                children = (
+                    [item for row in node.items() for item in row]
+                    if isinstance(node, dict) else list(node)
+                )
+                pending.extend((child, False) for child in reversed(children))
+                continue
+        elif node is None or type(node) in (str, bool):
+            tagged = [type(node).__name__, node]
+        elif type(node) is int:
+            # Hex has no decimal-conversion digit limit, even for YAML hex ints.
+            tagged = ["int", hex(node)]
+        elif type(node) is float:
+            tagged = ["float", node.hex()]  # Includes inf, -inf and nan.
+        elif isinstance(node, datetime):  # datetime is also a date.
+            tagged = ["datetime", node.isoformat()]
+        elif isinstance(node, date):
+            tagged = ["date", node.isoformat()]
+        elif isinstance(node, bytes):
+            tagged = ["bytes", node.hex()]
+        else:
+            raise ValueError(f"preparation data: unsupported YAML value {type(node).__name__}")
+        # ASCII escaping also covers lone surrogates constructible via YAML escapes.
+        encoded.append(json.dumps(tagged, ensure_ascii=True, separators=(",", ":")).encode("ascii"))
+    return encoded[0]
 
 
 def document_digest(value: Any, *, legacy_yaml: bool = False) -> str:
-    """Hash canonical JSON, or tagged SafeLoader evidence for legacy v1 data.
+    """Hash finite JSON, or use the total legacy v1 digest for SafeLoader data.
 
-    JSON-compatible inputs retain their original digest. Non-JSON YAML uses a
-    domain-separated projection, preserving dates, timestamps, binary, sets and
-    pairs/ordered maps without imposing new admission rules on v1 documents.
+    Finite JSON-compatible inputs retain their original digest bytes. The legacy
+    fallback is domain-separated, type-tagged evidence, never a normalization or
+    an additional admission restriction on authored/prepared v1 values.
     """
     try:
         _json_data(value)
-    except ValueError:
+        data = _canonical_json(value)
+    except (ValueError, RecursionError):
         if not legacy_yaml:
             raise
-        data = b"aeroagentsim.yaml-evidence/v1\0" + _canonical_json(_yaml_evidence(value))
-    else:
-        data = _canonical_json(value)
+        data = b"aeroagentsim.yaml-evidence/v1\0" + _yaml_evidence(value)
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
@@ -124,7 +157,9 @@ class PreparedScenario:
             for name, digest in self.resource_manifest.items()
         ):
             raise ValueError("prepared resource manifest: expected named SHA-256 digests")
-        # V1 retains SafeLoader value types; only v2 imposes JSON-only output.
+        # V1 uses the total legacy digest, not stricter output admission: even
+        # tuple/set-contained nonfinite floats retain historical v1 semantics.
+        # V2 (and the selection evidence below) still requires finite JSON.
         document_digest(
             self.document, legacy_yaml=self.document.get("format") == "aeroagentsim.scenario/v1"
         )

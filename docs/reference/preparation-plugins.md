@@ -47,10 +47,14 @@ installed distribution replaces that discovery name. This preserves historical
 v1 admission rather than activating installed code from an old document. V1 also
 retains YAML SafeLoader value types in otherwise admitted fields: for example,
 `engines.calendar.config.start_date: 2026-07-13` stays a Python `datetime.date`,
-not a string. Preparation evidence does not impose JSON-only admission on v1.
-V2 explicitly opts into discovery and its override rules, and requires finite,
-JSON-compatible authored and prepared documents (quote YAML dates/timestamps to
-keep them strings).
+not a string. Preparation evidence and `PreparedScenario` output validation do
+not impose JSON-only admission on v1. Historical v1 finiteness checks traverse
+mappings/lists, not tuple or set contents: previously admitted non-finite floats
+inside `!!pairs`, `!!omap` or `!!set` remain admitted. This is compatibility, not
+permission to use non-finite values in typed numeric scenario fields.
+V2 explicitly opts into discovery and its override rules, and still requires
+finite, JSON-compatible authored and prepared documents, including nested values
+(quote YAML dates/timestamps to keep them strings).
 
 The generic loader owns registry/schema/binding/clock admission, not lowalt,
 city or vehicle-class policy dispatch. Selecting a preparer neither builds an
@@ -67,7 +71,7 @@ normal validation and ownership contracts.
 | `ReadOnlyResources` | `Mapping[str, bytes]`; the driver passes an immutable mapping snapshot with actual `bytes` values, not filesystem handles or permission to read arbitrary files. |
 | `PreparedScenario(document, contribution_selections=(), resource_manifest={})` | Frozen result envelope containing a detached document, a tuple of detached selection mappings and a detached digest mapping. Nested dictionaries are detached, not deeply immutable. This is not a compiled `Scenario`, registry or run session. |
 | `resource_manifest(resources)` | Return every supplied alias, sorted by name, mapped to `"sha256:" + sha256(actual_bytes).hexdigest()`. The returned result must match this manifest exactly. |
-| `document_digest(value, *, legacy_yaml=False)` | `sha256:` digest of sorted, compact, finite UTF-8 JSON with `ensure_ascii=False` and no terminal newline. With `legacy_yaml=True`, non-JSON SafeLoader values use tagged canonical evidence instead; JSON-compatible inputs keep the same digest. Not a source-code digest. |
+| `document_digest(value, *, legacy_yaml=False)` | `sha256:` digest of sorted, compact, finite UTF-8 JSON with `ensure_ascii=False` and no terminal newline. `legacy_yaml=True` selects the **legacy v1 digest**, total over SafeLoader values: if the complete JSON validation/encoding fails, use type-tagged canonical evidence. Existing finite JSON-compatible inputs keep their digest bytes. Not a source-code digest. |
 
 A preparer's document must preserve the admitted input `format`, the final
 `run.seed`, and, for v2, the entire explicit `preparation` selection. It cannot add
@@ -77,14 +81,29 @@ admission checks; the compatibility adapter does not JSON-normalize the document
 Generic compilation subsequently validates the executable scenario; successful
 preparation alone is not successful engine admission.
 
-For v1 non-JSON evidence, the driver uses `document_digest(..., legacy_yaml=True)`.
-The projection tags every node, distinguishes dates/datetimes using ISO strings,
-encodes binary as hex, preserves sequence order and sorts mapping/set nodes by
-their canonical JSON bytes. It supports SafeLoader sets and pairs/ordered maps,
-including non-string keys within those values. The hashed bytes are
-`b"aeroagentsim.yaml-evidence/v1\0"` followed by compact UTF-8 JSON of that tagged
-tree. This domain separation prevents collisions with ordinary JSON documents;
-the projection is evidence only and never replaces authored or effective values.
+The **legacy v1 digest** is `document_digest(..., legacy_yaml=True)`. It is total
+over values SafeLoader can construct, not a new scenario-admission validator.
+The complete finite-JSON attempt is guarded; an encoding failure (including
+non-finite floats) selects the tagged fallback rather than rejecting v1 data.
+The fallback uses these deterministic rules:
+
+- Tag every node, including mapping keys; authored data cannot imitate a tag.
+- Encode integers as hex strings, floats with `float.hex()` (including `inf`,
+  `-inf`, `nan`), binary as hex and dates/datetimes as ISO strings.
+- Distinguish lists from tuples, preserving their order, including the tuples
+  constructed by `!!pairs` and `!!omap`.
+- Sort mapping rows by encoded keys (then values to break ties) and sets by
+  encoded members, never by Python's heterogeneous value ordering.
+- Use compact, ASCII-escaped JSON for tagged nodes, including escaped surrogates.
+  Integers have no decimal-conversion digit limit. An iterative encoder handles
+  deep nesting; recursive aliases use tagged ancestor-relative references, not
+  process-specific object addresses. Nonrecursive aliases expand by value.
+
+The hashed fallback bytes are `b"aeroagentsim.yaml-evidence/v1\0"` followed by the
+encoded tagged document, with no terminal newline. Domain separation prevents
+collisions with ordinary JSON documents. This evidence never replaces authored,
+prepared or effective values. Finiteness/field admission remains historical for
+v1; v2 and contribution-selection metadata retain strict finite-JSON validation.
 
 Additional `contribution_selections` are declarative evidence, not implicit plugin
 activation. Each selection requires nonempty `family` and `name`; duplicate

@@ -444,6 +444,59 @@ def test_legacy_yaml_digest_accepts_safe_loader_values_without_rewriting(
             PreparedScenario({**document, "format": "aeroagentsim.scenario/v2"})
 
 
+@pytest.mark.parametrize("yaml_value", [
+    pytest.param(".inf", id="infinity"),
+    pytest.param("-.inf", id="negative-infinity"),
+    pytest.param(".nan", id="nan"),
+    pytest.param("!!pairs [{ceiling: .inf}, {unknown: .nan}]", id="pairs-nonfinite"),
+    pytest.param("!!omap [{ceiling: -.inf}, {unknown: .nan}]", id="omap-nonfinite"),
+    pytest.param("!!set {.inf: null, .nan: null, 2026-07-13: null}", id="mixed-set"),
+    pytest.param('&loop [*loop, !!binary aGVsbG8=]', id="recursive-sequence"),
+    pytest.param('&loop {self: *loop, date: 2026-07-13}', id="recursive-mapping"),
+    pytest.param('"\\uD800"', id="escaped-surrogate"),
+    pytest.param("0x" + "f" * 4000, id="large-hex-integer"),
+])
+def test_legacy_digest_and_prepared_output_are_total_for_safe_loader_values(
+    yaml_value: str,
+) -> None:
+    # Use independent constructions: NaN cannot be checked by value equality,
+    # and recursive YAML aliases cannot be compared with ordinary tree walkers.
+    documents = [
+        {"format": "aeroagentsim.scenario/v1", "value": yaml.safe_load(yaml_value)}
+        for _ in range(2)
+    ]
+    first = document_digest(documents[0], legacy_yaml=True)
+    assert first == document_digest(documents[1], legacy_yaml=True)
+    for document in documents:
+        prepared = PreparedScenario(document)
+        assert first == document_digest(prepared.document, legacy_yaml=True)
+
+
+def test_legacy_digest_handles_deep_safe_loader_alias_nesting() -> None:
+    # Shallow YAML syntax can construct a value deeper than Python's recursion
+    # limit: each newly anchored sequence contains the preceding sequence.
+    depth = 1500
+    source = "n0: &n0 [!!binary aGVsbG8=]\n" + "\n".join(
+        f"n{index}: &n{index} [*n{index - 1}]" for index in range(1, depth)
+    )
+    first = yaml.safe_load(source)[f"n{depth - 1}"]
+    second = yaml.safe_load(source)[f"n{depth - 1}"]
+    assert document_digest(first, legacy_yaml=True) == document_digest(second, legacy_yaml=True)
+
+
+@pytest.mark.parametrize("yaml_value", [
+    ".inf", "-.inf", ".nan", "!!pairs [{ceiling: .inf}]",
+    "!!omap [{unknown: .nan}]", "!!binary aGVsbG8=",
+    "!!set {first: null}", "2026-07-13", "2026-07-13T12:34:56Z",
+])
+def test_v2_prepared_output_still_rejects_non_json_safe_loader_values(yaml_value: str) -> None:
+    document = {"format": "aeroagentsim.scenario/v2", "value": yaml.safe_load(yaml_value)}
+    with pytest.raises(ValueError):
+        document_digest(document)
+    with pytest.raises(ValueError):
+        PreparedScenario(document)
+
+
 def test_legacy_yaml_digest_is_canonical_and_type_tagged() -> None:
     first = {"date": date(2026, 7, 13), "members": {"second", "first"}}
     reordered = {"members": {"first", "second"}, "date": date(2026, 7, 13)}
@@ -458,6 +511,22 @@ def test_legacy_yaml_digest_is_canonical_and_type_tagged() -> None:
     assert document_digest({3: date(2026, 7, 13)}, legacy_yaml=True)
     plain = {"nested": [None, True, 1, 1.5, "text"]}
     assert document_digest(plain, legacy_yaml=True) == document_digest(plain)
+    # Force tagged evidence while varying otherwise JSON-compatible node types.
+    def tagged(value: Any) -> str:
+        return document_digest({"date": date(2026, 7, 13), "value": value}, legacy_yaml=True)
+
+    assert len({tagged(True), tagged(1), tagged(1.0), tagged("1")}) == 4
+    assert tagged([1, 2]) != tagged((1, 2))
+    assert tagged([1, 2]) != tagged([2, 1])
+    assert tagged({3: b"hello", "date": date(2026, 7, 13)}) == tagged(
+        {"date": date(2026, 7, 13), 3: b"hello"}
+    )
+    assert tagged(yaml.safe_load("!!set {.inf: null, .nan: null, first: null}")) == tagged(
+        yaml.safe_load("!!set {first: null, .nan: null, .inf: null}")
+    )
+    assert tagged(yaml.safe_load("&loop {self: *loop, value: 1}")) == tagged(
+        yaml.safe_load("&loop {value: 1, self: *loop}")
+    )
 
 
 @pytest.mark.parametrize("version", [0, 2, True, "1", 1.0, None])
