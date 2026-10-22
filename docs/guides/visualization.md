@@ -29,9 +29,14 @@ project**. The configuration panel opens next to the 3D draft preview:
   predicates, triggers and event chains.
 - **File** — the same draft as YAML (export/import).
 
-**Validate** lists every issue and jumps to its section and field. **Save
-version** freezes the validated draft. **Initialize** creates a run from that
-version: the world is loaded at t=0 and does not move until **Start**. The
+**Validate** lists every issue and jumps to its section and field. Validation
+checks configuration and declarations; it is not readiness and does not prove
+that initialization, a worker, a camera, a native engine or a model provider
+will succeed. **Save version** freezes the validated draft. **Initialize**
+launches that immutable version with `autostart: false`; the world is held at
+t = 0 only when the returned status is `initialized`. A faulted, interrupted or
+other terminal response is not success, and the run stays available for
+diagnosis. **Start** is separate and accepts only an `initialized` run. The
 browser never evaluates predicates or simulates behaviour — the server does.
 
 For manual creation, use [the blank-project tutorial](blank-project-tutorial.md)
@@ -54,7 +59,8 @@ region geometry alone does not produce a complete simulation.
 - **Operate**: the inspector's Operate tab selects a registered command or a
   declared injection point with its typed payload and shows the receipt. When a
   run reports `waiting_for_input`, a banner explains what it needs.
-- **Why?**: an event's cause trace on the timeline. **Photos**: camera
+- **Why?**: an event's recorded-link view on the timeline. These are same-cut
+  associations and recorded links, not causal attribution. **Photos**: camera
   captures (traffic accident) open at their source cut.
 - **Records**: replay, compare 2–4 runs, **Modify & retry** to derive a new
   draft from a run.
@@ -116,6 +122,14 @@ header/commit fields and are absent in older runs.
 - The demo's camera captures render committed poses with the selected city geometry
   in headless Chromium — simulation-camera output, not licensed city imagery.
 - The optional high-detail city pack is a separate download, keeping clones small.
+- Live model replies and fixture/scripted decisions are different evidence
+  classes. Assistant text parts retain `source: model` or `source: platform`
+  (legacy or ambiguous parts are `unknown`); a fixture or scripted run is not
+  evidence of live-model quality.
+- The browser console sends no bearer token, so a server with
+  `AEROAGENTSIM_API_TOKEN` set is not a supported browser deployment even though
+  its API accepts bearer tokens. Use the console with the token unset on a
+  local/trusted boundary, or use an API client for a protected service.
 - Feed requests use `AbortController`. Temporary network and server failures
   reconnect with bounded backoff from the last received journal index; they
   never resubmit commands or become empty successful data. Leaving the view

@@ -22,10 +22,15 @@ Every POST requires `Content-Type: application/json` (415 otherwise); send
 `{}` for controls without parameters. CORS permits those console origins,
 GET/POST, and Content-Type, Last-Event-ID and Authorization headers.
 
-Set `AEROAGENTSIM_API_TOKEN` for a non-local deployment. When set, every `/v1/`
+Set `AEROAGENTSIM_API_TOKEN` for a non-local API deployment. When set, every `/v1/`
 API request requires `Authorization: Bearer <token>`; missing or incorrect
-tokens return 401. CORS preflight remains accessible. Local use with the token
-unset works directly from the console. For example:
+tokens return 401. CORS preflight remains accessible. **The token-protected
+browser flow is not supported:** the console's `fetch` and SSE clients send no
+`Authorization` header and have no token setting, so a protected server cannot
+serve the interactive console even though the API itself accepts bearer tokens.
+Run the console with the token unset on a local/trusted boundary, or use an API
+client for a protected deployment. Local use with the token unset works
+directly from the console. For example:
 
 ```sh
 curl -H "Authorization: Bearer $AEROAGENTSIM_API_TOKEN" \
@@ -40,16 +45,25 @@ environment-variable names are configured only by the server operator. See
 retain a status code and short safe message, with no upstream error body or
 request headers in the journal or commits API.
 
-Run status values: `created`, `running`, `paused`, `waiting_for_input`,
-`completed`, `stopped`, `faulted`, `interrupted`, `input_timeout`.
-Terminal statuses are `completed`, `stopped`, `faulted`, `interrupted`,
-`input_timeout` and carry a `final_cursor`.
+Run status values: `created`, `initialized`, `running`, `paused`,
+`waiting_for_input`, `completed`, `stopped`, `faulted`, `interrupted`,
+`input_timeout`. `created` and `initialized` are non-terminal; only an
+`initialized` run can be started. Terminal statuses are `completed`, `stopped`,
+`faulted`, `interrupted`, `input_timeout` and carry a `final_cursor`. An
+`initialized` status means the worker has acknowledged the world at t = 0; it
+is not a receipt for commands, a guarantee that later steps will succeed, or
+evidence that a model provider, camera or native engine is ready.
 
 ## Plugin catalog
 
 | Endpoint | Method | Semantics |
 | --- | --- | --- |
 | `/v1/plugins` | GET | Plugin catalog: `{api_version, scenarios, engines, algorithms, models}`. `api_version` is `1`. Every row has `{name, origin, distribution, status}`; scenario rows add `templates` and `apply_hooks`, and duplicate rows add `conflict`. |
+
+Inventory is discovery, not readiness: a row, template or passing manifest
+validation does not prove that a worker, native simulator, camera, model
+provider or detailed city pack is available. `GET /v1/plugins` and
+[`aeroagentsim plugins`](cli.md#aeroagentsim-plugins) report the same catalogue.
 
 Scenario entries describe discovered builtins and installed plugins in
 `aeroagentsim.scenarios`. Installed names take precedence over matching builtins.
@@ -67,12 +81,29 @@ listed. The CLI counterpart is
 
 | Endpoint | Method | Semantics |
 | --- | --- | --- |
-| `/v1/runs` | POST (201) | Start a run. Body is either `{"scenario_path": "..."}` (resolved under the configured scenario root) or `{"scenario": {...}}` / inline scenario mapping, optionally with `studio_workspace` to base a console draft. The loader runs and engine declarations/bindings are validated by constructing a throwaway `Simulation` before 201 is returned; invalid input yields 422. Returns the run metadata. |
+| `/v1/runs` | POST (201) | Start a run. Scenario mode accepts `{"scenario_path": "..."}` (resolved under the configured scenario root), `{"scenario": {...}}` or an inline scenario mapping, optionally with `studio_workspace` to base a console draft. Version mode accepts only `{"studio_workspace": "...", "version": 1, "autostart": false}`; `autostart` defaults to **false** there, so omitting it initializes without starting. With `autostart: false`, the response waits until the worker reports `initialized` or a terminal status, and the returned `status` is authoritative: **HTTP 201 does not mean initialization succeeded**. The loader validates engine declarations/bindings by constructing a throwaway `Simulation` before 201; invalid input yields 422. Returns the run metadata. |
 | `/v1/runs` | GET | List all runs with manifests (id, scenario, status, `until_ns`, optional `error` and `waiting`), additive `kpis` summaries, `knobs`, `algorithms`, `title`, and pinned `template` settings (`template_id`/`template_title` aliases) when launched from a template. |
 | `/v1/runs/{id}/header` | GET | Pinned viewer-feed header (see [viewer feed](viewer-feed.md)). Adds `catalogNotice` when no AeroGraph root is configured, plus Studio scene links when applicable. |
 | `/v1/runs/{id}/commits?from=N&limit=M` | GET | Page projected commits (`limit` 1–4096). Response: `{commits, next, status, waiting?, finalCursor?}`. Empty runs page from index 1. |
 | `/v1/runs/{id}/stream?from=N` | GET (SSE) | Live tail. Events: `commit` (id = journal index; supports `Last-Event-ID` reconnect), `status` (on change, includes `waiting`), `end` (terminal, includes `finalCursor`). Keep-alive comments while idle. |
-| `/v1/runs/{id}/{pause\|resume\|stop}` | POST | Control a live worker. 409 when there is no active worker or the run is terminal. Pause freezes simulation advancement; resume continues it; stop requests a graceful halt at a sealed boundary. Returns `{id, requested, status}`. |
+| `/v1/runs/{id}/{operation}` | POST | `operation` is `start`, `pause`, `resume` or `stop`. `start` is accepted only while status is `initialized` (409 otherwise, including a second start); pause/resume are rejected before Start. Stop requests a graceful halt at a sealed boundary. 409 when there is no active worker or the run is terminal. Returns `{id, requested, status}`. |
+| `/v1/runs/{id}/speed` | GET | Host pacing factor: `{id, factor}`; `null` means as fast as possible. 409 when the run has no active worker. |
+| `/v1/runs/{id}/speed` | POST | Body `{"factor": 0.05..1000}` or `{"factor": null}` for as fast as possible. Host pacing only; it does not change simulated outcomes. 409 without an active worker, 422 for invalid values. |
+
+Initialize an immutable saved version and start it separately:
+
+```sh
+# Create and initialize; autostart:false waits for initialized (or terminal).
+curl -H 'Content-Type: application/json' \
+  -d '{"studio_workspace":"WORKSPACE_ID","version":1,"autostart":false}' \
+  http://127.0.0.1:8002/v1/runs
+# Start only after the returned status is "initialized".
+curl -X POST -H 'Content-Type: application/json' -d '{}' \
+  http://127.0.0.1:8002/v1/runs/RUN_ID/start
+```
+
+The control route takes no JSON fields, but `POST` still requires
+`Content-Type: application/json` at the request boundary.
 
 ### Templates and comparisons
 
@@ -155,26 +186,56 @@ real WAL records, not separate commands.
 
 ## Studio (authoring) API — `/v1/studio`
 
-Mounted when `create_app(..., studio_root=...)` or `AEROAGENTSIM_STUDIO_ROOT` is configured. The `demo` command configures it automatically; `serve` has no studio-root flag. All execution still goes through `/v1/runs`.
+Mounted by `aeroagentsim serve` (including `--studio-root DIR`, default
+`<out>/.workspaces` or `AEROAGENTSIM_STUDIO_ROOT`), by
+`create_app(..., studio_root=...)`, by `AEROAGENTSIM_STUDIO_ROOT`, and by the
+`demo` command. Creating a template workspace or deriving one from a run also
+mounts the router lazily. All execution still goes through `/v1/runs`.
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
 | `/catalog` | GET | Extract sources, engine catalog with capability descriptors, demo profiles. |
-| `/types?q=&workspace=` · `/types/{id}` | GET | Type catalog search/detail (snapshot-backed when no AeroGraph root exists). |
-| `/explorer?workspace_id=` | GET | Workspace explorer payload. |
+| `/types` | GET | Type catalog search (`q`, optional `workspace`). |
+| `/types/{id}` | GET | Type catalog detail (snapshot-backed when no AeroGraph root exists). |
+| `/explorer` | GET | Workspace explorer payload (`workspace_id` optional). |
 | `/workspaces` | GET/POST | List drafts; create with `{"name"}` (201). |
-| `/workspaces/{id}` | GET/POST | Fetch / save a draft. |
+| `/workspaces/{id}` | GET/POST | Fetch a draft; save `{scenario?, name?, revision?}`. |
+| `/workspaces/{id}/knobs` | POST | Apply template controls to the draft: `{knobs, revision?}`; keeps other edits and rejects unknown knobs (422). |
+| `/workspaces/{id}/validate` | POST | Validate `{scenario?, revision?}` and return `{valid, errors, revision}`. This checks configuration/declarations, not run readiness. |
+| `/workspaces/{id}/versions` | GET/POST | List immutable versions; freeze a validated revision with `{revision, note?}` (201). The same revision returns the same version. |
+| `/workspaces/{id}/versions/{version}` | GET | Fetch one immutable version, including its frozen scenario, digest and validation. |
+| `/workspaces/{id}/operations` | POST | Compile and apply typed draft operations `{operations, revision?, dry_run?}` with the assistant compiler; no LLM call. |
+| `/operations` | GET | Operation catalogue: names, topics, labels, parameter schemas and examples. |
 | `/workspaces/{id}/templates/{name}` | POST | Import a demo template (`console`, `capture_mode: city\|primitive-test`). |
-| `/workspaces/{id}/decision-profile` | POST | Switch demo decisions between `scripted` fixture and a named live provider. |
-| `/workspaces/{id}/behaviours` · `.../validate` · `.../export` | POST/GET | Edit, validate (draft must be saved first) and export a behaviour package. |
-| `/workspaces/{id}/region` · `/place` · `/validate` · `/import` · `/export` | POST/GET | Region selection from configured OSM extracts, placement, scenario validation, YAML import/export. |
-| `/workspaces/{id}/network` · `/network.net.xml` | POST/GET | Compile/retrieve the SUMO network for the region. |
-| `/workspaces/{id}/buildings.geojson` · `/runs/{run_id}/buildings.geojson` | GET | Draft/run building geometry. |
-| `/demo-assets/{name}` · `/demo-capture-assets` | GET | Demo city assets and capture manifest. |
+| `/workspaces/{id}/decision-profile` | POST | Switch demo decisions between the `scripted` fixture and a named live provider. |
+| `/workspaces/{id}/behaviours` | POST | Edit/replace behaviour packages. |
+| `/workspaces/{id}/behaviours/{index}/export` | GET | Export one behaviour package. |
+| `/workspaces/{id}/behaviours/{index}/validate` | POST | Validate one behaviour package (draft must be saved first). |
+| `/workspaces/{id}/region` | POST | Select/apply a region from a configured OSM extract. |
+| `/workspaces/{id}/place` | POST | Place an object in the draft. |
+| `/workspaces/{id}/remove` | POST | Remove a draft object. |
+| `/workspaces/{id}/relations` | POST | Add a relation to the draft. |
+| `/workspaces/{id}/import` | POST | Import YAML (`{yaml, revision?}`). |
+| `/workspaces/{id}/export` | GET | Export the draft as YAML. |
+| `/workspaces/{id}/network` | POST | Compile the SUMO network for the applied region. |
+| `/workspaces/{id}/network.net.xml` | GET | Retrieve the compiled SUMO network. |
+| `/workspaces/{id}/buildings.geojson` | GET | Draft building geometry. |
+| `/runs/{run_id}/buildings.geojson` | GET | Run building geometry. |
+| `/demo-assets/{name}` | GET | Demo city assets. |
+| `/demo-capture-assets` | GET | Demo capture manifest. |
 | `/runs/{run_id}/configuration` | GET | Pinned authoring inputs plus actual WAL identity (`kernel_run_id`, `epoch`, `resolved_bindings`) — read-only. |
 
 Error mapping: 404 for missing resources, 422 for invalid input, 409 for
 state conflicts.
+
+## Assistant (authoring) API
+
+The assistant router is mounted with Studio under `/v1/assistant` and shares the
+same Host/Origin and optional bearer-token boundary. Routes, long-poll events and
+plan/apply semantics are documented in the
+[assistant guide](../guides/assistant.md#http-api). The assistant authors and
+saves project versions; it does not start a mission, and a confirmed plan or
+model reply is not a completed run.
 
 ## Frontend pages
 

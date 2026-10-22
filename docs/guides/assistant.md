@@ -3,7 +3,8 @@
 The workbench has two ways to edit the same project: the configuration form
 and a conversation with the assistant. Both change one scene. The assistant
 proposes concrete plans, shows what it assumed, and changes nothing until you
-confirm a plan once.
+confirm a plan once. It is an authoring surface: confirming saves a project
+version, not a running mission, and mission agents are configured separately.
 
 ## Connect a model
 
@@ -75,6 +76,11 @@ apply** is enabled once the version loads. Confirming saves a new project
 version, and the stage materializes the blueprint into the real scene. The
 board then lists what was created, changed and removed.
 
+Validation is configuration/declaration validation, not readiness: it does not
+prove that initialization will succeed, that a worker, camera or native engine
+is available, or that the configured model provider will answer. Initialize a
+saved version and read the returned status before treating it as runnable.
+
 ## Revise naturally
 
 Talk to the assistant as you would to a colleague. Each revision is a new plan
@@ -94,8 +100,17 @@ The form and the conversation can be swapped at any time with the
 ## Run and read the story
 
 After a plan is configured, **What will I see?** asks the assistant what to
-watch for, and **Initialize** prepares the world at t = 0. Start the run from
-the top bar as usual.
+watch for, and **Initialize** asks the server to launch the saved version with
+`autostart: false`. The world is held at t = 0 only when the returned status is
+`initialized`; a faulted, interrupted or other terminal response is not
+initialization success, and the run ID remains available for diagnosis.
+**Start** is a separate action and accepts only an `initialized` run. Start the
+run from the top bar as usual.
+
+A reply can mix model text with platform-generated status, summaries and
+corrections. Assistant records keep text parts labelled `source: model` or
+`source: platform`; legacy or ambiguous parts remain `source: unknown`. A model
+reply is not an applied plan, an ACK or a completed run.
 
 The **Story** tab compares the plan's expectations with the recorded events:
 
@@ -123,12 +138,17 @@ NO_PROXY=127.0.0.1 python tools/assistant/eval.py \
   --conversations flagship vague chinese
 ```
 
-`tools/assistant/fake_model.py` is a deterministic OpenAI-compatible model used
-by `frontend/e2e/assistant.spec.ts` and for demos without a model.
+`tools/assistant/fake_model.py` is a deterministic OpenAI-compatible fixture
+used by `frontend/e2e/assistant.spec.ts` and for demos without a model. It does
+not contact a provider and does not establish live-model decision quality;
+label its output as a test fixture, not model evidence.
 
 ## HTTP API
 
-All routes are under `/v1/assistant`:
+All routes are under `/v1/assistant`. They use the same Host/Origin and optional
+bearer-token boundary as the rest of the service; the token-protected browser
+flow is not supported because the console sends no bearer token. See the
+[central HTTP reference](../reference/http-api.md#request-boundary).
 
 | Route | Purpose |
 | --- | --- |
