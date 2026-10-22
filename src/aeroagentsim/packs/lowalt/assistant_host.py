@@ -18,7 +18,7 @@ from aeroagentsim.authoring.templates import _knob_value, _pointer
 from aeroagentsim.packs.lowalt.template import has_lowalt_components
 from .assistant import (
     _fail, _group_id, _cooperation_module, _allocation_provider, _engine,
-    _fleet_entities, _workload_creators,
+    _fleet_entities, _workload_creators, _builtin_operation_name,
 )
 
 SECOND = 1_000_000_000
@@ -239,9 +239,7 @@ class LowaltStaging:
 
     @staticmethod
     def operation_name(spec) -> str | None:
-        if spec.id.partition(".")[0] not in {"lowalt", "traffic"}:
-            return None
-        return spec.display.get("legacy_operation")
+        return _builtin_operation_name(spec)
 
     def legacy(self, operation: dict) -> dict:
         row = copy.deepcopy(operation)

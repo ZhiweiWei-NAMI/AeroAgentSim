@@ -365,6 +365,9 @@ class AssistantOperationPlugin:
     # Private compatibility seam for the shipped authoring/resource adapters.
     # Not part of the external v1 operation API; never enters CompileContext.
     _host: Callable[..., Any] | None = field(default=None, repr=False, compare=False)
+    # Private builtin compatibility graph admission, based on effective compilers.
+    # Unselected rows retain their indices but never enter that legacy graph.
+    _dependency_applies: Callable[[OperationSpec], bool] | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not re.fullmatch(_NAME, self.name):
@@ -387,6 +390,8 @@ class AssistantOperationPlugin:
             raise TypeError("assistant plugin dependencies: callable required")
         if self._host is not None and not callable(self._host):
             raise TypeError("assistant plugin _host: callable required")
+        if self._dependency_applies is not None and not callable(self._dependency_applies):
+            raise TypeError("assistant plugin _dependency_applies: callable required")
         if not isinstance(self.metadata, Mapping):
             raise TypeError("assistant plugin metadata: mapping required")
         object.__setattr__(self, "metadata", freeze(self.metadata))

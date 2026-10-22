@@ -960,7 +960,7 @@ def _schedule_event(document: dict, p: dict, ctx: CompileContext) -> None:
 
 
 def _legacy_operations(operations) -> list[dict]:
-    """Normalize only shipped operation namespaces, never external suffixes."""
+    """Normalize builtin recipe names; dependency callers admit effective specs first."""
     rows = thaw(operations)
     for row in rows:
         if isinstance(row, dict) and isinstance(row.get("op"), str):
@@ -1011,7 +1011,7 @@ def operation_dependencies(context: CompileContext, operations) -> dict[int, tup
     durations = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_duration"]
     workloads = _workload_creators(operations)
     for i, operation in enumerate(operations):
-        if not isinstance(operation, dict):
+        if not isinstance(operation, dict) or operation.get("op") not in OPERATION_SPECS:
             continue
         params = operation.get("params", {})
         refs = references(params)
@@ -1085,6 +1085,21 @@ def compile_operation(name: str, context: CompileContext, params) -> CompileResu
                          references=tuple(references), controls=controls)
 
 
+def _builtin_operation_name(spec: OperationSpec) -> str | None:
+    """Compatibility belongs to the selected compiler, never its display tags."""
+    family, _, name = spec.id.partition(".")
+    compiler = spec.compile
+    if (family in {"lowalt", "traffic"} and name in OPERATION_SPECS
+            and isinstance(compiler, partial) and compiler.func is compile_operation
+            and compiler.args == (name,) and not compiler.keywords):
+        return name
+    return None
+
+
+def _builtin_dependency_applies(spec: OperationSpec) -> bool:
+    return _builtin_operation_name(spec) is not None
+
+
 def _staging(*args):
     from .assistant_host import LowaltStaging
     return LowaltStaging(*args)
@@ -1137,4 +1152,5 @@ def plugin() -> AssistantOperationPlugin:
                                           "workspace_operations": _workspace_operations, "recover_operations": _recover_operations,
                                           "revise_operations": _revise_operations}),
         metadata=display.metadata(), dependencies=operation_dependencies, _host=_staging,
+        _dependency_applies=_builtin_dependency_applies,
     )

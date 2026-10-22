@@ -28,7 +28,8 @@ from aeroagentsim.assistant.compiler import (
     validate_compiled,
 )
 from aeroagentsim.assistant.operations import OperationError, obj
-from aeroagentsim.assistant.scene import _position, expectations, interactions, summarize
+from aeroagentsim.assistant.scene import _SceneSummary, _family_summary, _position, expectations, interactions, summarize
+from aeroagentsim.assistant.sessions import SessionStore
 from aeroagentsim.assistant.tools import ToolRunner
 from aeroagentsim.assistant_api import (
     AssistantOperationPlugin,
@@ -194,6 +195,7 @@ def test_confirm_applies_exact_resource_removals_and_keeps_older_versions(host, 
     report = apply_plan(host, tmp_path / "plan", base=base, workspace_id=draft["id"], name="Confirmed", note="Resource proposal")
     new_files = host.store.version_directory(draft["id"], report["version"])
     assert report["version"] == original["version"] + 1
+    assert host.store.get(draft["id"])["name"] == "Confirmed"
     assert (old_files / "notes/obsolete.txt").read_bytes() == b"obsolete"
     assert (directory / "notes/obsolete.txt").exists() == restore
     assert (new_files / "notes/obsolete.txt").exists() == restore
@@ -201,6 +203,32 @@ def test_confirm_applies_exact_resource_removals_and_keeps_older_versions(host, 
         assert (directory / "notes/obsolete.txt").read_bytes() == b"restored"
         assert (new_files / "notes/obsolete.txt").read_bytes() == b"restored"
     assert (directory / "notes/keep.txt").read_bytes() == (new_files / "notes/keep.txt").read_bytes() == b"keep"
+
+
+def test_confirm_rejects_a_removal_ancestor_aliased_into_an_immutable_version(host, tmp_path, monkeypatch):
+    draft, directory, base, result = removal_plan(host, tmp_path, monkeypatch)
+    assert host.store.validate(draft["id"])["valid"]
+    original = host.store.save_version(draft["id"], {"revision": draft["revision"]})
+    old_files = host.store.version_directory(draft["id"], original["version"])
+    old_bytes = {path.relative_to(old_files): path.read_bytes() for path in old_files.rglob("*") if path.is_file()}
+    assert validate_compiled(host, tmp_path / "plan")["valid"]
+    assert not (result.files_dir / "notes/obsolete.txt").exists()
+    notes = directory / "notes"
+    assert notes.resolve() == directory.resolve() / "notes"
+    notes.rename(directory / "notes-before-alias")
+    notes.symlink_to(old_files / "notes", target_is_directory=True)
+    assert (notes / "obsolete.txt").resolve().is_relative_to(directory.resolve() / "versions")
+    before = (directory / "draft.json").read_bytes()
+    versions = host.store.versions(draft["id"])
+
+    with pytest.raises(PlanConflict, match="Resource removal"):
+        apply_plan(host, tmp_path / "plan", base=base, workspace_id=draft["id"], name="Confirmed", note="Must not apply")
+
+    assert (directory / "draft.json").read_bytes() == before
+    assert notes.is_symlink()
+    assert (old_files / "notes/obsolete.txt").read_bytes() == b"obsolete"
+    assert {path.relative_to(old_files): path.read_bytes() for path in old_files.rglob("*") if path.is_file()} == old_bytes
+    assert host.store.versions(draft["id"]) == versions
 
 
 @pytest.mark.parametrize("conflict", ["revision", "workspace", "files", "removals", "symlink"])
@@ -236,7 +264,8 @@ def test_resource_removals_remain_behind_conflict_and_path_checks(host, tmp_path
 
 # Finding 3: cards are not permission to manufacture another family's evidence.
 @pytest.mark.parametrize("domain", [None, "example"])
-def test_a_family_with_no_expectations_does_not_acquire_them_from_lowalt(domain):
+@pytest.mark.parametrize("ownership_free", [False, True])
+def test_a_family_with_no_expectations_does_not_acquire_them_from_lowalt(domain, ownership_free):
     event = {"id": "example-event", "kind": "signal", "label": "External signal", "label_zh": "外部信号",
              "schema": "example.signal", "params": {}, "at_s": 1, "place": None}
     if domain is not None:
@@ -245,9 +274,64 @@ def test_a_family_with_no_expectations_does_not_acquire_them_from_lowalt(domain)
     catalogue = OperationCatalogue((lowalt_plugin(), traffic_plugin(), external))
     document = {"id": "memory", "run": {"until_ns": 10 * SECOND}, "engines": {}, "entities": []}
     summary = summarize(document, catalogue=catalogue)
+    if ownership_free:
+        summary = json.loads(json.dumps(summary))
     assert summary["events"] == [event]
     assert expectations(document, summary, catalogue=catalogue) == []
     assert interactions(summary, catalogue=catalogue)["steps"] == []
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("builtin_event", [False, True])
+def test_session_restart_preserves_read_ownership_for_a_no_expectations_family(tmp_path, monkeypatch, legacy, builtin_event):
+    from aeroagentsim.assistant.catalogue import callbacks
+
+    event = {"id": "example-event", "kind": "signal", "label": "External signal", "label_zh": "外部信号",
+             "schema": "example.signal", "params": {}, "at_s": 1, "place": "target"}
+    external = AssistantOperationPlugin(name="example", read=AssistantReadSpec(summarize=lambda context: {"events": [event]}))
+    install(monkeypatch, external)
+    document = {"id": "memory", "run": {"until_ns": 10 * SECOND}, "engines": {},
+                "entities": [{"id": identity, "type": "example:Actor", "facts": {}} for identity in ("system", "target")]}
+    if builtin_event:
+        document["behaviours"] = [{"id": "fixture", "injection_points": [{"id": "own-signal", "emits": "memory.signal"}]}]
+        document["bindings"] = {"commands": [{"schema": "aas.runtime.inject_event", "at_ns": SECOND,
+                                              "payload": {"injection_point": "own-signal", "payload": {}}}]}
+    summary = summarize(document)
+    expected, diagram = expectations(document, summary), interactions(summary)
+    assert [row["id"] for row in expected] == (["event:scheduled-1"] if builtin_event else [])
+    sessions = SessionStore(tmp_path)
+    identifier = sessions.create()["id"]
+    sessions.put_plan(identifier, {"version": 1, "title": "External proposal", "note": "No expectations", "variant": None,
+                                   "compile": {"ok": True}, "scene": summary, "_document": document,
+                                   "expectations": expected, "interactions": diagram})
+    path = sessions.directory(identifier) / "session.json"
+    serialized = json.loads(path.read_text())
+    stored = serialized["plans"]["1"]
+    assert type(stored["scene"]) is dict
+    assert event in stored["scene"]["events"]
+    assert stored["_scene_contributions"]["example"]["events"] == [event]
+    assert stored["expectations"] == expected and stored["interactions"] == diagram
+    if legacy:
+        stored.pop("_scene_contributions")
+        path.write_text(json.dumps(serialized))
+
+    restarted = SessionStore(tmp_path)
+    tools = ToolRunner(None, None, restarted, tmp_path)
+    assert restarted.plan(identifier)["expectations"] == expected
+    if not legacy:
+        restored = restarted.plan(identifier)["scene"]
+        assert _family_summary(restored, "example")["events"] == [event]
+        assert expectations(document, restored) == expected
+    for scope in ("auto", "proposed"):
+        restored_document, restored = tools._scene(identifier, scope)
+        assert restored_document == document and restored == summary
+        assert _family_summary(restored, "example")["events"] == [event]
+        assert event not in _family_summary(restored, "lowalt")["events"]
+        assert expectations(restored_document, restored) == expected
+        assert interactions(restored) == diagram
+        assert tools.explain_relation(identifier, "system", "target", scope=scope)["steps"] == []
+        watched = [line for callback in callbacks("watch_scene") for line in callback(restored_document, restored)]
+        assert not any("External signal" in line for line in watched)
 
 
 def activation(event) -> dict:
@@ -291,6 +375,13 @@ def test_default_mixed_projection_order_and_copy_match_the_legacy_composition(wo
                           {"id": "wind-gust-40000000000", "kind": "wind_gust", "label": "Wind gust: 9 m/s", "label_zh": "阵风：风速 9 米/秒",
                            "at_s": 40, "end_s": 50, "speed_mps": 9, "after_speed_mps": 2, "effects": []}],
                "traffic": {"incidents": [{"id": "incident.01"}], "bound_chains": ["traffic.incident_report"]}}
+    # This authored compatibility fixture explicitly owns its untagged cards;
+    # an ownership-free JSON summary must not guess that they belong to lowalt.
+    sections = ("fleets", "places", "workloads", "events", "rules", "routine")
+    summary = _SceneSummary(summary, contributions={
+        provider: {section: [row for row in summary.get(section, []) if row.get("domain") == domain] for section in sections}
+        for provider, domain in (("lowalt", None), ("traffic", "traffic"))
+    })
     expected = expectations({}, summary, catalogue=catalogue)
     assert [row["id"] for row in expected] == ["task:parcel-1:created", "task:parcel-1:assigned", "task:parcel-1:picked_up", "task:parcel-1:completed",
                                                "event:traffic-incident:incident.01", "event:scheduled-1", "traffic:traffic.incident.detected", "traffic:traffic.broadcast"]
@@ -348,6 +439,40 @@ def test_pure_and_host_compilation_share_forward_creation_and_workload_op_refere
     assert workload(changed) == workload(hosted.document)
     assert workload(changed)["priority"] == 8
     assert next(entity for entity in changed["entities"] if entity["id"] == "late-depot")["facts"]["lowalt.site_position"] == [0.0, 0.0, 0.0]
+
+
+@pytest.mark.parametrize("name", ["add_place", "lowalt.add_place"])
+@pytest.mark.parametrize("legacy_tag", [False, True])
+def test_installed_lowalt_replacement_gets_no_builtin_edges_in_either_compile_path(host, tmp_path, monkeypatch, name, legacy_tag):
+    def annotate(context, params):
+        return CompileResult(resources=(ResourceProposal(f"notes/{params['id']}.txt", params["at"].encode()),))
+
+    replacement = AssistantOperationPlugin(name="lowalt", operations=(OperationSpec(
+        id="lowalt.add_place", parameters=obj({"id": {"type": "string"}, "at": {"type": "string"}}, ("id", "at")),
+        title="Annotation", title_zh="标注", description="Write an independent annotation", description_zh="写入独立标注",
+        compile=annotate, display={"legacy_operation": "add_place"} if legacy_tag else {},
+    ),))
+    install(monkeypatch, replacement)
+    base = {"template": "food-delivery"}
+    scene = resolve_base(host, base)
+    operations = [{"id": "first", "op": name, "params": {"id": "a", "at": "b"}},
+                  {"id": "second", "op": name, "params": {"id": "b", "at": "a"}}]
+    before = copy.deepcopy(operations)
+    catalogue = OperationCatalogue()
+    assert catalogue.provider(name) is replacement
+    assert catalogue.provider("traffic.set_duration").dependencies is not None
+    assert catalogue.dependencies(CompileContext(scene.document), operations) == {0: set(), 1: set()}
+
+    pure, changed = pure_compile(monkeypatch, scene.document, operations)
+    hosted = compile_plan(host, base, operations, tmp_path / "plan", resolved=scene)
+
+    assert hosted.ok, hosted.errors
+    assert not pure.issues and changed == scene.document
+    assert pure.resources == (ResourceProposal("notes/a.txt", b"b"), ResourceProposal("notes/b.txt", b"a"))
+    assert [row["id"] for row in pure.effective_operations] == ["first", "second"]
+    assert (hosted.files_dir / "notes/a.txt").read_bytes() == b"b"
+    assert (hosted.files_dir / "notes/b.txt").read_bytes() == b"a"
+    assert operations == before and hosted.operations == before
 
 
 def test_both_compile_paths_reject_the_same_creation_cycle(host, tmp_path, monkeypatch):

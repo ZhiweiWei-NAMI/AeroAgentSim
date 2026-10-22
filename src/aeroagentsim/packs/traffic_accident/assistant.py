@@ -142,7 +142,9 @@ def interactions(summary: dict) -> dict:
 
 
 def plugin() -> AssistantOperationPlugin:
-    from aeroagentsim.packs.lowalt.assistant import OPERATION_SPECS, compile_operation, operation_dependencies, _staging
+    from aeroagentsim.packs.lowalt.assistant import (
+        OPERATION_SPECS, compile_operation, operation_dependencies, _builtin_dependency_applies, _staging,
+    )
     from aeroagentsim.packs.lowalt.assistant_display import BRIEF
 
     names = ("set_control", "set_duration", "set_run_mode", "set_wind", "add_gust", "remove_gust", "schedule_event")
@@ -161,7 +163,8 @@ def plugin() -> AssistantOperationPlugin:
                                               "position_field_priority": {name: POSITION_PRECEDENCE.index(name) for name in positions},
                                               "failure_labels": {"traffic.capture.failed": ["Capture failures", "拍摄失败"]},
                                               "failure_priority": {"traffic.capture.failed": 0}, "summary_defaults": {"traffic": {}}},
-                                    dependencies=operation_dependencies, _host=_staging)
+                                    dependencies=operation_dependencies, _host=_staging,
+                                    _dependency_applies=_builtin_dependency_applies)
 
 
 def missing(expectation: dict, events: list[dict], approaches: dict, terminal: bool, last_ns: int | None) -> dict | None:

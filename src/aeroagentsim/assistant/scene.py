@@ -21,19 +21,24 @@ _COLLECTIONS = {"fleets", "places", "workloads", "events", "rules", "routine"}
 
 
 class _SceneSummary(dict):
-    """Keep read ownership out of the serialized, backwards-compatible scene."""
+    """Keep ownership separate from the backwards-compatible scene fields."""
 
-    def __init__(self, value: dict) -> None:
+    def __init__(self, value: dict, *, contributions: dict[str, dict] | None = None) -> None:
         super().__init__(value)
-        self.contributions: dict[str, dict] = {}
+        self.contributions = copy.deepcopy(contributions) if contributions is not None else {}
 
 
 def _family_summary(summary: dict, provider: str) -> dict:
     result = copy.deepcopy(dict(summary))
     if isinstance(summary, _SceneSummary):
         own = summary.contributions.get(provider, {})
-        for section in _COLLECTIONS:
-            result[section] = copy.deepcopy(own.get(section, []))
+    else:
+        # Ownership-free data cannot assign untagged cards to any provider.
+        # Older proposal reads reconstruct ownership from their pinned document.
+        own = {section: [row for row in summary.get(section, []) if isinstance(row, dict) and row.get("domain") == provider]
+               for section in _COLLECTIONS}
+    for section in _COLLECTIONS:
+        result[section] = copy.deepcopy(own.get(section, []))
     return result
 
 
@@ -129,8 +134,9 @@ def _ordered_projection(read, section: str, rows: list[dict], summary: dict) -> 
 def validate_scene_expectations(rows: list[dict], summary: dict, *, catalogue: OperationCatalogue) -> None:
     # Preserve the shipped multi-profile weather identities and rows, without
     # relaxing admission of public CompileResult expectations.
-    repeated = frozenset(identity for callback in callbacks("repeated_expectation_ids", catalogue=catalogue)
-                         for identity in callback(copy.deepcopy(summary)))
+    repeated = frozenset(identity for plugin in catalogue.plugins
+                         if plugin.read is not None and "repeated_expectation_ids" in plugin.read._callbacks
+                         for identity in plugin.read._callbacks["repeated_expectation_ids"](_family_summary(summary, plugin.name)))
     validate_expectations(rows, _repeated_ids=repeated)
 
 
@@ -139,10 +145,11 @@ def expectations(document: dict, summary: dict, *, catalogue: OperationCatalogue
     rows, owners = [], {}
     for plugin in catalogue.plugins:
         if plugin.read is not None and plugin.read.expectations is not None:
-            projected = thaw(freeze(plugin.read.expectations(copy.deepcopy(document), _family_summary(summary, plugin.name))))
+            own = _family_summary(summary, plugin.name)
+            projected = thaw(freeze(plugin.read.expectations(copy.deepcopy(document), own)))
             # Exceptions are provider-local: another family cannot reuse a legacy ID.
             duplicate_ids = plugin.read._callbacks.get("repeated_expectation_ids", lambda summary: ())
-            validate_expectations(projected, _repeated_ids=frozenset(duplicate_ids(copy.deepcopy(summary))))
+            validate_expectations(projected, _repeated_ids=frozenset(duplicate_ids(_family_summary(summary, plugin.name))))
             for row in projected:
                 if row["id"] in owners and owners[row["id"]] != plugin.name:
                     raise ValueError("assistant expectations: unique nonempty ids required")

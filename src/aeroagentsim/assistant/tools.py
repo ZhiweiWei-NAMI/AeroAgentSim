@@ -573,17 +573,24 @@ class ToolRunner:
         return {"variants": results, "current_version": plan["version"]}
 
     def _scene(self, identifier: str, scope: str = "auto") -> tuple[dict[str, Any], Any]:
+        from .scene import _SceneSummary, summarize
+
         session = self.sessions.get(identifier)
         applied = any(record["plan_version"] == session["plan_version"] for record in session["applied"])
         if session["plan_version"] is not None and (scope == "proposed" or scope == "auto" and not applied):
             plan = self.sessions.plan(identifier)
             if not plan["compile"]["ok"]:
                 raise ValueError("Fix compilation before inspecting the proposed scene / 请先修复编译再检查待确认场景")
-            return plan["_document"], plan["scene"]
+            summary = plan["scene"]
+            if not isinstance(summary, _SceneSummary):
+                # Pre-ownership sessions have ordinary JSON summaries. Rebuild
+                # only their ownership from the proposal, never the live draft.
+                owned = summarize(plan["_document"], directory=self.sessions.plan_directory(identifier, plan["version"]) / "files",
+                                  controls=summary.get("controls", {}))
+                summary = _SceneSummary(summary, contributions=owned.contributions)
+            return plan["_document"], summary
         if session["workspace_id"] is None:
             raise ValueError("Draft a plan first / 请先提出方案")
-        from .scene import summarize
-
         workspace = session["workspace_id"]
         draft = self.store.get(workspace)
         document = draft["scenario"]

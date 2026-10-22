@@ -5,7 +5,10 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import shutil
+import stat
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -151,6 +154,44 @@ def _resource_removals(contributions: dict) -> tuple[str, ...]:
             _fail("resources", "Unknown resource action", "资源操作未知")
         actions[row["path"]] = row["action"]
     return tuple(sorted(path for path, action in actions.items() if action == "remove"))
+
+
+def _removal_targets(directory: Path, files: Path, removals: tuple[str, ...], stack: ExitStack) -> list[tuple[int, str]]:
+    """Preflight every removal and pin its parent without following symlinks."""
+    if not removals:
+        return []
+
+    def open_directory(path, *, dir_fd=None) -> int:
+        descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dir_fd)
+        stack.callback(os.close, descriptor)
+        return descriptor
+
+    try:
+        root = open_directory(directory)
+    except OSError as exc:
+        raise PlanConflict("Resource removal requires a real workspace directory / 资源删除需要真实工作区目录") from exc
+    targets = []
+    for relative in removals:
+        # Reuse admission of all host-owned/excluded names, including versions/.
+        # No component may alias one of those paths through a symlink either.
+        ResourceProposal(relative, None)
+        staged = files / relative
+        if staged.exists() or staged.is_symlink():
+            raise PlanConflict(f"Removed resource is still staged: {relative} / 待删除资源仍存在于计划文件中")
+        parts = relative.split("/")
+        parent = root
+        try:
+            for part in parts[:-1]:
+                parent = open_directory(part, dir_fd=parent)
+            mode = os.stat(parts[-1], dir_fd=parent, follow_symlinks=False).st_mode
+        except FileNotFoundError:
+            continue  # An already-absent resource needs no mutation.
+        except OSError as exc:
+            raise PlanConflict(f"Resource removal escapes workspace files: {relative} / 资源删除超出工作区文件范围") from exc
+        if stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
+            raise PlanConflict(f"Resource removal escapes workspace files: {relative} / 资源删除超出工作区文件范围")
+        targets.append((parent, parts[-1]))
+    return targets
 
 
 def _digest(document: dict, directory: Path | None, removals: tuple[str, ...] = ()) -> str:
@@ -515,7 +556,7 @@ def apply_plan(ctx: CompileContext, out_dir: Path, *, base: dict, workspace_id: 
     validation = json.loads(validation_path.read_text())
     if not validation["valid"] or validation["digest"] != record["digest"]:
         raise ValueError("Plan failed validation / 计划校验失败: " + "; ".join(validation["errors"]))
-    with ctx.store.lock:
+    with ctx.store.lock, ExitStack() as removal_handles:
         if "workspace" in base:
             if workspace_id is not None and workspace_id != base["workspace"]:
                 raise PlanConflict("Plan belongs to another workspace / 计划属于另一个工作区")
@@ -529,25 +570,21 @@ def apply_plan(ctx: CompileContext, out_dir: Path, *, base: dict, workspace_id: 
             draft = ctx.store.import_template(base["template"], base.get("controls", {}), registry=ctx.templates)
             workspace_id = draft["id"]
         directory = ctx.store.directory(workspace_id)
-        # Resolve and check every exact target before any workspace mutation.
-        # Never follow a workspace symlink outside the revision-checked draft.
-        targets = []
-        root = directory.resolve()
-        for relative in removals:
-            target = directory / relative
-            if not target.resolve().is_relative_to(root) or target.is_dir():
-                raise PlanConflict(f"Resource removal escapes workspace files: {relative} / 资源删除超出工作区文件范围")
-            if (out_dir / "files" / relative).exists():
-                raise PlanConflict(f"Removed resource is still staged: {relative} / 待删除资源仍存在于计划文件中")
-            targets.append(target)
+        # Reject aliases before copying any staged files or applying a region.
+        # Keep no-follow parent handles until unlink, so ancestor swaps cannot
+        # redirect a checked removal into an older immutable version.
+        targets = _removal_targets(directory, out_dir / "files", removals, removal_handles)
         from .regions import apply as apply_region
 
         region_draft = apply_region(ctx.store, workspace_id, out_dir / "files")
         if region_draft is not None:
             draft = region_draft
         _copy_files(out_dir / "files", directory)
-        for target in targets:
-            target.unlink(missing_ok=True)
+        for parent, filename in targets:
+            try:
+                os.unlink(filename, dir_fd=parent)
+            except FileNotFoundError:
+                pass
         document = _rebase(document, out_dir / "files", directory)
         changes: dict = {"scenario": document, "name": name, "revision": draft["revision"]}
         saved = ctx.store.save(workspace_id, changes)

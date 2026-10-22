@@ -189,21 +189,33 @@ class OperationCatalogue:
         from .operations import OperationError
 
         canonical = thaw(freeze(operations))
+        specs = []
         for row in canonical:
+            spec = None
             if isinstance(row, dict):
                 try:
-                    row["op"] = self.resolve(row.get("op")).id
+                    spec = self.resolve(row.get("op"))
+                    row["op"] = spec.id
                 except OperationError:
                     pass  # Invalid recipes still receive the normal located diagnostic.
+            specs.append(spec)
         snapshot = freeze(canonical)
         dependencies = {index: set() for index in range(len(operations))}
         invoked = []
         for plugin in self.plugins:
-            callback = plugin.dependencies
-            if callback is None or any(callback is previous for previous in invoked):
+            callback, applies = plugin.dependencies, plugin._dependency_applies
+            if callback is None or any(callback is previous and applies is selection for previous, selection in invoked):
                 continue
-            invoked.append(callback)
-            edges = callback(context, snapshot)
+            invoked.append((callback, applies))
+            selected, scoped = [True] * len(specs), snapshot
+            if applies is not None:
+                selected = [applies(spec) if spec is not None else False for spec in specs]
+                if any(type(value) is not bool for value in selected):
+                    raise TypeError(f"{plugin.name}: dependency admission must return bool")
+                # Compatibility callbacks see only specs actually selecting their
+                # shipped semantics, not retired operations with the same spelling.
+                scoped = freeze([row if keep else {} for row, keep in zip(canonical, selected)])
+            edges = callback(context, scoped)
             if not isinstance(edges, Mapping):
                 raise TypeError(f"{plugin.name}: dependency mapping required")
             for index, required in edges.items():
@@ -211,7 +223,8 @@ class OperationCatalogue:
                     raise ValueError(f"{plugin.name}: invalid dependency indices")
                 if any(type(other) is not int or other not in dependencies or other == index for other in required):
                     raise ValueError(f"{plugin.name}: invalid dependency indices")
-                dependencies[index].update(required)
+                if selected[index]:
+                    dependencies[index].update(other for other in required if selected[other])
         return dependencies
 
     def display(self, *, namespaced: bool = False) -> dict[str, dict]:

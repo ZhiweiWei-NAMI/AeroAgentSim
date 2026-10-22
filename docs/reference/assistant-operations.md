@@ -162,7 +162,11 @@ must refer to other operations in that snapshot; invalid edges and cycles fail
 closed. These edges order existing recipes, rather than installing prerequisites.
 Both compilation entry points consume the same catalogue dependency graph.
 Builtin creation/forward references, region/component ordering and duration-first
-release defaults live here, not in the private resource-staging adapter.
+release defaults live here, not in the private resource-staging adapter. Their
+compatibility edges are limited to effective specs selecting the shipped builtin
+compiler semantics. Namespace/name spelling or copied display tags do not select
+those semantics: an installed replacement `lowalt` provider receives no builtin
+edges merely because builtin traffic remains installed.
 
 ### Pure compile context
 
@@ -203,9 +207,10 @@ the selected pure compiler, stages proposals, loads the resulting scenario and
 prepares the approval diff. The shipped packs retain private compatibility
 adapters for template hooks, region previews, contract snapshots, fleet removal
 and legacy generator expansion. Their services never enter the public compile
-context. `_host` and the builtin named read-adapter callback map are private
-compatibility seams, **not** stable external v1 APIs. `compile_plan` returns the
-existing host plan artifact, not the public per-operation result value. Its
+context. `_host`, `_dependency_applies` and the builtin named read-adapter callback
+map are private compatibility seams, **not** stable external v1 APIs.
+`compile_plan` returns the existing host plan artifact, not the public
+per-operation result value. Its
 optional `contributions` record retains proposed effects, configuration
 references and staged resource paths/digests; empty records are omitted from
 legacy artifacts.
@@ -233,9 +238,11 @@ approval diff; builtin compatibility adapters retain their existing
 component/region diff presentation. Confirm applies the final validated removal
 for each exact workspace-relative path, after the usual plan digest, validation,
 workspace identity and revision checks and before saving the version. Removal
-records are covered by the plan digest, targets cannot escape via workspace
-symlinks, and earlier immutable versions are untouched. A subsequent write to
-the same resource cancels its removal.
+records are covered by the plan digest. Confirm rejects symlinked removal
+ancestors and leaf targets, including internal aliases into `versions/`, before
+copying any staged files. Unlinks use pinned no-follow parent-directory handles;
+host-owned/excluded paths and earlier immutable versions remain protected. A
+subsequent write to the same resource cancels its removal.
 
 Expectations use the existing schema/`where` match format, optional bounded
 counts, release-based demand, dependencies and conditional alternatives. A
@@ -257,11 +264,14 @@ explanations. Summary card lists concatenate, dictionaries merge and card IDs
 owned by different providers conflict. Repeated rows from the same provider
 remain intact, including legacy multi-profile gust IDs. `priority` can order
 contributed sections. Families can provide bilingual topic/section copy through
-metadata. Collection ownership is retained in-memory without adding serialized
-scene fields: expectation/interaction callbacks receive their own contributed
-card collections alongside shared scene context. A card is not permission for
-another family to manufacture an expectation. Builtin projections also filter
-foreign domain tags when called directly on a serialized/merged summary.
+metadata. Collection ownership is retained in-memory and persisted separately in
+plan data, without adding serialized scene fields. Session restart restores it;
+older ownership-free proposals reconstruct it from the proposal document and
+plan resources, not the live draft. Expectation/interaction callbacks receive
+their own contributed card collections alongside shared scene context. A card
+is not permission for another family to manufacture an expectation. Without
+ownership, only explicit matching domain tags can assign collection cards;
+untagged cards are never implicitly lowalt-owned.
 
 Traffic owns its activation expectation, setup interaction, actor/incident lanes
 and stage receipts, even when lowalt reads are replaced. Lowalt owns its
