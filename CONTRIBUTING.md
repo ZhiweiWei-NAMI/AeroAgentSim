@@ -31,6 +31,14 @@ python -m pytest -q tests/demos/traffic_accident/test_public_demo.py
 
 Choose targeted tests while developing and run the relevant broader checks once the change is ready. Report what ran and any external dependencies that prevented checks.
 
+## Pull requests
+
+Target `main` from a short-lived branch; retired development branches are not integration targets. Keep each PR small and limited to one file set with one owner. Split contract, implementation, tests and documentation changes when they can land independently.
+
+Use the [pull request template](.github/pull_request_template.md) and fill every section. State whether the contract impact is none, additive or a new version, name the family, and list the commands you actually ran. List every native, live-model or Docker check you skipped. A model reply, transport ACK or accepted request is not completion evidence.
+
+Check the [extension roadmap](docs/development/roadmap.md) before adding an extension family, and record durable choices in the [decision records](docs/decisions/README.md). A change to a shipped contract needs an explicit version or a new record, not a silent widening.
+
 ## Add a plugin
 
 To ship templates and knob hooks without changing the platform, follow the [scenario plugin guide](docs/guides/scenario-plugins.md) and [plugin contracts](docs/reference/plugin-contracts.md).

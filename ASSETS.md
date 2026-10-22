@@ -1,8 +1,8 @@
 # Data and assets / 数据与资源
 
-The public clone and all nine templates need no separate Release download. Committed registry snapshots supply example contracts; OSM roads and building footprints supply a real lightweight Huangpu city, rendered with procedural geometry and vehicle meshes. A failed city load or a coordinate plane is not evidence of a successfully loaded city.
+The public clone and all ten templates need no separate Release download. Committed registry snapshots supply example contracts; OSM roads and building footprints supply a real lightweight Huangpu city, rendered with procedural geometry and vehicle meshes. A failed city load or a coordinate plane is not evidence of a successfully loaded city.
 
-公开仓库和九个模板无需另行下载 Release 资源。契约快照提供示例类型；OSM 道路与建筑轮廓构成真实的黄浦轻量城市，采用程序生成的几何与车辆外观。载入失败或坐标平面不代表城市载入成功。
+公开仓库和十个模板无需另行下载 Release 资源。契约快照提供示例类型；OSM 道路与建筑轮廓构成真实的黄浦轻量城市，采用程序生成的几何与车辆外观。载入失败或坐标平面不代表城市载入成功。
 
 OSM-derived data is credited to **© OpenStreetMap contributors, ODbL 1.0**. Read the [lite-city attribution](scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt) and the [authoring-map attribution](src/aeroagentsim/authoring/assets/ATTRIBUTION.txt) for sources and dataset notes.
 

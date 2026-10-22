@@ -59,4 +59,11 @@ After [installation](getting-started/install.md), `aeroagentsim templates` lists
 | Command line | [CLI](reference/cli.md) |
 | Recorded views | [Viewer feed](reference/viewer-feed.md) |
 
+## Project
+
+| Topic | Where |
+| --- | --- |
+| Planned extension contracts and how to help | [Extension roadmap](development/roadmap.md) |
+| Why the repository and its branches are organised this way | [Decision records](decisions/README.md) |
+
 See [Contributing](../CONTRIBUTING.md) for development and the [changelog](../CHANGELOG.md) for release changes.
