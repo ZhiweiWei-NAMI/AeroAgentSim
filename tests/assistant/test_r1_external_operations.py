@@ -15,6 +15,7 @@ import socket
 import urllib.request
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -392,3 +393,101 @@ def test_builtin_alias_and_canonical_id_have_identical_compiled_documents(tmp_pa
         return json.dumps(_rebase(result.document, result.files_dir, stable), sort_keys=True, ensure_ascii=False, allow_nan=False).encode()
     assert encode(old) == encode(new)
     assert old.expectations == new.expectations
+
+
+@pytest.fixture(params=[False, True], ids=["no-legacy-tags", "copied-legacy-tags"])
+def lowalt_replacement(monkeypatch, request):
+    def annotate(context, params):
+        return CompileResult(resources=(ResourceProposal(f"notes/{context.operation_id}.txt", params["text"].encode()),))
+
+    names = ("schedule_event", "add_orders", "set_orders", "add_place", "update_place")
+    replacement = AssistantOperationPlugin(name="lowalt", operations=tuple(OperationSpec(
+        id="lowalt." + name,
+        parameters=obj({"text": {"type": "string"}, "id": {"type": "string"}}, ("text",)),
+        title="Annotation", title_zh="标注", description="Propose a text resource", description_zh="提议文本资源",
+        compile=annotate, display={"legacy_operation": name} if request.param else {},
+    ) for name in names))
+    monkeypatch.setattr(api, "entry_points", lambda **kwargs: [Entry("lowalt", replacement, [])])
+    return replacement
+
+
+@pytest.mark.parametrize("name", ["schedule_event", "lowalt.schedule_event"])
+def test_replacement_schedule_event_without_at_s_compiles_through_both_entry_points(lowalt_replacement, tmp_path, name):
+    context = HostContext(WorkspaceStore(tmp_path / "workspaces", None), TemplateRegistry(), None)
+    prepared = context.templates.apply("food-delivery")
+    operations = [{"id": "note", "op": name, "params": {"text": "hello"}}]
+    before = copy.deepcopy(operations)
+    catalogue = OperationCatalogue()
+    assert catalogue.provider(name) is lowalt_replacement
+    # Traffic retains builtin compatibility staging after the lowalt provider is replaced.
+    assert catalogue.provider("traffic.schedule_event")._host is not None
+    assert catalogue.dependencies(CompileContext(prepared.document), operations) == {0: set()}
+
+    pure = compile_operations(CompileContext(prepared.document), operations, catalogue=catalogue)
+    hosted = compile_plan(context, {"template": "food-delivery"}, operations, tmp_path / "plan")
+
+    assert hosted.ok, hosted.errors
+    assert not pure.issues and not pure.patches
+    assert pure.resources == (ResourceProposal("notes/note.txt", b"hello"),)
+    assert thaw(pure.effective_operations) == before
+    assert (hosted.files_dir / "notes/note.txt").read_bytes() == b"hello"
+    assert hosted.operations == operations == before
+    assert not any(row.get("op_id") == "note" and row.get("code") == "RUN_HORIZON" for row in hosted.warnings)
+    assert not list(context.store.root.glob("studio-*"))
+
+
+@pytest.mark.parametrize("prefix", ["", "lowalt."])
+def test_replacement_specs_are_excluded_from_staging_bookkeeping_but_not_scene_checks(lowalt_replacement, tmp_path, prefix):
+    from aeroagentsim.packs.lowalt.assistant_host import LowaltStaging
+
+    document = {"run": {"until_ns": 1_000_000_000}, "engines": {}, "entities": [],
+                "bindings": {"commands": [{"schema": "existing.event", "at_ns": 2_000_000_000}]}}
+    staging = LowaltStaging(None, None, document, tmp_path, SimpleNamespace(document=document), OperationCatalogue())
+    creation = {"id": "create-note", "op": prefix + "add_orders", "params": {"id": "note", "text": "hello"}}
+    edit = {"id": "edit-note", "op": prefix + "set_orders", "params": {"id": "note", "text": "updated"}}
+    event = {"id": "event-note", "op": prefix + "schedule_event", "params": {"text": "hello"}}
+    operations = [creation, edit, event]
+    before = copy.deepcopy(operations)
+    staging.prepare_operations(operations)
+    assert staging.workload_creators == {}
+    staging.created_by["note"] = "builtin-creation"
+    for operation in operations:
+        assert staging.legacy(operation) is None
+        assert staging.error(operation, OperationError("id", "annotation failed"), "annotation failed") == "annotation failed"
+    staging.succeeded(staging.catalogue.resolve(creation["op"]), creation["params"], creation["id"])
+    assert staging.created_by == {"note": "builtin-creation"}
+
+    errors, warnings = [], []
+    staging.finish(document, operations, errors, warnings)
+    assert not errors
+    assert [(row["op_id"], row["field"], row["code"]) for row in warnings] == [
+        (None, "events.existing.event.at_s", "RUN_HORIZON"),
+    ]
+    # The still-installed builtin compiler retains operation-level horizon errors.
+    builtin = {"id": "builtin-event", "op": "traffic.schedule_event", "params": {"at_s": 3}}
+    staging.finish(document, [*operations, builtin], errors, warnings)
+    assert [(row["op_id"], row["field"], row["code"]) for row in errors] == [
+        ("builtin-event", "params.at_s", "RUN_HORIZON"),
+    ]
+    assert operations == before
+
+
+@pytest.mark.parametrize("prefix", ["", "lowalt."])
+def test_replacement_specs_do_not_acquire_builtin_workspace_or_workload_revisions(lowalt_replacement, prefix):
+    from aeroagentsim.packs.lowalt.assistant_host import recover_operations, revise_operations, workspace_operations
+
+    original = {"id": "note", "op": prefix + "add_place", "params": {"text": "before"}}
+    changed = {**original, "params": {"text": "after"}}
+    before = copy.deepcopy([original, changed])
+    assert workspace_operations([changed], [original]) == [changed]
+    with pytest.raises(ValueError, match="explicit supported replacement"):
+        workspace_operations([], [original])
+
+    creation = {"id": "work", "op": prefix + "add_orders", "params": {"text": "before"}}
+    edit = {"id": "work", "op": prefix + "set_orders", "params": {"text": "after"}}
+    plans = {"1": {"version": 1, "parent": None, "operations": [creation]}}
+    plans_before = copy.deepcopy(plans)
+    assert recover_operations([edit], plans, 1) == ([edit], [])
+    assert revise_operations([creation], {"work": edit}) == {"work": edit}
+    assert plans == plans_before
+    assert [original, changed] == before

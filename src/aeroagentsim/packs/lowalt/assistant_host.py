@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from aeroagentsim.assistant.catalogue import OperationCatalogue
 from aeroagentsim.assistant.operations import OperationError
 from aeroagentsim.authoring.templates import _knob_value, _pointer
 from aeroagentsim.packs.lowalt.template import has_lowalt_components
@@ -241,20 +242,18 @@ class LowaltStaging:
     def operation_name(spec) -> str | None:
         return _builtin_operation_name(spec)
 
-    def legacy(self, operation: dict) -> dict:
-        row = copy.deepcopy(operation)
-        if not isinstance(row, dict):
-            return row
-        try:
-            spec = self.catalogue.resolve(row.get("op"))
-        except OperationError:
-            return row
-        row["op"] = self.operation_name(spec) or row.get("op")
-        return row
+    def legacy(self, operation: dict) -> dict | None:
+        """Admit only effective builtin compilers, never unchanged replacement aliases."""
+        if not isinstance(operation, dict):
+            return None
+        name = _operation_name(operation.get("op"), self.catalogue)
+        if name is None:
+            return None
+        return {**copy.deepcopy(operation), "op": name}
 
     def prepare_operations(self, operations: list[dict]) -> None:
         # Diagnostic bookkeeping only; dependency semantics live in the pure spec.
-        self.workload_creators = _workload_creators([self.legacy(row) for row in operations])
+        self.workload_creators = _workload_creators([row for operation in operations if (row := self.legacy(operation)) is not None])
 
     def prepare(self, spec, operation: dict, document: dict, params: dict, warnings: list[dict]) -> dict:
         name = self.operation_name(spec)
@@ -349,11 +348,13 @@ class LowaltStaging:
 
     def error(self, operation: dict, error: Exception, message: str) -> str:
         operation = self.legacy(operation)
-        target = operation.get("params", {}).get("id") if isinstance(operation, dict) and isinstance(operation.get("params"), dict) else None
+        if operation is None:
+            return message
+        target = operation.get("params", {}).get("id") if isinstance(operation.get("params"), dict) else None
         owner = self.created_by.get(target) if isinstance(target, str) else None
-        if owner is not None and isinstance(operation, dict) and str(operation.get("op", "")).startswith("add_"):
+        if owner is not None and str(operation.get("op", "")).startswith("add_"):
             message += f". {target!r} is already added by {owner} in THIS draft; edit {owner} with revise_plan.update instead of adding it again / 该对象已由本草稿操作 {owner} 添加，请修改该操作"
-        if isinstance(operation, dict) and operation.get("op") in {"set_orders", "remove_orders"} and getattr(error, "field", None) == "id":
+        if operation.get("op") in {"set_orders", "remove_orders"} and getattr(error, "field", None) == "id":
             message += f". Workload creation operations (op id → workload id): {self.workload_creators}; retain these creations / 工作量创建操作（操作标识→工作量标识），请保留创建操作"
         return message
 
@@ -376,7 +377,9 @@ class LowaltStaging:
             if not any(e["plugin"] in {"lowalt_city_capture", "traffic_camera_capture"} for e in document["engines"].values()):
                 warnings.append({"op_id": None, "field": "photograph", "message": "Photograph events are recorded, but this scene has no city camera for an image artifact / 此场景可记录拍摄事件，但没有城市相机生成照片文件"})
         if not errors:
-            _time_bounds(document, [self.legacy(operation) for operation in operations], errors, warnings)
+            # Filter recipe-dependent checks, but retain validation of existing scene schedules.
+            builtin_operations = [row for operation in operations if (row := self.legacy(operation)) is not None]
+            _time_bounds(document, builtin_operations, errors, warnings)
         if not errors:
             _idle_kitchens(document, warnings)
 
@@ -401,9 +404,12 @@ class LowaltStaging:
                 result.diff_base["removed"].append({"kind": "network", "id": "network.net.xml", "label": "Previous road network", "label_zh": "原道路网络"})
 
 
-def _operation_name(name: str) -> str:
-    prefix, separator, suffix = name.partition(".")
-    return suffix if separator and prefix in {"lowalt", "traffic"} else name
+def _operation_name(name: str, catalogue: OperationCatalogue) -> str | None:
+    """Resolve aliases before admitting compatibility semantics by compiler identity."""
+    try:
+        return _builtin_operation_name(catalogue.resolve(name))
+    except OperationError:
+        return None
 
 
 def _like_operation(original: str, name: str) -> str:
@@ -416,6 +422,7 @@ def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[s
     from .assistant import OPERATION_SPECS as OPERATIONS
     from aeroagentsim.assistant.tools import validate_arguments
 
+    catalogue = OperationCatalogue()
     old = {op["id"]: op for op in baseline}
     new = {op["id"]: op for op in operations}
     result = []
@@ -423,6 +430,9 @@ def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[s
     removals = {"add_place": ("remove_place", "place"), "add_fleet": ("remove_fleet", "fleet"), "add_orders": ("remove_orders", "orders"), "add_incident": ("remove_incident", "incident"), "set_cooperation": ("remove_cooperation", None)}
 
     def translate(op: dict[str, Any], target: str, subject: str | None, changes: dict[str, Any]) -> dict[str, Any]:
+        target_name = _like_operation(op["op"], target)
+        if _operation_name(target_name, catalogue) != target:
+            raise ValueError(f"{op['id']}: the effective {target_name} does not support builtin workspace translation / 当前操作不支持内置工作区转换")
         spec = OPERATIONS[target]
         properties = spec["parameters"].get("properties", {})
         params = copy.deepcopy(changes)
@@ -432,36 +442,40 @@ def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[s
                 raise ValueError(f"{op['id']}: {target} does not declare the entity selector / 操作未声明对象选择字段")
             params[key] = op["params"]["id"]
         validate_arguments(spec["parameters"], params, op["id"])
-        return {"id": op["id"], "op": _like_operation(op["op"], target), "params": params}
+        return {"id": op["id"], "op": target_name, "params": params}
 
     for op in operations:
         previous = old.get(op["id"])
         if previous == op:
             continue
-        if previous is not None and _operation_name(op["op"]) == _operation_name(previous["op"]) and _operation_name(op["op"]) in replacements:
+        name = _operation_name(op["op"], catalogue)
+        previous_name = _operation_name(previous["op"], catalogue) if previous is not None else None
+        if previous is not None and name == previous_name and name in replacements:
             if op["params"].get("id") != previous["params"].get("id"):
                 raise ValueError(f"{op['id']}: keep an applied entity's id when revising it / 修改已确认对象时须保留对象标识")
             changed = {k: v for k, v in op["params"].items() if k != "id" and (k not in previous["params"] or previous["params"][k] != v)}
             if previous["params"].keys() - op["params"].keys():
                 raise ValueError(f"{op['id']}: specify replacement values for removed parameters / 请明确提供被移除参数的替代值")
-            target, subject = replacements[_operation_name(op["op"])]
+            target, subject = replacements[name]
             result.append(translate(op, target, subject, changed))
-        elif previous is not None and _operation_name(previous["op"]).startswith("add_"):
+        elif previous_name is not None and previous_name.startswith("add_"):
             raise ValueError(f"{op['id']}: revise an applied addition with the same operation kind / 请保留已确认新增对象的操作类型")
         else:
             result.append(copy.deepcopy(op))
     for op in baseline:
         if op["id"] in new:
             continue
-        if _operation_name(op["op"]) not in removals:
+        name = _operation_name(op["op"], catalogue)
+        if name not in removals:
             raise ValueError(f"{op['id']}: removing this already-applied arrangement needs an explicit supported replacement / 移除此已确认安排需要明确的受支持替代操作")
-        target, subject = removals[_operation_name(op["op"])]
+        target, subject = removals[name]
         result.insert(0, translate(op, target, subject, {}))
     return result
 
 
 
 def recover_operations(operations: list[dict], plans: dict, parent) -> tuple[list[dict], list[str]]:
+    catalogue = OperationCatalogue()
     session = {"plans": plans}
     operations = copy.deepcopy(operations)
     # Older failed revisions may already have replaced their creation with
@@ -472,32 +486,36 @@ def recover_operations(operations: list[dict], plans: dict, parent) -> tuple[lis
     while ancestor is not None and ancestor["version"] not in visited:
         visited.add(ancestor["version"])
         for operation in ancestor["operations"]:
-            if _operation_name(operation["op"]) == "add_orders":
+            if _operation_name(operation["op"], catalogue) == "add_orders":
                 recipes.setdefault(operation["id"], (operation, ancestor["version"]))
         ancestor = session["plans"].get(str(ancestor.get("parent")))
     recovery_notes = []
     for index, operation in enumerate(operations):
         recipe = recipes.get(operation.get("id"))
-        if _operation_name(operation["op"]) != "set_orders" or recipe is None:
+        if _operation_name(operation["op"], catalogue) != "set_orders" or recipe is None:
             continue
         creation, source_version = recipe
         target = creation["params"]["id"]
         if operation["params"]["id"] not in {target, creation["id"]}:
             continue
-        if any(_operation_name(op["op"]) == "add_orders" and op["params"]["id"] == target for op in operations):
+        if any(_operation_name(op["op"], catalogue) == "add_orders" and op["params"]["id"] == target for op in operations):
             continue
-        operations[index] = {"id": operation["id"], "op": _like_operation(operation["op"], "add_orders"), "params": {**copy.deepcopy(creation["params"]), **operation["params"], "id": target}}
+        target_name = _like_operation(operation["op"], "add_orders")
+        if _operation_name(target_name, catalogue) != "add_orders":
+            continue
+        operations[index] = {"id": operation["id"], "op": target_name, "params": {**copy.deepcopy(creation["params"]), **operation["params"], "id": target}}
         recovery_notes.append(f"Retained the creation of workload {target!r} from plan v{source_version} while editing its parameters / 修改工作量 {target!r} 时保留方案 v{source_version} 的真实创建配置")
     return operations, recovery_notes
 
 
 def revise_operations(operations: list[dict], updates: dict) -> dict:
+    catalogue = OperationCatalogue()
     result, by_id = {"operations": operations}, copy.deepcopy(updates)
     # Revising a retained workload creation edits its recipe. Replacing the
     # creation by set_orders would leave nothing to edit on recompilation.
     for original in result["operations"]:
         update = by_id.get(original["id"])
-        if _operation_name(original["op"]) == "add_orders" and update is not None and _operation_name(update["op"]) == "set_orders":
+        if _operation_name(original["op"], catalogue) == "add_orders" and update is not None and _operation_name(update["op"], catalogue) == "set_orders":
             if update["params"]["id"] not in {original["params"]["id"], original["id"]}:
                 raise ValueError(f"{original['id']}: workload is {original['params']['id']!r}; retain that target / 请保留该工作量标识")
             params = {**copy.deepcopy(original["params"]), **update["params"], "id": original["params"]["id"]}
