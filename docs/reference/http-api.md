@@ -70,7 +70,7 @@ evidence that a model provider, camera or native engine is ready.
 
 | Endpoint | Method | Semantics |
 | --- | --- | --- |
-| `/v1/plugins` | GET | Plugin catalog: `{api_version, scenarios, engines, algorithms, models}`. `api_version` is `1`. Every row has `{name, origin, distribution, status}`; scenario rows add `templates` and `apply_hooks`, and duplicate rows add `conflict`. |
+| `/v1/plugins` | GET | Plugin catalog: `{api_version, scenarios, engines, algorithms, models, metrics}`. `api_version` remains `1`; `metrics` is additive. Every row has `{name, origin, distribution, status}`; scenario rows add populated `templates` and `apply_hooks`, and duplicate rows add `conflict`. |
 
 Inventory is discovery, not readiness: a row, template or passing manifest
 validation does not prove that a worker, native simulator, camera, model
@@ -78,15 +78,31 @@ provider or detailed city pack is available. `GET /v1/plugins` and
 [`aeroagentsim plugins`](cli.md#aeroagentsim-plugins) report the same catalogue.
 
 Scenario entries describe discovered builtins and installed plugins in
-`aeroagentsim.scenarios`. Installed names take precedence over matching builtins.
-Installed engine, algorithm, model and scenario names are grouped; a duplicated
-name is listed once with `status: "duplicate"` and `conflict` holding every
-distribution name, while every other row has `status: "ok"`. Runtime discovery
-rejects duplicate installed names. Because scenario discovery fails before
-loading duplicates, the inventory then builds the scenario section from
-entry-point metadata with empty `templates`/`apply_hooks` and keeps builtins
-listed. The CLI counterpart is
-[`aeroagentsim plugins`](cli.md#aeroagentsim-plugins). See
+`aeroagentsim.scenarios`. Scenario plugins and their zero-argument data factories
+are loaded to return sorted template IDs (read from `template.yaml`) and owned
+hook names, preserving the existing contribution arrays. Hooks are not invoked.
+Engine, algorithm, model and metric entries use metadata only; inventory never
+instantiates engines or model providers. Metric rows have the same common fields
+and status/conflict semantics as the other families, not reducer or metric-ID
+inventories.
+
+Rows are sorted by name; an installed name replaces the whole matching builtin.
+Across all five families, duplicate installed names are listed once with
+`status: "duplicate"` and `conflict` holding every declaring distribution name,
+including repeated names and unknown (`null`) distributions. Other rows have
+`status: "ok"`, meaning unambiguous, not validated or ready. Metadata enumeration
+retains malformed names and duplicate evidence. Scenario/metric runtime admission
+rejects bad names and duplicates before loading providers; engine catalogs reject
+duplicates before loading factories. Algorithm/model runtime lookup retains its
+[legacy family rules](extension-admission.md#family-matrix).
+
+A duplicate or malformed scenario name triggers a section-wide metadata fallback:
+all scenario `templates`/`apply_hooks` arrays are empty and builtins stay listed,
+without loading any scenario plugin. These diagnostic fallback arrays mean
+**uninspected**, not that the providers contribute nothing. Otherwise the arrays
+contain the loaded contributions, and empty means none declared. Other invalid
+scenario contracts still fail discovery rather than silently using a builtin.
+See [extension admission](extension-admission.md) and
 [plugin contracts](plugin-contracts.md) for the plugin APIs.
 
 ## Run execution API

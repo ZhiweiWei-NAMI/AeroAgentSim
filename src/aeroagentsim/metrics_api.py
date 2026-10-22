@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import math
-import re
 from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from dataclasses import MISSING, asdict, dataclass, fields
@@ -18,6 +17,13 @@ from inspect import iscoroutinefunction
 from types import MappingProxyType
 from typing import Any, Literal, Protocol
 
+from aeroagentsim.extensions.discovery import (
+    DuplicateEntryPointError,
+    discover,
+    validate_api_version,
+    validate_name,
+)
+from aeroagentsim.extensions.records import Contribution
 from aeroagentsim.runs import RecordedMessage
 
 METRICS_API_VERSION = 1
@@ -86,15 +92,10 @@ class MetricPlugin:
     api_version: int = 1
 
     def __post_init__(self) -> None:
-        if not isinstance(self.name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", self.name):
-            raise ValueError(
-                f"metric plugin {self.name!r}: name must match [a-z0-9][a-z0-9_-]*"
-            )
-        if type(self.api_version) is not int or self.api_version != METRICS_API_VERSION:
-            raise ValueError(
-                f"metric plugin {self.name!r}: unsupported API version "
-                f"{self.api_version!r}; supported version is {METRICS_API_VERSION}"
-            )
+        validate_name(self.name, label="metric plugin")
+        validate_api_version(
+            self.api_version, METRICS_API_VERSION, label=f"metric plugin {self.name!r}"
+        )
         if not isinstance(self.reducers, tuple):
             raise ValueError(f"metric plugin {self.name!r}: reducers must be a tuple")
         ids: set[str] = set()
@@ -146,45 +147,44 @@ BUILTINS = MappingProxyType({
 })
 
 
-def _plugin(name: str, value: Any, origin: str) -> MetricPlugin:
-    if not isinstance(value, MetricPlugin) and callable(value):
-        try:
-            value = value()
-        except TypeError as exc:
-            raise TypeError(
-                f"{origin} {name!r}: zero-argument metric plugin factory failed: {exc}"
-            ) from exc
-    if not isinstance(value, MetricPlugin):
-        raise TypeError(
-            f"{origin} {name!r}: expected a MetricPlugin or a zero-argument callable returning one"
-        )
-    if value.name != name:
-        raise ValueError(f"{origin} {name!r}: plugin name {value.name!r} does not match")
-    return value
+def _installed() -> dict[str, Contribution]:
+    discovery = discover(
+        "aeroagentsim.metrics", {},
+        entries=entry_points(group="aeroagentsim.metrics"), load=False,
+    )
+    try:
+        discovery.require_unique()
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate aeroagentsim.metrics entry point name: {exc.conflict.name!r}"
+        ) from exc
+    for entry in discovery.contributions:
+        validate_name(entry.name, label="aeroagentsim.metrics entry point")
+    return {entry.name: entry for entry in discovery.contributions}
 
 
-def _installed() -> dict[str, Any]:
-    installed = {}
-    for entry in entry_points(group="aeroagentsim.metrics"):
-        if entry.name in installed:
-            raise ValueError(f"Duplicate aeroagentsim.metrics entry point name: {entry.name!r}")
-        installed[entry.name] = entry
-    return installed
+def _discover(entries: Iterable[Any]) -> tuple[MetricPlugin, ...]:
+    try:
+        return discover(
+            "aeroagentsim.metrics", BUILTINS,
+            expected_type=MetricPlugin, api_version=METRICS_API_VERSION,
+            name_of=lambda plugin: plugin.name, factory_label="metric plugin",
+            entries=entries,
+        ).providers
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate aeroagentsim.metrics entry point name: {exc.conflict.name!r}"
+        ) from exc
 
 
 def builtin_metric_plugins() -> tuple[MetricPlugin, ...]:
     """The shipped legacy catalogue, without loading installed contributions."""
-    return tuple(_plugin(name, BUILTINS[name], "builtin metric plugin") for name in sorted(BUILTINS))
+    return _discover(())
 
 
 def discover_metric_plugins() -> tuple[MetricPlugin, ...]:
     """Sorted builtin/installed union; duplicate installed names fail before load."""
-    installed = _installed()
-    return tuple(
-        _plugin(name, installed[name].load(), "aeroagentsim.metrics entry point")
-        if name in installed else _plugin(name, BUILTINS[name], "builtin metric plugin")
-        for name in sorted(set(BUILTINS) | set(installed))
-    )
+    return _discover(entry_points(group="aeroagentsim.metrics"))
 
 
 def _reducer_identity(reducer: Reducer) -> dict[str, Any]:
@@ -206,9 +206,12 @@ def metric_plugin_fingerprint(plugins: tuple[MetricPlugin, ...]) -> list[Any]:
     result = []
     for plugin in plugins:
         entry = installed.get(plugin.name)
-        dist = getattr(entry, "dist", None)
         distribution = (
-            [dist.name, dist.version] if dist is not None else None
+            [entry.distribution, entry.version]
+            if entry is not None and (
+                entry.distribution is not None or entry.version is not None
+            )
+            else None
         )
         if entry is None and plugin.name in BUILTINS:
             # Source checkouts also have explicit builtin reducer versions.
@@ -219,7 +222,7 @@ def metric_plugin_fingerprint(plugins: tuple[MetricPlugin, ...]) -> list[Any]:
         result.append({
             "name": plugin.name,
             "api_version": plugin.api_version,
-            "entry_point": getattr(entry, "value", None),
+            "entry_point": entry.entry_point if entry is not None else None,
             "distribution": distribution,
             "reducers": [_reducer_identity(reducer) for reducer in plugin.reducers],
         })

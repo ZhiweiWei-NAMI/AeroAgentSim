@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib.metadata import entry_points
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol
+
+from aeroagentsim.extensions.discovery import (
+    DuplicateEntryPointError,
+    discover,
+    validate_api_version,
+    validate_name,
+)
 
 API_VERSION = 1
 
@@ -62,17 +68,10 @@ class ScenarioPlugin:
     api_version: int = API_VERSION
 
     def __post_init__(self) -> None:
-        if not isinstance(self.name, str) or not re.fullmatch(
-            r"[a-z0-9][a-z0-9_-]*", self.name
-        ):
-            raise ValueError(
-                f"scenario plugin {self.name!r}: name must match [a-z0-9][a-z0-9_-]*"
-            )
-        if type(self.api_version) is not int or self.api_version != API_VERSION:
-            raise ValueError(
-                f"scenario plugin {self.name!r}: unsupported API version "
-                f"{self.api_version!r}; supported version is {API_VERSION}"
-            )
+        validate_name(self.name, label="scenario plugin")
+        validate_api_version(
+            self.api_version, API_VERSION, label=f"scenario plugin {self.name!r}"
+        )
         if not isinstance(self.templates, tuple) or any(
             not isinstance(source, TemplateSource) for source in self.templates
         ):
@@ -103,47 +102,21 @@ class ScenarioPlugin:
         object.__setattr__(self, "apply_hooks", MappingProxyType(hooks))
 
 
-def _plugin(name: str, value: Any, origin: str) -> ScenarioPlugin:
-    if not isinstance(value, ScenarioPlugin) and callable(value):
-        try:
-            value = value()
-        except TypeError as exc:
-            raise TypeError(
-                f"{origin} {name!r}: zero-argument scenario plugin factory failed: {exc}"
-            ) from exc
-    if not isinstance(value, ScenarioPlugin):
-        raise TypeError(
-            f"{origin} {name!r}: expected a ScenarioPlugin or a zero-argument "
-            "callable returning one"
-        )
-    if value.name != name:
-        raise ValueError(
-            f"{origin} {name!r}: plugin name {value.name!r} does not match"
-        )
-    return value
-
-
 def discover_scenario_plugins() -> tuple[ScenarioPlugin, ...]:
     """Merge builtins with installed plugins; installed names take precedence."""
     from aeroagentsim.scenarios import BUILTINS
 
-    installed = {}
-    for entry in entry_points(group="aeroagentsim.scenarios"):
-        if entry.name in installed:
-            raise ValueError(
-                f"Duplicate aeroagentsim.scenarios entry point name: {entry.name!r}"
-            )
-        installed[entry.name] = entry
-    plugins = []
-    for name in sorted(set(BUILTINS) | set(installed)):
-        if name in installed:
-            value = installed[name].load()
-            origin = "aeroagentsim.scenarios entry point"
-        else:
-            value = BUILTINS[name]
-            origin = "builtin scenario plugin"
-        plugins.append(_plugin(name, value, origin))
-    return tuple(plugins)
+    try:
+        return discover(
+            "aeroagentsim.scenarios", BUILTINS,
+            expected_type=ScenarioPlugin, api_version=API_VERSION,
+            name_of=lambda plugin: plugin.name, factory_label="scenario plugin",
+            entries=entry_points(group="aeroagentsim.scenarios"),
+        ).providers
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate aeroagentsim.scenarios entry point name: {exc.conflict.name!r}"
+        ) from exc
 
 
 __all__ = [

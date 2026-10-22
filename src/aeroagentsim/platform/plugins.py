@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from importlib import import_module
@@ -14,6 +14,13 @@ from aerokernel import BindingManifest, EntityRef, MemoryRegistry
 from aerokernel.engine import Engine, Partition
 from aerokernel.values import normalize
 
+from aeroagentsim.extensions.discovery import (
+    DiscoveryResult,
+    DuplicateEntryPointError,
+    discover,
+    validate_name,
+)
+from aeroagentsim.extensions.engine_builtins import BUILTINS
 from aeroagentsim.models import MotionModel
 
 
@@ -69,57 +76,52 @@ class EngineBuild:
 
 
 Factory = Callable[[EngineBuild], Engine]
-BUILTINS = {
-    "lowalt_city_capture": "aeroagentsim.packs.lowalt.city_capture",
-    "lowalt_tasks": "aeroagentsim.packs.lowalt.tasks",
-    "lowalt_incident_capture": "aeroagentsim.packs.lowalt.incident_capture",
-    "lowalt_airspace": "aeroagentsim.packs.lowalt.airspace",
-    "lowalt_energy": "aeroagentsim.packs.lowalt.energy",
-    "traffic_decision_failures": "aeroagentsim.packs.traffic_accident.decision_failures",
-    "traffic_decisions": "aeroagentsim.packs.traffic_accident.decisions",
-    "traffic_capture_bridge": "aeroagentsim.packs.traffic_accident.capture",
-    "traffic_camera_capture": "aeroagentsim.packs.traffic_accident.camera",
-    "behaviour": "aeroagentsim.engines.behaviour",
-    "ingress-consumer": "aeroagentsim.engines.ingress_consumer",
-    "langgraph": "aeroagentsim.agents.langgraph",
-    "telemetry": "aeroagentsim.engines.telemetry",
-    "decision": "aeroagentsim.agents.decision",
-    "agent-assignment": "aeroagentsim.agents.dispatch",
-    "kinematic": "aeroagentsim.engines.kinematic",
-    "workflow": "aeroagentsim.engines.workflow",
-    "records": "aeroagentsim.engines.records",
-    "threshold": "aeroagentsim.engines.threshold",
-    "predicate": "aeroagentsim.engines.predicate",
-    "logistics": "aeroagentsim.packs.logistics",
-    "inspection": "aeroagentsim.packs.inspection",
-    "environment": "aeroagentsim.engines.environment",
-}
+
+
+def _engine_discovery(entries: Iterable[Any]) -> DiscoveryResult[Callable]:
+    discovery = discover(
+        "aeroagentsim.engines", BUILTINS,
+        expected_type=Callable, api_version=None, name_of=None, factory_label=None,
+        entries=entries, load=False, name_pattern=None,
+        builtin_loader=lambda module: import_module(module).build,
+        type_error="plugin {name!r}: engine factory must be callable",
+    )
+    try:
+        discovery.require_unique()
+    except DuplicateEntryPointError as exc:
+        raise ValueError("Duplicate aeroagentsim.engines entry point names") from exc
+    for entry in discovery.contributions:
+        label = (
+            "aeroagentsim.engines entry point" if entry.source == "installed"
+            else "builtin aeroagentsim.engines"
+        )
+        validate_name(entry.name, label=label, pattern=None)
+    return discovery
 
 
 class EngineCatalog:
     """Resolve installed plugins lazily; a factory returns any kernel Engine."""
 
     def __init__(self) -> None:
-        installed = entry_points(group="aeroagentsim.engines")
+        installed = tuple(entry_points(group="aeroagentsim.engines"))
+        _engine_discovery(installed)
         self.entries = {entry.name: entry for entry in installed}
-        if len(self.entries) != len(installed):
-            raise ValueError("Duplicate aeroagentsim.engines entry point names")
+
+    def _discover(self) -> DiscoveryResult[Callable]:
+        # adapters.register / packs.register may extend this public collection.
+        # Snapshot it without querying installed metadata again or loading code.
+        return _engine_discovery(self.entries.values())
 
     def names(self) -> tuple[str, ...]:
         """Every installed engine and builtin, with entry points taking precedence."""
-        return tuple(sorted(set(BUILTINS) | set(self.entries)))
+        return self._discover().names
 
     def factory(self, plugin: str) -> Factory:
         """Import the declared factory without constructing an engine."""
-        if plugin in self.entries:
-            factory = cast(Factory, self.entries[plugin].load())
-        elif plugin in BUILTINS:
-            factory = cast(Factory, import_module(BUILTINS[plugin]).build)
-        else:
+        discovery = self._discover()
+        if plugin not in discovery.names:
             raise ValueError(f"unknown plugin {plugin!r}; install its distribution")
-        if not callable(factory):
-            raise TypeError(f"plugin {plugin!r}: engine factory must be callable")
-        return factory
+        return cast(Factory, discovery.resolve(plugin))
 
     def config_schema(self, plugin: str) -> dict[str, Any] | None:
         """Optional factory.config_schema is a portable object configuration descriptor.
@@ -140,7 +142,7 @@ class EngineCatalog:
         return cast(dict[str, Any], result)
 
     def build(self, plugin: str, context: EngineBuild) -> Engine:
-        if plugin not in self.entries and plugin not in BUILTINS:
+        if plugin not in self.names():
             raise ValueError(
                 f"engines.{context.id}.plugin: unknown plugin {plugin!r}; install its distribution"
             )
