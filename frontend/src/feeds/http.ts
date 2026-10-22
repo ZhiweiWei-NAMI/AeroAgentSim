@@ -1,4 +1,5 @@
 import { parseLosslessJson } from './lossless-json';
+import { asNetworkError, checkedFetch, isRetryableReadError, requestJson, TransportError } from './transport';
 import { validateBusinessEvents, validateKpiValues } from '../newcomers/validation';
 import type { FeedCommit, Instant, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
@@ -156,9 +157,7 @@ export function validateCommit(value: unknown): FeedCommit {
 export class RunsApi {
   constructor(readonly base = window.location.origin) {}
   async request(path: string, options?: RequestInit): Promise<unknown> {
-    const response = await fetch(`${this.base}${path}`, options);
-    if (!response.ok) throw Error(`HTTP ${response.status}: ${await response.text()}`);
-    return parseLosslessJson(await response.text());
+    return requestJson(this.base, path, options, parseLosslessJson);
   }
   async runs(signal?: AbortSignal, includeKpis = true): Promise<RunInfo[]> {
     const rows = array(await this.request(includeKpis ? '/v1/runs' : '/v1/runs?include_kpis=false', { signal }));
@@ -240,7 +239,7 @@ export class HttpViewerFeed implements ViewerFeed {
         pageRetries = 0;
       } catch (error) {
         if (signal?.aborted) return;
-        if (!(error instanceof TypeError) && !/^Error: HTTP 5\d\d:/.test(String(error))) throw error;
+        if (!isRetryableReadError(error)) throw error;
         this.transportError?.(`Connection interrupted; reconnecting from journal ${cursor}: ${String(error)}`);
         await reconnectDelay(pageRetries++);
         continue;
@@ -258,21 +257,17 @@ export class HttpViewerFeed implements ViewerFeed {
     }
     // Reconnect only the read transport; simulation execution is never retried.
     let retries = 0;
-    class TransportError extends Error {}
     while (!signal?.aborted) {
       let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
       try {
-      let response: Response;
-      try {response = await fetch(`${this.api.base}${this.path}/stream?from=${cursor}`, { signal, headers: { 'Last-Event-ID': String(cursor - 1) } });}
-      catch(error) {if(signal?.aborted)return;throw new TransportError(String(error));}
-      if (response.status >= 500) throw new TransportError(`SSE HTTP ${response.status}`);
-      if (!response.ok || !response.body) throw Error(`SSE HTTP ${response.status}`);
-      this.transportError?.(undefined);
-      reader = response.body.getReader();const decoder = new TextDecoder();
-      let buffer = '', ended = false;
+        const response = await checkedFetch(this.api.base, `${this.path}/stream?from=${cursor}`, { signal, headers: { 'Last-Event-ID': String(cursor - 1) } });
+        if (!response.body) throw new TransportError(0, 'event stream has no readable body');
+        this.transportError?.(undefined);
+        reader = response.body.getReader();const decoder = new TextDecoder();
+        let buffer = '', ended = false;
         while (!signal?.aborted) {
           let chunk: ReadableStreamReadResult<Uint8Array>;
-          try {chunk = await reader.read();}catch(error){if(signal?.aborted)return;throw new TransportError(String(error));}
+          try {chunk = await reader.read();}catch(error){if(signal?.aborted)return;throw asNetworkError(error);}
           if (chunk.done) break;
           buffer += decoder.decode(chunk.value, { stream: true });
           let boundary: RegExpExecArray | null;
@@ -288,9 +283,17 @@ export class HttpViewerFeed implements ViewerFeed {
             if (event === 'end') { const end = object(parseLosslessJson(data.join('\n'))); string(end.status);counter(end.finalCursor);if(end.finalCursor!==cursor)throw Error('Stream ended before final cursor');this.status?.(end.status, pageWaiting(end)); ended = true; return; }
           }
         }
-      if (signal?.aborted || ended) return;
-      throw new TransportError('Connection interrupted; reconnecting to the recorded journal');
-      } catch(error) {if(signal?.aborted)return;if(!(error instanceof TransportError))throw error;this.transportError?.(error.message);}
+        if (signal?.aborted || ended) return;
+        throw new TransportError(0, 'Connection interrupted; reconnecting to the recorded journal');
+      } catch(error) {
+        if(signal?.aborted)return;
+        // Fetch/reader failures are classified at their source. Raw errors here
+        // belong to parsing, validation or consumers and must never reconnect.
+        if(!(error instanceof TransportError) || !isRetryableReadError(error))throw error;
+        this.transportError?.(error.kind === 'http'
+          ? `SSE HTTP ${error.status}: ${error.detail}`
+          : (error.detail || error.message));
+      }
       finally {if(reader) {try {await reader.cancel();}catch { /* A failed read already retains its transport error. */ }reader.releaseLock();}}
       await reconnectDelay(retries++);
     }

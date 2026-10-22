@@ -1,5 +1,6 @@
 import {decodeAlgorithms,decodeComparison,decodeKpis,decodeTemplates} from './api-decode';
 import { parseAuthoringJson, stringifyLossless } from '../feeds/lossless-json';
+import { requestJson } from '../feeds/transport';
 
 export type Category = 'logistics'|'emergency'|'inspection'|'agriculture'|'mobility'|'security'|'airspace'|'weather'|'energy'|'mixed';
 export type Severity = 'info'|'notice'|'warning'|'critical';
@@ -18,9 +19,7 @@ export interface RunComparison {runs:ComparisonRun[]}
 export class TemplateApi {
  constructor(readonly base:string=window.location.origin){}
  async request<T>(path:string,body?:unknown,signal?:AbortSignal):Promise<T>{
-  const response=await fetch(`${this.base.replace(/\/$/,'')}${path}`,{signal,...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless(body)})});
-  if(!response.ok)throw Error(`HTTP ${response.status}: ${await response.text()}`);
-  return parseAuthoringJson(await response.text()) as T;
+  return await requestJson(this.base,path,{signal,...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless(body)})},parseAuthoringJson) as T;
  }
  async templates(signal?:AbortSignal){return decodeTemplates(await this.request<unknown>('/v1/templates',undefined,signal));}
  async template(id:string,signal?:AbortSignal){return decodeTemplates([await this.request<unknown>(`/v1/templates/${encodeURIComponent(id)}`,undefined,signal)])[0];}

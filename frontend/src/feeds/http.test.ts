@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpViewerFeed, RunsApi, validateCommit, validateHeader } from './http';
+import { TransportError } from './transport';
 import fixture from './contract-fixture.json';
 import type { FeedCommit } from '../contracts/viewer-feed';
 const commit = (index: number): FeedCommit => ({ commitIndex: index, at: { ns: '9223372036854775815', microstep: index }, created: [], removed: [], facts: [], retracted: [], edges: [], messages: [], receipts: [] });
@@ -39,6 +40,89 @@ describe('HTTP viewer transport', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('offline', { status: 503 })));
     await expect(new RunsApi('http://api').runs()).rejects.toThrow('HTTP 503');
   });
+  it('stops on an authentication answer instead of reconnecting the feed', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Bearer token required' }), { status: 401 }));
+    vi.stubGlobal('fetch', fetcher);
+    const error = await new HttpViewerFeed(new RunsApi('http://api'), 'protected').subscribe(0, () => {}).catch(value => value);
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error.status).toBe(401);
+    expect(error.kind).toBe('authentication');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('does not reconnect a protected SSE stream', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(page([], 1))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'Bearer token required' }), { status: 401 }));
+    vi.stubGlobal('fetch', fetcher);
+    const error = await new HttpViewerFeed(new RunsApi('http://api'), 'protected', 'live').subscribe(0, () => {}).catch(value => value);
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error.status).toBe(401);
+    expect(error.kind).toBe('authentication');
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it('rejects a validation TypeError in SSE without retrying the bad journal record', async () => {
+    const invalid = {
+      ...commit(1),
+      events: [{ text: 'bad category', at_ns: '1', category: { toString: null }, severity: 'info', entities: [] }],
+    };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(page([], 1))
+      .mockResolvedValueOnce(new Response(`event: commit\ndata: ${JSON.stringify(invalid)}\n\n`));
+    vi.stubGlobal('fetch', fetcher);
+    const controller = new AbortController();
+    const onCommit = vi.fn();
+    const onTransportError = vi.fn(error => { if (error) controller.abort(); });
+    // Abort on any reconnect attempt so the old retry loop fails promptly.
+    const feed = new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', undefined, onTransportError);
+    await expect(feed.subscribe(0, onCommit, controller.signal)).rejects.toBeInstanceOf(TypeError);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(onTransportError.mock.calls.filter(([error]) => error !== undefined)).toEqual([]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('propagates an SSE consumer TypeError unchanged without reconnecting', async () => {
+    const failure = new TypeError('Consumer failed');
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(page([], 1))
+      .mockResolvedValueOnce(new Response(`event: commit\ndata: ${JSON.stringify(commit(1))}\n\n`));
+    vi.stubGlobal('fetch', fetcher);
+    const controller = new AbortController();
+    const onCommit = vi.fn(() => { throw failure; });
+    const onTransportError = vi.fn(error => { if (error) controller.abort(); });
+    const feed = new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', undefined, onTransportError);
+    await expect(feed.subscribe(0, onCommit, controller.signal)).rejects.toBe(failure);
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(onTransportError.mock.calls.filter(([error]) => error !== undefined)).toEqual([]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['fetch', 'reader', 'http'] as const)('still reconnects a classified SSE %s failure from the same cursor', async source => {
+    vi.useFakeTimers();
+    try {
+      const received: number[] = [];
+      const onTransportError = vi.fn();
+      const fetcher = vi.fn().mockResolvedValueOnce(page([], 1));
+      if (source === 'fetch') fetcher.mockRejectedValueOnce(new TypeError('Network disconnected'));
+      else if (source === 'reader') fetcher.mockResolvedValueOnce(new Response(new ReadableStream<Uint8Array>({
+        start(controller) { controller.error(new TypeError('Stream disconnected')); },
+      })));
+      else fetcher.mockResolvedValueOnce(new Response('Busy', { status: 503 }));
+      fetcher.mockResolvedValueOnce(new Response(
+        `event: commit\ndata: ${JSON.stringify(commit(1))}\n\nevent: end\ndata: {"status":"completed","finalCursor":2}\n\n`,
+      ));
+      vi.stubGlobal('fetch', fetcher);
+      const feed = new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', undefined, onTransportError);
+      const subscription = feed.subscribe(0, value => received.push(value.commitIndex));
+      await vi.waitFor(() => expect(onTransportError.mock.calls.some(([error]) => error !== undefined)).toBe(true));
+      await vi.runAllTimersAsync();
+      await subscription;
+      expect(received).toEqual([1]);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      expect(fetcher.mock.calls[1][0]).toContain('/stream?from=1');
+      expect(fetcher.mock.calls[2][0]).toContain('/stream?from=1');
+    } finally { vi.useRealTimers(); }
+  });
+
   it('preserves exact numeric payloads when a live stream resumes after pause', async () => {
     const row = {...commit(1), messages: [{id:'injected',schemaId:'input',source:'operator',kind:'event',at:commit(1).at,payload:{value:'EXACT_INTEGER'}}]};
     const text = `event: status\ndata: {"status":"paused"}\n\nevent: commit\ndata: ${JSON.stringify(row).replace('"EXACT_INTEGER"','9223372036854775815')}\n\nevent: status\ndata: {"status":"running"}\n\nevent: end\ndata: {"status":"stopped","finalCursor":2}\n\n`;
