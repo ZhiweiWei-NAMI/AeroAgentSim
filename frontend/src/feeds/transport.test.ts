@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  isAuthenticationError, isRetryableReadError, localizedTransportMessage, probeConnection,
-  requestJson, requestText, TransportError,
+  checkedFetch, isAuthenticationError, isRetryableReadError, localizedTransportMessage, probeConnection,
+  requestJson, requestText, subscribeConnectionErrors, TransportError,
 } from './transport';
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
@@ -83,6 +83,59 @@ describe('transport error policy', () => {
     expect(init.signal).toBe(controller.signal);
   });
 
+  describe.each([
+    ['checkedFetch', checkedFetch], ['requestJson', requestJson], ['requestText', requestText],
+  ] as const)('error-body cancellation through %s', (_name, request) => {
+    it.each([401, 403, 503])('preserves abort identity after HTTP %i headers', async status => {
+      const controller = new AbortController();
+      const aborted = new DOMException('Body read cancelled', 'AbortError');
+      const response = new Response('', { status });
+      let started!: () => void;
+      const bodyStarted = new Promise<void>(resolve => { started = resolve; });
+      vi.spyOn(response, 'text').mockImplementation(() => new Promise<string>((_resolve, reject) => {
+        controller.signal.addEventListener('abort', () => reject(aborted), { once: true });
+        started();
+      }));
+      const fetcher = vi.fn().mockResolvedValue(response);
+      vi.stubGlobal('fetch', fetcher);
+      const pending = request('http://api.test', '/v1/runs', { signal: controller.signal });
+      const rejection = expect(pending).rejects.toBe(aborted);
+      await bodyStarted;
+      controller.abort();
+      await rejection;
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves a custom cancellation reason when the signal is aborted', async () => {
+      const controller = new AbortController();
+      const reason = new TypeError('Custom cancellation');
+      const response = new Response('', { status: 503 });
+      vi.spyOn(response, 'text').mockImplementation(async () => {
+        controller.abort(reason);
+        throw reason;
+      });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+      await expect(request('http://api.test', '/v1/runs', { signal: controller.signal })).rejects.toBe(reason);
+    });
+
+    it('rethrows an AbortError even without a caller signal', async () => {
+      const aborted = new DOMException('Body read cancelled', 'AbortError');
+      const response = new Response('', { status: 503 });
+      vi.spyOn(response, 'text').mockRejectedValue(aborted);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+      await expect(request('http://api.test', '/v1/runs')).rejects.toBe(aborted);
+    });
+  });
+
+  it('retains the HTTP fallback for a non-abort error-body failure', async () => {
+    const response = new Response('', { status: 503, statusText: 'Service Unavailable' });
+    vi.spyOn(response, 'text').mockRejectedValue(new TypeError('Body stream failed'));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+    const error = await failure(requestText('http://api.test', '/v1/runs'));
+    expect(error.status).toBe(503);
+    expect(error.detail).toBe('Service Unavailable');
+  });
+
   it('uses the caller parse policy for lossless numbers', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"exact":9223372036854775815}')));
     expect(await requestJson('http://api.test', '/v1/value')).toEqual({
@@ -119,6 +172,38 @@ describe('transport error policy', () => {
     const [url, init] = fetcher.mock.calls[0] as [string, RequestInit | undefined];
     expect(url).toBe('http://api.test/v1/templates');
     expect(init).toBeUndefined();
+  });
+
+  it('publishes only 401/403 answers to matching API observers and supports cleanup', async () => {
+    const listener = vi.fn();
+    const otherListener = vi.fn();
+    const unsubscribe = subscribeConnectionErrors('http://api.test/', listener);
+    const unsubscribeOther = subscribeConnectionErrors('http://other.test', otherListener);
+    try {
+      for (const status of [401, 403, 404, 503]) {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ detail: 'refused' }, status)));
+        await failure(requestJson('http://api.test', '/v1/runs', { method: 'POST', body: '{}' }));
+      }
+      expect(listener.mock.calls.map(([error]) => error.status)).toEqual([401, 403]);
+      expect(otherListener).not.toHaveBeenCalled();
+      unsubscribe();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({}, 403)));
+      await failure(requestText('http://api.test', '/v1/templates'));
+      expect(listener).toHaveBeenCalledTimes(2);
+    } finally {
+      unsubscribe();
+      unsubscribeOther();
+    }
+  });
+
+  it('does not let an observer replace the original request error', async () => {
+    const unsubscribe = subscribeConnectionErrors('http://api.test', () => { throw new Error('observer failed'); });
+    try {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ detail: 'origin refused' }, 403)));
+      const error = await failure(requestText('http://api.test', '/v1/templates'));
+      expect(error.status).toBe(403);
+      expect(error.detail).toBe('origin refused');
+    } finally { unsubscribe(); }
   });
 
   it('only retries reads and treats 501 as an absent capability', async () => {

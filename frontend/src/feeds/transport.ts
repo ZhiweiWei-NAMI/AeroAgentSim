@@ -135,21 +135,45 @@ async function transportFetch(base: string, path: string, init?: RequestInit): P
   }
 }
 
-/** Read the server's error detail without hiding the HTTP status. */
-export async function transportErrorFromResponse(response: Response): Promise<TransportError> {
+/** Observe actual 401/403 answers for one API base, including write-only origin checks. */
+const connectionErrorListeners = new Set<(base: string, error: TransportError) => void>();
+
+export function subscribeConnectionErrors(base: string, listener: (error: TransportError) => void): () => void {
+  const root = base.replace(/\/+$/, '');
+  const receive = (source: string, error: TransportError) => {
+    if (source.replace(/\/+$/, '') === root) listener(error);
+  };
+  connectionErrorListeners.add(receive);
+  return () => { connectionErrorListeners.delete(receive); };
+}
+
+/** Read the server's error detail without hiding the HTTP status or cancellation. */
+export async function transportErrorFromResponse(response: Response, signal?: AbortSignal): Promise<TransportError> {
   let text = '';
-  try { text = await response.text(); } catch { /* Keep the status even when the body cannot be read. */ }
+  try { text = await response.text(); } catch (error) {
+    if (isAbortError(error) || signal?.aborted) throw error;
+    // Keep the status for non-abort body failures.
+  }
   return new TransportError(response.status, responseDetail(text) || response.statusText || 'request failed', text);
 }
 
-export async function ensureResponseOk(response: Response): Promise<Response> {
-  if (!response.ok) throw await transportErrorFromResponse(response);
+export async function ensureResponseOk(response: Response, signal?: AbortSignal): Promise<Response> {
+  if (!response.ok) throw await transportErrorFromResponse(response, signal);
   return response;
 }
 
 /** Fetch and fail with a classified error. A successful streaming body is untouched. */
 export async function checkedFetch(base: string, path: string, init?: RequestInit): Promise<Response> {
-  return ensureResponseOk(await transportFetch(base, path, init));
+  try {
+    return await ensureResponseOk(await transportFetch(base, path, init), init?.signal ?? undefined);
+  } catch (error) {
+    if (!init?.signal?.aborted && error instanceof TransportError && isAuthenticationError(error)) {
+      for (const listener of connectionErrorListeners) {
+        try { listener(base, error); } catch { /* Observers must not replace the request failure. */ }
+      }
+    }
+    throw error;
+  }
 }
 
 async function responseText(response: Response, signal?: AbortSignal): Promise<string> {

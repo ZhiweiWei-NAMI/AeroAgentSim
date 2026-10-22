@@ -287,10 +287,12 @@ export class HttpViewerFeed implements ViewerFeed {
         throw new TransportError(0, 'Connection interrupted; reconnecting to the recorded journal');
       } catch(error) {
         if(signal?.aborted)return;
-        if(!isRetryableReadError(error))throw error;
-        this.transportError?.(error instanceof TransportError
-          ? error.kind === 'http' ? `SSE HTTP ${error.status}: ${error.detail}` : (error.detail || error.message)
-          : String(error));
+        // Fetch/reader failures are classified at their source. Raw errors here
+        // belong to parsing, validation or consumers and must never reconnect.
+        if(!(error instanceof TransportError) || !isRetryableReadError(error))throw error;
+        this.transportError?.(error.kind === 'http'
+          ? `SSE HTTP ${error.status}: ${error.detail}`
+          : (error.detail || error.message));
       }
       finally {if(reader) {try {await reader.cancel();}catch { /* A failed read already retains its transport error. */ }reader.releaseLock();}}
       await reconnectDelay(retries++);

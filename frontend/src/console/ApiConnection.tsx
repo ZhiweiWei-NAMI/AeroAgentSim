@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nProvider';
-import { BROWSER_TOKEN_NOTICE, isAuthenticationError, probeConnection } from '../feeds/transport';
+import { BROWSER_TOKEN_NOTICE, isAuthenticationError, probeConnection, subscribeConnectionErrors } from '../feeds/transport';
 
 export interface ApiConnectionProps {
   /** API origin; defaults to `?api=` and then the page origin. */
   base?: string;
   /** A failure already observed by a feature; supplying it skips the probe. */
   error?: unknown;
-}
-
-function apiBase(base?: string): string {
-  return base ?? new URLSearchParams(window.location.search).get('api') ?? window.location.origin;
 }
 
 /**
@@ -20,24 +17,25 @@ function apiBase(base?: string): string {
  */
 export function ApiConnection({ base, error }: ApiConnectionProps) {
   const { locale } = useI18n();
-  const [probeError, setProbeError] = useState<unknown>();
-  const root = apiBase(base);
+  const { search } = useLocation();
+  const root = (base ?? new URLSearchParams(search).get('api') ?? window.location.origin).replace(/\/+$/, '');
+  const [connectionError, setConnectionError] = useState<{ root: string; error: unknown }>();
   useEffect(() => {
     if (error !== undefined) return;
     const controller = new AbortController();
-    setProbeError(undefined);
-    void probeConnection(root, controller.signal).then(
-      () => { if (!controller.signal.aborted) setProbeError(undefined); },
-      (problem: unknown) => {
-        if (controller.signal.aborted) return;
-        // Ordinary endpoint/network failures stay with the panel that owns
-        // them; only the browser-auth boundary needs a console-wide notice.
-        setProbeError(isAuthenticationError(problem) ? problem : undefined);
-      },
-    );
-    return () => controller.abort();
+    setConnectionError(undefined);
+    const unsubscribe = subscribeConnectionErrors(root, problem => {
+      if (!controller.signal.aborted) setConnectionError({ root, error: problem });
+    });
+    void probeConnection(root, controller.signal).catch((problem: unknown) => {
+      if (controller.signal.aborted || !isAuthenticationError(problem)) return;
+      // Ordinary endpoint/network failures stay with their owning panel. A
+      // successful read probe cannot clear a write-origin rejection, either.
+      setConnectionError(current => current ?? { root, error: problem });
+    });
+    return () => { unsubscribe(); controller.abort(); };
   }, [error, root]);
-  const problem = error !== undefined ? error : probeError;
+  const problem = error !== undefined ? error : connectionError?.root === root ? connectionError.error : undefined;
   if (!isAuthenticationError(problem)) return null;
   return <div
     role="alert"
