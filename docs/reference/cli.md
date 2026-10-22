@@ -37,36 +37,55 @@ builtins with installed `aeroagentsim.scenarios` entries; installed names take
 precedence and runtime discovery rejects duplicate installed names. The inventory
 reports a duplicated name once with `status: "duplicate"` and `conflict` (all
 distribution names) instead of collapsing it; scenario rows then use entry-point
-metadata with empty `templates`/`apply_hooks` and builtins stay listed. See
+metadata with empty `templates`/`apply_hooks` and builtins stay listed. The
+catalogue is an inventory, not readiness: it does not prove a worker, native
+simulator, camera, model provider or detailed city is available. See
 [plugin contracts](plugin-contracts.md) and the matching
 [`GET /v1/plugins` response](http-api.md#plugin-catalog).
 
-## aeroagentsim templates and run-template
+## aeroagentsim templates
 
 ```console
 aeroagentsim templates
+```
+
+Lists the templates discovered from builtin and installed scenario plugins as
+JSON. Installed plugin templates may add to the builtins; there is no fixed
+count.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--templates-root` | discovered plugins | Operator template registry directory. Loads that root's manifests while retaining discovered hooks; it does not add every plugin template. |
+
+## aeroagentsim run-template
+
+```console
 aeroagentsim run-template traffic-accident --set accident_time_s=5 --set physics_hz=2 --headless
 ```
 
-`templates` lists templates from built-in and installed scenario plugins. Both commands accept
-`--templates-root DIR` for an operator registry. `run-template` accepts
-`--out` (default `runs/templates`) and `--port` (default `0`, a free port).
-Without `--headless`, it opens the project in the workbench (`/w/<workspace>`) and requires
-a built `frontend/dist`. Headless output includes the run id, directory,
-status and measured KPI values. Applied knobs are pinned in the run manifest.
- `run-template` applies typed defaults
-and repeated `--set knob=value` overrides before validating and running the
-scenario. Choices use their declared names, integers/numbers use numeric
-values, and booleans use `true` or `false`. Unknown knobs, type errors and
-out-of-range values fail with a readable message. See
-[create a template](../guides/templates.md) for the manifest format.
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `template` (positional) | — | Template id from `aeroagentsim templates`. |
+| `--set` | — | Repeatable `KEY=VALUE` typed knob override. |
+| `--headless` | off | Run to completion and print a JSON summary instead of opening a console. |
+| `--out` | `runs/templates` | Output root. |
+| `--port` | `0` (pick a free port) | Interactive API port. |
+| `--templates-root` | discovered plugins | Operator template registry directory. |
 
-`--headless` runs to completion without opening a console. Traffic capture
-still uses the actual city camera and requires Node/Playwright and Chromium;
-`AEROAGENTSIM_CHROMIUM` can select an installed browser. The scripted decision
-mode uses the shipped declared decision fixture; live mode requires a named
-operator provider profile and the agents extra. `aeroagentsim demo
-traffic-accident` remains supported with its existing profile flags.
+`run-template` applies declared defaults and repeated `--set` overrides before
+validating and running the scenario. Choices use their declared names,
+integers/numbers use numeric values, and booleans use `true` or `false`. Unknown
+knobs, type errors and out-of-range values fail with a readable message. Headless
+output includes the run id, directory, status and measured KPI values; applied
+knobs are pinned in the run manifest. Without `--headless`, the command imports a
+draft, opens the project in the workbench (`/w/<workspace>`) and serves it; it
+does not start a run. That mode requires a built `frontend/dist`.
+
+`--headless` still uses the actual city camera for traffic capture, which
+requires Node/Playwright and Chromium; `AEROAGENTSIM_CHROMIUM` can select an
+installed browser. The scripted decision mode uses the shipped declared decision
+fixture; live mode requires a named operator provider profile and the agents
+extra. See [create a template](../guides/templates.md) for the manifest format.
 
 ## aeroagentsim experiment
 
@@ -74,14 +93,20 @@ traffic-accident` remains supported with its existing profile flags.
 aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction --seeds 3 --jobs 2
 ```
 
-Runs a full factorial headless experiment. Repeat `--vary knob=a,b` for more
-axes; `--seeds` is the number of matched deterministic seeds (0 through N−1),
-`--jobs` bounds worker processes, and `--horizon` sets simulated seconds.
-`--out` defaults to `runs`; `--templates-root` selects an operator registry.
-Normal run directories remain visible in Runs/Compare. Reports live under
-`<out>/.experiments/<id>/experiment.md` and `experiment.csv` and contain
-journal-based mean, sample standard deviation, sample count and best-value
-flags. See [experiments](../guides/experiments.md).
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `template` (positional) | — | Template id. |
+| `--vary` | — | Repeatable `KNOB=VALUE,VALUE` axis of knob values to sweep. |
+| `--seeds` | `3` | Matched deterministic seeds `0..seeds-1` per cell. |
+| `--jobs` | `1` | Bounded parallel worker processes. |
+| `--horizon` | template duration | Simulated horizon in seconds. |
+| `--out` | `runs` | Output root. |
+| `--templates-root` | discovered plugins | Operator template registry directory. |
+
+Runs a full-factorial headless experiment. Normal run directories remain visible
+in Runs/Compare. Reports live under `<out>/.experiments/<id>/experiment.md` and
+`experiment.csv` and contain journal-based mean, sample standard deviation,
+sample count and best-value flags. See [experiments](../guides/experiments.md).
 
 ## aeroagentsim replay
 
@@ -93,6 +118,8 @@ Reconstructs a read-only kernel from the run's `journal.jsonl` with no
 engines, clocks or RNG calls — replay never contacts model providers or
 engines. Prints `{run, cut, ns, incomplete}`; `incomplete: true` flags a
 truncated or faulted journal (a sealed, complete run replays deterministically).
+Recovered records are links at the recorded cut, not causal labels or proof of
+mission success.
 
 ## aeroagentsim metrics
 
@@ -102,6 +129,7 @@ aeroagentsim metrics runs/scenario-0f3a21b4c5d6
 
 Prints the metrics pack's JSON for a completed run (from
 [`src/aeroagentsim/packs/metrics.py`](../../src/aeroagentsim/packs/metrics.py)).
+Missing measurements stay missing; they are not filled with zero.
 
 ## aeroagentsim serve
 
@@ -115,10 +143,16 @@ aeroagentsim serve --out runs --frontend frontend/dist
 | `--scenario-root` | current directory | Root that `scenario_path` submissions are resolved against. |
 | `--host` / `--port` | `127.0.0.1` / `8002` | Bind address. |
 | `--frontend` | — | Built console directory (`frontend/dist`); enables SPA pages. |
-| `--studio-root` | `<out>/.workspaces` | Studio workspace storage (`AEROAGENTSIM_STUDIO_ROOT` also works). |
+| `--studio-root` | `<out>/.workspaces` (or `AEROAGENTSIM_STUDIO_ROOT`) | Studio workspace storage. `--studio-root` wins over the environment variable, which wins over the `<out>/.workspaces` default. |
 
 The console URL used for city assets and the in-simulation camera defaults to
 `http://<host>:<port>`; set `AEROAGENTSIM_CONSOLE_URL` when serving behind a proxy.
+`serve` mounts the Studio and assistant routes; the workspace root above is also
+the default when no `--studio-root` is passed.
+
+`AEROAGENTSIM_API_TOKEN` protects API requests, but the browser console sends no
+bearer token, so a token-protected server is not a supported browser flow. See
+the [HTTP API request boundary](http-api.md#request-boundary).
 
 Requires the `server` extra. On restart, non-terminal runs are marked
 `interrupted`: the journal remains replayable, but execution is not resumed.
@@ -153,10 +187,31 @@ Profile behaviour, exactly as implemented:
   `AEROAGENTSIM_LLM_MODEL`, `AEROAGENTSIM_LLM_API_KEY_ENV` and the named
   API-key environment variable to be populated, plus the `[agents]` extra.
   Without them the command fails; nothing is silently stubbed as live data.
+  The default `kinematic` profile's `traffic_decisions` `mode: stub` is an
+  authored fixture and is not model inference.
 
 The console mode needs a frontend build (`cd frontend && npm ci && npm run
 build`) and a Chromium for capture rendering (`AEROAGENTSIM_CHROMIUM` or
 Playwright's Chromium).
+
+## aeroagentsim assets
+
+```console
+aeroagentsim assets list
+aeroagentsim assets fetch --url https://example.invalid/pack.zip
+aeroagentsim assets install ./huangpu-city-v1.1.zip
+aeroagentsim assets remove huangpu-city --version 1.1.0
+```
+
+| Subcommand | Flags | Meaning |
+| --- | --- | --- |
+| `list` | — | List installed asset packs as JSON. |
+| `fetch` | `--url URL`, `--insecure-skip-digest` | Download, verify and install a pack. Without `--url`, uses `AEROAGENTSIM_ASSET_PACK_URL` or the packaged default. `--insecure-skip-digest` explicitly skips archive SHA-256 verification. |
+| `install` | positional `ZIP-OR-DIR` | Install from a local archive or directory, verifying its manifest and file sizes. |
+| `remove` | positional `ID` (default `huangpu-city`), `--version` | Remove an installed pack, optionally one version. |
+
+See [asset verification and licences](../../ASSETS.md) for locations, digests
+and NOTICE terms.
 
 ## Measure a run
 

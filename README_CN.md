@@ -16,14 +16,14 @@
 ## 它能做什么
 
 - **说一句话就能搭场景。** 助手读取平台真实的模板、地点和规则，给出方案；在你确认之前不会改动任何内容。支持任何 OpenAI 兼容接口的模型，包括 DeepSeek。
-- **十个现成场景。** 包裹、医疗与外卖配送，电力巡检，农田喷洒，空中出租车，安防巡逻，交通事故，洪涝救援，以及多业务共享的城市一天。
-- **看清结果的原因。** 修改规则和算法后重新运行，在可回放的 3D 城市中把每个结果追溯到记录的事件。
+- **内置与已安装插件共同提供现成场景。** 内置场景覆盖包裹、医疗与外卖配送、电力巡检、农田喷洒、空中出租车、安防巡逻、交通事故、洪涝救援，以及多业务共享的城市一天；安装的 `ScenarioPlugin` 可增加自己的模板，因此目录没有固定数量。
+- **沿记录追查。** 修改规则和算法后重新运行，在可回放的 3D 城市中沿结果与事件之间的记录链接追查。这些链接是同一时刻的记录证据，不是因果归因。
 
 ## 开始
 
 需要 Python 3.10+、Node.js 22 和 npm，无需 GPU、Docker 或账户。
 
-**城市资源：**公开仓库自带真实的 OSM 黄浦轻量城市，基础安装和十个模板都不需要另行下载。需要精细建筑与展示模型时，安装后可选运行 `aeroagentsim assets fetch`，再用 `aeroagentsim assets list` 查看并重新加载视图。资源包 `huangpu-city` **1.1.0** 来自 Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1)（`huangpu-city-v1.1.zip`，约 123.2 MiB）。下载会校验归档 SHA-256，安装会核对清单文件大小。资源保存在 Git 仓库之外的 `$XDG_DATA_HOME/aeroagentsim/assets`，默认 `~/.local/share/aeroagentsim/assets`，可用 `AEROAGENTSIM_ASSETS_DIR` 更改。OSM 数据署名为 © OpenStreetMap contributors，采用 ODbL 1.0；建筑网格、纹理和展示模型的许可以资源包 `NOTICE.txt` 为准。详见[资源校验与许可](ASSETS.md)和[安装后验收](INSTALL.md#post-install-acceptance)。
+**城市资源：**公开仓库自带真实的 OSM 黄浦轻量城市，基础安装和随附的内置模板都不需要另行下载。需要精细建筑与展示模型时，安装后可选运行 `aeroagentsim assets fetch`，再用 `aeroagentsim assets list` 查看并重新加载视图。资源包 `huangpu-city` **1.1.0** 来自 Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1)（`huangpu-city-v1.1.zip`，约 123.2 MiB）。下载会校验归档 SHA-256，安装会核对清单文件大小。资源保存在 Git 仓库之外的 `$XDG_DATA_HOME/aeroagentsim/assets`，默认 `~/.local/share/aeroagentsim/assets`，可用 `AEROAGENTSIM_ASSETS_DIR` 更改。OSM 数据署名为 © OpenStreetMap contributors，采用 ODbL 1.0；建筑网格、纹理和展示模型的许可以资源包 `NOTICE.txt` 为准。详见[资源校验与许可](ASSETS.md)和[安装后验收](INSTALL.md#post-install-acceptance)。
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
@@ -32,6 +32,8 @@ python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./
 ```
 
 打开 <http://127.0.0.1:8002>。[安装指南](INSTALL.md) 包含 Windows 的两种终端、拍摄所需的 Chromium 配置与安装后验收。[English](README.md)
+
+发现与配置校验都不等于就绪。`aeroagentsim templates` 和 `GET /v1/templates` 只列出描述，**验证**只检查配置与声明；它们都不证明运行能够初始化，也不证明工作进程、原生引擎、相机、模型提供方或精细城市资源可用。请初始化已保存版本并读取返回状态；**启动**只接受 `initialized` 运行。参见[命令行](docs/reference/cli.md)与[HTTP API](docs/reference/http-api.md)。
 
 从自己的区域和对象开始，阅读[空白项目 → 区域 → 运行教程](docs/guides/blank-project-tutorial.zh-CN.md)，其中包含 [OSM 地图编译工具](tools/build_map.py)与区域 API 的入口。模板预先配置了示例快照、坐标、对象、规则和引擎；任意 OSM 地图不会自动成为完整仿真。
 
@@ -52,11 +54,13 @@ AEROAGENTSIM_ASSISTANT_BASE_URL=https://api.deepseek.com/v1 AEROAGENTSIM_ASSISTA
 AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dist
 ```
 
+真实助手回复需要已配置的 OpenAI 兼容提供方；未配置时助手会拒绝该轮对话。`tools/assistant/fake_model.py` 是确定性的测试替身，只用于浏览器测试和无模型演示，不能证明真实模型质量。运行期智能体同理：调用提供方的 `decision` 引擎或 `langgraph` 图属于真实模型路径，而默认 `kinematic` 交通事故演示的 `traffic_decisions` `mode: stub`、确定性的 `agent-assignment` 流程以及预置的夹具响应属于脚本路径，不调用模型。助手轮次记录用 `source: model` 或 `source: platform` 标注每个文本片段，旧记录或来源不明的片段保持 `unknown`；模型回复不等于已应用方案、确认回执或已完成运行。
+
 不接模型？运行 `aeroagentsim run-template parcel-delivery` 打开现成场景，依次 **验证 → 保存版本 → 初始化 → 启动**。[助手指南](docs/guides/assistant.md) · [六段工作台演示](docs/media/README.md)
 
 ## 选择一个场景
 
-十个可直接运行的场景，都有可调参数和用于衡量结果的指标（KPI）。点击缩略图查看场景说明。
+场景来自内置插件和任意已安装的场景插件，都有可调参数和用于衡量结果的指标（KPI）。点击缩略图查看场景说明。内置场景包括：
 
 <table>
   <tr>
@@ -79,7 +83,7 @@ AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dis
 
 ## 改一条规则，看世界如何变化
 
-*当无人机电量低于预留阈值时，让它返回充电。* 电量预留、禁飞区、安全间隔和风速限制都由可编辑的谓词与事件链表达。用 `--set battery_reserve=35` 将预留电量从 20% 改为 35%，或在配置的“任务”部分编辑谓词，再运行一次。通过 **为什么？**，沿着记录的条件 → 事件链 → 命令 → 状态变化追查原因，同时观察三维城市中的无人机。通过回放，可以反复查看同一时刻。
+*当无人机电量低于预留阈值时，让它返回充电。* 电量预留、禁飞区、安全间隔和风速限制都由可编辑的谓词与事件链表达。用 `--set battery_reserve=35` 将预留电量从 20% 改为 35%，或在配置的“任务”部分编辑谓词，再运行一次。通过 **为什么？**，沿着记录的条件 → 事件链 → 命令 → 状态变化追查，同时观察三维城市中的无人机；这些是记录链接与同一时刻的上下文，不是因果标签。通过回放，可以反复查看同一时刻。
 
 
 [修改低空运行规则](docs/guides/lowalt-rules.md) · [编写谓词](docs/guides/predicates.md) · [编写事件链](docs/guides/behaviours.md)
@@ -137,7 +141,8 @@ flowchart LR
 ## 添加自己的场景插件
 
 用 `ScenarioPlugin` 打包模板和具名参数钩子，通过 `aeroagentsim.scenarios` 发现。
-内置场景使用同一契约，外部包无需修改平台代码。
+内置场景使用同一契约，外部包贡献模板和参数钩子无需修改平台代码。
+v1 契约不注册展示/渲染提供方、助手操作族或注册表覆盖层；这些仍是计划中的扩展点，当前支持的是声明式 `presentation`/`event_narratives` 绑定和模板控件。
 从[场景插件指南](docs/guides/scenario-plugins.md)和[插件契约](docs/reference/plugin-contracts.md)开始。
 
 ## 代码在哪里

@@ -16,8 +16,8 @@ https://github.com/user-attachments/assets/31cc139f-df4a-4ad1-9811-1c7c3758fd31
 ## What it does
 
 - **Build a scenario by describing it.** The assistant reads the platform's real templates, places and rules, proposes a plan, and changes nothing until you confirm. Works with any OpenAI-compatible model, including DeepSeek.
-- **Ten ready-made worlds.** Parcel, medical and meal delivery, power-line inspection, crop spraying, air taxis, security patrol, a traffic accident, flood rescue and a shared city day.
-- **See why things happen.** Change rules and algorithms, run again, and trace every result to recorded events in a 3D city with replay.
+- **Ready-made worlds from builtins and installed plugins.** Builtins cover parcel, medical and meal delivery, power-line inspection, crop spraying, air taxis, security patrol, a traffic accident, flood rescue and a shared city day; installed `ScenarioPlugin`s add their own templates, so the catalogue has no fixed count.
+- **Follow the record.** Change rules and algorithms, run again, and follow recorded links between results and events in a 3D city with replay. These links are same-cut evidence, not causal attribution.
 
 https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0
 
@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0
 
 Python 3.10+ and Node.js 22 with npm. No GPU, Docker or account needed.
 
-**Assets:** the public clone bundles a real lightweight OSM Huangpu city; the base installation and all ten templates need no separate asset download. For detailed buildings and display models, optionally run `aeroagentsim assets fetch` after installation, then `aeroagentsim assets list` and reload the viewer. Pack `huangpu-city` **1.1.0** comes from Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) (`huangpu-city-v1.1.zip`, about 123.2 MiB). Fetch verifies the archive SHA-256 and installation checks manifest file sizes. Packs live outside Git in `$XDG_DATA_HOME/aeroagentsim/assets`, default `~/.local/share/aeroagentsim/assets`; `AEROAGENTSIM_ASSETS_DIR` overrides it. OSM data is © OpenStreetMap contributors, ODbL 1.0; building mesh, texture and model terms come from the pack's `NOTICE.txt`. See [asset verification and licences](ASSETS.md) and [post-install checks](INSTALL.md#post-install-acceptance).
+**Assets:** the public clone bundles a real lightweight OSM Huangpu city; the base installation and the shipped builtin templates need no separate asset download. For detailed buildings and display models, optionally run `aeroagentsim assets fetch` after installation, then `aeroagentsim assets list` and reload the viewer. Pack `huangpu-city` **1.1.0** comes from Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) (`huangpu-city-v1.1.zip`, about 123.2 MiB). Fetch verifies the archive SHA-256 and installation checks manifest file sizes. Packs live outside Git in `$XDG_DATA_HOME/aeroagentsim/assets`, default `~/.local/share/aeroagentsim/assets`; `AEROAGENTSIM_ASSETS_DIR` overrides it. OSM data is © OpenStreetMap contributors, ODbL 1.0; building mesh, texture and model terms come from the pack's `NOTICE.txt`. See [asset verification and licences](ASSETS.md) and [post-install checks](INSTALL.md#post-install-acceptance).
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
@@ -36,6 +36,8 @@ python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./
 ```
 
 Open <http://127.0.0.1:8002>. [Install](INSTALL.md) covers Windows shells, Chromium for camera capture and acceptance checks. [中文](README_CN.md)
+
+Discovery and configuration validation are not readiness. `aeroagentsim templates` and `GET /v1/templates` list descriptors, and **Validate** checks configuration and declarations; neither proves that a run will initialize, that a worker, native engine, camera or model provider is available, or that the detailed city pack is installed. Initialize a saved version and read the returned status; **Start** accepts only an `initialized` run. See the [CLI](docs/reference/cli.md) and [HTTP API](docs/reference/http-api.md).
 
 To create your own region and objects, follow [Blank project → region → run](docs/guides/blank-project-tutorial.md). It links the [OSM map builder](tools/build_map.py) and the region API. Templates prefill example snapshots, coordinates, objects, rules and engines; arbitrary OSM data does not automatically create a complete simulation.
 
@@ -56,11 +58,13 @@ AEROAGENTSIM_ASSISTANT_BASE_URL=https://api.deepseek.com/v1 AEROAGENTSIM_ASSISTA
 AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dist
 ```
 
+Real assistant replies require a configured OpenAI-compatible provider; without one the assistant refuses the turn. `tools/assistant/fake_model.py` is a deterministic fixture used by browser tests and model-free demos, so those runs do not establish live-model quality. Mission agents make the same distinction: a `decision` engine or a `langgraph` graph that calls a provider is model-backed, while the default `kinematic` traffic demo's `traffic_decisions` `mode: stub`, the deterministic `agent-assignment` workflow and authored fixture responses are scripted and use no model. Assistant turn records label each text part with `source: model` or `source: platform`; legacy or ambiguous parts remain `unknown`. A model reply is not an applied plan, an ACK or a completed run.
+
 No model? `aeroagentsim run-template parcel-delivery` opens a ready-made scenario: **Validate → Save version → Initialize → Start**. [Assistant guide](docs/guides/assistant.md) · [Six workbench walkthroughs](docs/media/README.md)
 
 ## Pick a scenario
 
-Ten ready-made worlds, each with controls to change and KPIs to measure the result. Click a thumbnail for the scenario guide.
+Ready-made worlds from the builtin plugins and any installed scenario plugins, each with controls to change and KPIs to measure the result. Click a thumbnail for the scenario guide. Builtins include:
 
 <table>
   <tr>
@@ -83,7 +87,7 @@ Open any scenario with `aeroagentsim run-template <id>`. Each declares its own k
 
 ## Change a rule, watch the world change
 
-*When a drone's battery drops below its reserve, send it to charge.* Battery reserve, no-fly zones, separation and wind limits are editable predicates and event chains. Change `battery_reserve` from 20 to 35 with `--set battery_reserve=35`, or edit the predicate in the configuration's Tasks section, then run again. With **Why?**, follow the recorded condition → chain → command → state change, alongside the drone in the 3D city. Replay lets you revisit the same moment.
+*When a drone's battery drops below its reserve, send it to charge.* Battery reserve, no-fly zones, separation and wind limits are editable predicates and event chains. Change `battery_reserve` from 20 to 35 with `--set battery_reserve=35`, or edit the predicate in the configuration's Tasks section, then run again. With **Why?**, follow the recorded condition → chain → command → state change alongside the drone in the 3D city; these are recorded links and same-cut context, not causal labels. Replay lets you revisit the same moment.
 
 
 [Edit the low-altitude rules](docs/guides/lowalt-rules.md) · [Write a predicate](docs/guides/predicates.md) · [Author an event chain](docs/guides/behaviours.md)
@@ -141,7 +145,8 @@ flowchart LR
 ## Add your own scenario plugin
 
 Package templates and named knob hooks in a `ScenarioPlugin`, discovered through `aeroagentsim.scenarios`.
-Built-in scenarios use the same contract; external packages need no platform changes.
+Built-in scenarios use the same contract; external packages need no platform changes to contribute templates and knob hooks.
+The v1 contract does not register presentation/renderer providers, assistant operation families or registry overlays; those remain planned extension points, and declarative `presentation`/`event_narratives` bindings plus template controls are the supported route.
 Start with the [scenario plugin guide](docs/guides/scenario-plugins.md) and [plugin contracts](docs/reference/plugin-contracts.md).
 
 ## Where things live
