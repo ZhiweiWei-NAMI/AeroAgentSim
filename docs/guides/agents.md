@@ -57,10 +57,21 @@ reads the file when constructed, without copying its content into configuration
 or journals. Keep the file outside Git and readable only by the service user.
 This does not change the console's saved connection or configure a running service.
 
+All supplied credentials (environment, file or direct constructor) must be
+nonempty, contain no control characters (including CR, LF, NUL, DEL and C1),
+and be encodable as a Latin-1 HTTP header value. File whitespace is stripped
+before this shared validation; environment and direct values are not trimmed.
+Invalid credentials raise `ValueError` before transport with fixed text that
+never includes the value. An absent credential (`None`) still means no authentication.
+
 Provider failures record a short safe message and HTTP status where available;
-upstream error bodies and request headers are discarded. There is no
-automatic retry: transport failures and `WALL_TIMEOUT` are recorded typed
-failures, and a late reply cannot mutate simulation state.
+upstream error bodies and request headers are discarded. The provider never
+retries: transport failures and `WALL_TIMEOUT` are recorded typed failures, and
+a late reply cannot mutate simulation state. Separately, LangGraph
+`JournalClient.ask_json` has an explicit `max_retries` budget: it retries
+`HTTP_STATUS`/`TRANSPORT` failures, and can retry rejected JSON responses, within
+that budget. Each attempt is recorded; these are new model calls, not command
+resubmissions.
 
 For `opencode.ai`, requests identify this client as `AeroAgentSim/<version>` and
 send `x-opencode-session`, following the [OpenCode client guidance](https://opencode.ai/v2/docs/console/go/#where-can-i-use-it).
@@ -69,7 +80,11 @@ simulation agents use the run namespace and engine ID, keeping UAVs separate.
 The header contains a stable UUID derived from that identity, not an internal path.
 Direct provider callers can use `bind_session(identity)`; otherwise the ID stays
 fixed for the provider instance. These headers do not establish service eligibility
-or diagnose a particular HTTP 400 response.
+or diagnose a particular HTTP 400 response. This transport also strips
+`function.strict` from function tools without changing the caller's definitions.
+`provider.transport_transformations` exposes the credential-free policy descriptor
+`("opencode.ai:strip-function.strict:v1",)` (empty for other hosts), so callers
+can journal the transformation later; it is not a per-call wire transcript.
 
 ## Grant-based scoping
 
