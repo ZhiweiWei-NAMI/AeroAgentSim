@@ -169,6 +169,25 @@ def _request(value: Any) -> CommandRequest:
     return request
 
 
+def iter_record_messages(
+    record: dict[str, Any], *, partitions: frozenset[str] = frozenset(),
+    ingress_source: str | None = None, control_source: str | None = None,
+) -> Iterator[RecordedMessage]:
+    """Decode original item slots using the public run reader's rules.
+
+    The caller supplies pinned partition/manifest metadata and owns ACK bounds,
+    cross-record message-ID deduplication and journal order. Same-record explicit
+    envelopes replace admissions; later records never enrich earlier admissions.
+    Delivery/inbox copies and derived console aliases are not original messages.
+    """
+    try:
+        yield from Run._message_items(
+            expand_record(record), partitions, ingress_source, control_source,
+        )
+    except _DECODE_ERRORS as exc:
+        raise CorruptRecord(f"Invalid message in record {record['index']}") from exc
+
+
 @dataclass(frozen=True)
 class _Frame:
     offset: int
@@ -369,17 +388,22 @@ class Run:
             raise CorruptRecord(f"Cannot decode acknowledged record {index}") from exc
 
     def _messages(self, record: dict[str, Any]) -> Iterator[RecordedMessage]:
-        """Inspect original item slots only, never dispatch/inbox/batch copies."""
-        try:
-            yield from self._message_items(record)
-        except _DECODE_ERRORS as exc:
-            raise CorruptRecord(f"Invalid message in record {record['index']}") from exc
+        yield from iter_record_messages(
+            record, partitions=self._partitions,
+            ingress_source=self._ingress_source, control_source=self._control_source,
+        )
 
-    def _message_items(self, record: dict[str, Any]) -> Iterator[RecordedMessage]:
+    @staticmethod
+    def _message_items(
+        record: dict[str, Any], partitions: frozenset[str],
+        ingress_source: str | None, control_source: str | None,
+    ) -> Iterator[RecordedMessage]:
         items = record.get("items", [])
         originals: dict[int, Message] = {}
         for ordinal, item in enumerate(items):
-            kind = item.get("kind")
+            # Historical service diagnostics may omit the operation tag, but
+            # explicit delivery/console tags must never become originals.
+            kind = item.get("kind", "operation" if "proposal" in item else None)
             proposal = item.get("proposal")
             emission = (
                 kind == "operation" and isinstance(proposal, dict)
@@ -416,7 +440,7 @@ class Run:
             if ordinal in originals:
                 message = originals[ordinal]
                 route = None
-                if item.get("kind") == "operation":
+                if item.get("kind", "operation" if "proposal" in item else None) == "operation":
                     proposal = decode_record(item.get("proposal"))
                     if not isinstance(proposal, Emit):
                         raise ValueError("Recorded emission lacks its Emit proposal")
@@ -435,7 +459,7 @@ class Run:
                     )
                 target = (
                     route if message.kind in {"command", "cancel"}
-                    or route in self._partitions else None
+                    or route in partitions else None
                 )
                 yield RecordedMessage(
                     cursor=cursor, message_id=message.id, kind=message.kind,
@@ -455,7 +479,7 @@ class Run:
                     ),
                 )
                 continue
-            kind = item.get("kind")
+            kind = item.get("kind", "operation" if "proposal" in item else None)
             mid = item.get("message_id")
             if kind in {"reservation", "offline_request", "cancel_reservation"}:
                 if type(mid) is not str or not mid:
@@ -471,7 +495,7 @@ class Run:
                 if kind == "cancel_reservation":
                     yield RecordedMessage(
                         cursor=cursor, message_id=mid, kind="cancel",
-                        source_kind="ingress", source=self._control_source,
+                        source_kind="ingress", source=control_source,
                         origin=origin, sequence=sequence,
                     )
                 else:
@@ -480,7 +504,7 @@ class Run:
                         cursor=cursor, message_id=mid, kind="command",
                         schema_id=request.schema_id, route=request.target,
                         target=request.target, source_kind="ingress",
-                        source=_text(item, "source") or self._ingress_source,
+                        source=_text(item, "source") or ingress_source,
                         origin=origin, at_ns=request.at.ns,
                         microstep=request.at.microstep, payload=thaw(request.payload),
                         source_stamp=_stamp(item.get("source_stamp")),

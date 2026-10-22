@@ -62,6 +62,11 @@ def _path_lock(path: Path) -> threading.RLock:
 
 
 def _signature(path: Path) -> list[Any]:
+    import hashlib
+
+    from aeroagentsim import metrics_api
+    from aeroagentsim.runs import reader as run_reader
+
     files = [path / "scenario.json", path / "runtime.registry.json"]
     if (path / "behaviour.ir.json").exists():
         files.append(path / "behaviour.ir.json")
@@ -69,11 +74,20 @@ def _signature(path: Path) -> list[Any]:
         Path(__file__).with_name(name + ".py")
         for name in ("feed_index", "projector", "subjects", "kpis", "narratives")
     )
-    packs = Path(__file__).parents[1] / "packs"
-    files.extend(
-        (packs / "lowalt/overlay.py", packs / "traffic_accident/narratives.py")
-    )
-    result: list[Any] = [FORMAT]
+    files.extend((Path(metrics_api.__file__), Path(run_reader.__file__)))
+    # Every eligible provider is retained for schema-prefix dispatch, including
+    # external providers whose first matching message arrives after this cut.
+    # Revisions, entry-point identity and descriptors replace pack source paths.
+    plugins = metrics_api.discover_metric_plugins()
+    result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(plugins)]]
+    # Removing the old pack-file list must not drop narrative invalidation. Hash
+    # the effective declarations (including pack/IR/scenario overrides), rather
+    # than assuming two particular source filenames own every narrative.
+    declarations = NarrativeProjector.from_directory(path)._declarations
+    result.append(["narratives", hashlib.sha256(json.dumps(
+        declarations, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")).hexdigest()])
     for file in files:
         stat = file.stat()
         result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])
@@ -229,7 +243,27 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             )
             document = json.loads((path / "scenario.json").read_text())
             subjects = SubjectProjection(registry, document)
-            kpis = KPIProjector(registry, document.get("presentation", []))
+            # Source declarations can invalidate reducer progress without changing
+            # the immutable journal header. Retain only its routing/source context;
+            # metric state must still rebuild from the first committed record.
+            journal_identity = next(
+                (item for item in signature if item[0] == str(path / "journal.jsonl")),
+                None,
+            )
+            message_context = None
+            if journal_identity is not None and journal_identity in state.get("signature", []):
+                message_context = (
+                    cached.kpis.message_context if cached is not None
+                    else state.get("kpis", {}).get("message_context")
+                )
+            kpis = KPIProjector(
+                registry, document.get("presentation", []), message_context=message_context,
+            )
+            if not valid and message_context is None and storage.entries:
+                # Bootstrap a new journal only. Valid checkpoints restore their
+                # header context below without a redundant record-zero read.
+                for header in storage.records(0, 1):
+                    kpis.consume(header)
             narratives = NarrativeProjector.from_directory(path)
         if valid:
             cursor = state["next"]

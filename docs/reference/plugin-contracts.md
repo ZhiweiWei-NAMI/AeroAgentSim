@@ -73,6 +73,10 @@ The actual scenario API supersedes the earlier template-bundle proposal. There i
 
 [`aeroagentsim.runs.open_run(directory, api_version=1)`](run-reader.md) is available for read-only local snapshots of an explicitly acknowledged journal prefix. `RUN_READER_API_VERSION = 1` versions its frozen header/snapshot/message envelopes independently of the scenario API. It never rebuilds indexes on disk or runs engines/providers; an ACK is not authentication, projection finality or run success. Index-only legacy runs without an ACK are rejected in v1.
 
+## Metrics reducers
+
+[`aeroagentsim.metrics`](metrics-plugins.md) is available as a versioned reducer entry-point family. Import `MetricDescriptor`, `MetricPlugin`, `Reducer` and `MetricAccumulator` from [`aeroagentsim.metrics_api`](../../src/aeroagentsim/metrics_api.py); plugins declare the literal `api_version=1`. Installed entries export a `MetricPlugin` or zero-argument factory, must match its name, and override same-name builtins; duplicate installed names fail before loading. Reducers consume detached `RecordedMessage` envelopes through schema-prefix dispatch and return scalar mappings of finite numbers or `None`, with explicit aggregation and missing-data policies. Descriptor IDs cannot collide. Optional checkpoints or the input-history fallback preserve ordered reduction and deduplication. Implementation revisions and distribution releases participate in cache invalidation, not a pinned run lock. The service projector, its host-only physical-evidence adapter and private builtin state remain implementation details; use the [metric-plugin reference](metrics-plugins.md) for the public contract and legacy report boundaries.
+
 ## Stability
 
 These classifications describe the supported boundary, not a guarantee that every public Python symbol has an independently negotiated ABI.
@@ -104,7 +108,6 @@ These are design directions, not groups or interfaces a distribution can registe
 | --- | --- |
 | Registry overlay plugins | No discoverable `aeroagentsim.registry_overlays` family or `registry.overlays` selection contract. Use explicit inline descriptors or a complete registry snapshot supported by [the loader](scenario.md#registry-section). An overlay filename alone is not discovery. |
 | Assistant families | No external operation/compiler/expectation registration contract. Existing template controls can use pointers/hooks; new semantic assistant operations still require host changes to [dispatch](../../src/aeroagentsim/assistant/compiler.py). |
-| Metrics reducers | No `aeroagentsim.metrics` reducer registration contract. [KPI projection](../../src/aeroagentsim/services/kpis.py) is host implementation; do not import it as a plugin API. |
 | Presentations | No `aeroagentsim.presentations` provider registry. Existing declarative scenario `presentation` bindings and `event_narratives` are available, but do not register new browser renderers or arbitrary remote JavaScript. |
 
 Installing a scenario plugin does not make these planned capabilities available. Keep authoring contributions, runtime ownership and read/presentation integrations separate.

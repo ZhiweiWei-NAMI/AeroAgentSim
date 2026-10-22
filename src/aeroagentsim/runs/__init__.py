@@ -8,7 +8,7 @@ from .errors import (
     RunReplaced,
     UnsupportedRunFormat,
 )
-from .reader import Run, open_run
+from .reader import Run, iter_record_messages, open_run
 
 __all__ = [
     "RUN_READER_API_VERSION",
@@ -21,5 +21,6 @@ __all__ = [
     "RunReplaced",
     "Snapshot",
     "UnsupportedRunFormat",
+    "iter_record_messages",
     "open_run",
 ]
