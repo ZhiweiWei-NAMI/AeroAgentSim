@@ -47,9 +47,14 @@ an unpacked filesystem installation, as produced by a normal wheel install;
 zip-imported packages are not supported. It does not return a path from a
 closed temporary `as_file()` context.
 
-The repository test imports this package from `src` without installing it,
+The fast repository test imports this package from `src` without installing it,
 then applies both default and changed knobs through `TemplateRegistry`.
-That exercises scenario loading, not wheel contents or a complete run.
+The slow [installed-wheel gate](../../../docs/development/resource-packaging.md)
+builds and installs both distributions into a temporary target, verifies real
+entry-point metadata outside the checkout, and applies all built-ins plus this
+example. It also checks changed patrol/interactive hooks and unchanged resource
+bytes. These authoring checks do not establish a complete simulation run;
+the new installed-wheel gate has not been executed under the generate-only task.
 
 See the [scenario plugin guide](../../../docs/guides/scenario-plugins.md) and
 [plugin contracts](../../../docs/reference/plugin-contracts.md). The copied
