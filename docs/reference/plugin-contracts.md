@@ -2,6 +2,8 @@
 
 This reference distinguishes supported extension contracts from host internals and planned APIs. A plugin is trusted installed Python code, not a sandbox. Discovery does not grant runtime write authority, validate all configuration, or prove that a native simulator is ready.
 
+See [extension admission](extension-admission.md) for common discovery rules and the family matrix.
+
 ## Shared invariants
 
 - **Single writers:** scenario bindings select one writer per entity/field slot. Declare reads, writes, lifecycle authority, relations, commands, events, routes and RNG streams honestly. Publish only owned fields through the kernel SDK; preserve issued cuts, fact validity, acquisition clocks and entity generations.

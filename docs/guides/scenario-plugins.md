@@ -9,7 +9,8 @@ Use the public contracts in
 [`aeroagentsim.plugin_api`](../../src/aeroagentsim/plugin_api.py).
 See [plugin contracts](../reference/plugin-contracts.md) for ownership,
 determinism and compatibility rules. Installed plugins are trusted Python
-code, not sandboxed scenario documents.
+code, not sandboxed scenario documents. Shared discovery and replacement rules
+are defined in [extension admission](../reference/extension-admission.md).
 
 ## 1. Package a working template
 

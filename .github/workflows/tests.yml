@@ -57,7 +57,7 @@ jobs:
           python -m pytest tests/platform tests/integrations/aerograph/test_compiler.py \
             tests/adapters tests/agents tests/assistant tests/behaviours \
             tests/observations tests/packs tests/services tests/authoring \
-            tests/runs tests/product \
+            tests/runs tests/product tests/contracts \
             --ignore=tests/authoring/test_contracts.py \
             --ignore=tests/authoring/test_replay_scene.py \
             tests/demos/traffic_accident/test_public_demo.py \
