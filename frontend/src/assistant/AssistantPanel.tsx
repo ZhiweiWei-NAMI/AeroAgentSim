@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { Markdown } from '../workbench/Markdown';
-import { issueOf, type AssistantEvent, type Connection, type MessageContext, type PlanIssue } from './api';
+import { issueOf, type AssistantEvent, type Connection, type MessageContext, type PlanIssue, type TextSource, type TurnStatus } from './api';
 import { ConnectModel } from './ConnectModel';
 import { nonLocalHost } from './errors';
 import { Icon } from './icons';
@@ -15,24 +15,30 @@ type ToolEvent = Extract<AssistantEvent, { kind: 'tool' }>;
 type Item =
   | { type: 'user'; key: string; text: string; context?: MessageContext; pending?: boolean }
   | { type: 'work'; key: string; tools: ToolEvent[]; open: boolean }
-  | { type: 'assistant'; key: string; text: string; meta?: string }
+  | { type: 'assistant'; key: string; text: string; source: TextSource; meta?: string }
   | { type: 'plan'; key: string; version: number; note: string; variant?: string | null; versions?: number[] }
   | { type: 'validated'; key: string; version: number; valid: boolean; errors?: PlanIssue[] }
   | { type: 'applied'; key: string; version: number; planVersion: number; created: number; changed: number; removed: number }
-  | { type: 'notice'; key: string; text: string }
-  | { type: 'error'; key: string; text: string };
+  | { type: 'notice'; key: string; text: string; source: TextSource }
+  | { type: 'error'; key: string; text: string; source: TextSource };
 
 /** Fold the event log into what a reader follows: messages, one work log per turn, plan milestones. */
 export function transcript(events: AssistantEvent[], pending: { text: string; context?: MessageContext } | undefined, busy: boolean, zh: boolean): Item[] {
   const items: Item[] = [];
-  let work: Extract<Item, { type: 'work' }> | undefined, started: number | undefined;
+  let work: Extract<Item, { type: 'work' }> | undefined;
+  let turn: { id: number; answer?: Extract<Item, { type: 'assistant' }>; status?: TurnStatus } | undefined;
   for (const event of events) {
     const key = `e${event.seq}`;
-    if (event.kind === 'turn_started') { work = undefined; started = items.length; continue; }
+    if (event.kind === 'turn_started') { work = undefined; turn = { id: event.turn }; continue; }
     if (event.kind === 'turn_finished') {
-      const answer = [...items].reverse().find(item => item.type === 'assistant') as Extract<Item, { type: 'assistant' }> | undefined;
-      if (answer && event.elapsed_s !== undefined && items.indexOf(answer) >= (started ?? 0)) answer.meta = `${event.elapsed_s.toFixed(1)} s${event.model_calls ? zh ? ` · ${event.model_calls} 次模型调用` : ` · ${event.model_calls} model call${event.model_calls === 1 ? '' : 's'}` : ''}`;
-      work = undefined; continue;
+      if (!turn) work = undefined;
+      // A finish may only annotate its own last model part, and only on confirmed success.
+      if (turn && turn.id === event.turn) {
+        const status = event.status ?? turn.status ?? 'unknown';
+        if (turn.answer && status === 'completed' && event.elapsed_s !== undefined) turn.answer.meta = `${event.elapsed_s.toFixed(1)} s${event.model_calls ? zh ? ` · ${event.model_calls} 次模型调用` : ` · ${event.model_calls} model call${event.model_calls === 1 ? '' : 's'}` : ''}`;
+        turn = undefined; work = undefined;
+      }
+      continue;
     }
     if (event.kind === 'tool') {
       if (!work) { work = { type: 'work', key, tools: [], open: false }; items.push(work); }
@@ -40,13 +46,29 @@ export function transcript(events: AssistantEvent[], pending: { text: string; co
       if (index >= 0) work.tools[index] = event; else work.tools.push(event);
       continue;
     }
-    if (event.kind === 'user') items.push({ type: 'user', key, text: event.text, context: event.context });
-    else if (event.kind === 'assistant') { items.push({ type: 'assistant', key, text: event.text }); work = undefined; }
-    else if (event.kind === 'plan') items.push({ type: 'plan', key, version: event.version, note: event.note, variant: event.variant, versions: event.versions });
+    if (event.kind === 'user') {
+      items.push({ type: 'user', key, text: event.text, context: event.context });
+      // A legacy turn without a start marker must not inherit the previous turn's answer.
+      turn = undefined;
+    } else if (event.kind === 'assistant' || event.kind === 'notice' || event.kind === 'error') {
+      // Parts (even an empty array) are authoritative. Never inherit an event's source
+      // into a part that lacks its own provenance, or render the composite text twice.
+      const parts = event.parts ?? [{ text: event.kind === 'error' ? event.message : event.text, source: event.source }];
+      const eventTurn = turn && (event.turn === undefined || event.turn === turn.id) ? turn : undefined;
+      if (eventTurn && event.status !== undefined) eventTurn.status = event.status;
+      if (eventTurn && event.kind === 'error') eventTurn.status = event.status ?? 'error';
+      parts.forEach((part, index) => {
+        const item: Extract<Item, { type: 'assistant' | 'notice' | 'error' }> = {
+          type: event.kind, key: event.parts ? `${key}-p${index}` : key, text: part.text,
+          source: part.source === 'model' || part.source === 'platform' ? part.source : 'unknown',
+        };
+        items.push(item);
+        if (eventTurn && item.type === 'assistant' && item.source === 'model') eventTurn.answer = item;
+      });
+      if (event.kind === 'assistant') work = undefined;
+    } else if (event.kind === 'plan') items.push({ type: 'plan', key, version: event.version, note: event.note, variant: event.variant, versions: event.versions });
     else if (event.kind === 'plan_validated') { if (!event.valid) items.push({ type: 'validated', key, version: event.version, valid: event.valid, errors: event.errors }); }
     else if (event.kind === 'applied') items.push({ type: 'applied', key, version: event.version, planVersion: event.plan_version, created: event.report?.created?.length ?? 0, changed: event.report?.changed?.length ?? 0, removed: event.report?.removed?.length ?? 0 });
-    else if (event.kind === 'notice') items.push({ type: 'notice', key, text: event.text });
-    else if (event.kind === 'error') items.push({ type: 'error', key, text: event.message });
   }
   if (pending && !items.some(item => item.type === 'user' && item.text === pending.text && items.indexOf(item) >= items.length - 3)) items.push({ type: 'user', key: 'pending', text: pending.text, context: pending.context, pending: true });
   // The running turn's work log stays expanded so progress is visible.
@@ -76,6 +98,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
   onShowPlan: (version: number) => void; onShowChanges: () => void; suggestionsExtra?: string[];
 }) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
+  const sourceLabel = (source: TextSource) => source === 'platform' ? L('Platform note', '平台说明') : source === 'model' ? L('Model', '模型') : L('Unknown source', '来源未知');
   const { events, busy, pending, error, plan } = assistant;
   // An unsent message survives Form ↔ Conversation switches and reloads of the same project.
   const draftKey = `aas-composer:${project?.id ?? 'new'}`;
@@ -115,7 +138,9 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
   const render = (item: Item): ReactNode => {
     switch (item.type) {
       case 'user': return <div className={`as-msg as-user${item.pending ? ' is-pending' : ''}`}><div className="as-bubble">{item.text}</div>{item.context?.selected_entity && <small className="as-about">{L('about', '关于')} {item.context.selected_entity}</small>}</div>;
-      case 'assistant': return <div className={`as-msg as-bot${history.current?.has(item.key) ? '' : ' as-reveal'}`}><span className="as-avatar"><NeuralGlyph state="idle" size={18} /></span><div className="as-answer"><Markdown source={item.text} />{item.meta && <small className="as-meta">{item.meta}</small>}</div></div>;
+      case 'assistant': return item.source === 'model'
+        ? <div className={`as-msg as-bot${history.current?.has(item.key) ? '' : ' as-reveal'}`} data-source={item.source}><span className="as-avatar"><NeuralGlyph state="idle" size={18} /></span><div className="as-answer"><Markdown source={item.text} />{item.meta && <small className="as-meta">{item.meta}</small>}</div></div>
+        : <div className={`as-note${history.current?.has(item.key) ? '' : ' as-reveal'}`} data-source={item.source}><Icon name="dot" size={12} /><div className="as-answer"><strong>{sourceLabel(item.source)}</strong><Markdown source={item.text} /></div></div>;
       case 'work': {
         const open = item.open || opened.has(item.key), failed = item.tools.filter(tool => tool.status === 'error').length, done = item.tools.filter(tool => tool.status === 'ok').length;
         return <div className={`as-work${open ? ' is-open' : ''}`}>
@@ -135,8 +160,8 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
       </button>;
       case 'validated': return <div className="as-note bad" role="status"><Icon name="cross" size={13} /><span>{L(`Plan v${item.version} does not pass the simulator's checks yet`, `方案 v${item.version} 尚未通过仿真器校验`)}{item.errors?.[0] ? ` — ${bi(issueOf(item.errors[0]).message,zh)}` : ''}</span></div>;
       case 'applied': return <div className="as-applied" data-testid="as-applied-card"><span className="as-applied-icon"><Icon name="check" size={14} /></span><div><b>{L(`Applied plan v${item.planVersion} as project version ${item.version}`, `方案 v${item.planVersion} 已应用为项目版本 ${item.version}`)}</b><small className="wb-mono">{L(`${item.created} created · ${item.changed} changed · ${item.removed} removed`, `新增 ${item.created} · 修改 ${item.changed} · 移除 ${item.removed}`)}</small></div><button className="wb-btn small" onClick={onShowChanges}>{L('What changed', '查看改动')}</button></div>;
-      case 'notice': return <div className="as-note"><Icon name="dot" size={12} /><span>{bi(item.text, zh)}</span></div>;
-      case 'error': return <div className="as-note bad" role="alert"><Icon name="cross" size={13} /><span>{bi(item.text, zh)}</span></div>;
+      case 'notice': return <div className="as-note" data-source={item.source}><Icon name="dot" size={12} /><span><strong>{sourceLabel(item.source)}: </strong>{bi(item.text, zh)}</span></div>;
+      case 'error': return <div className="as-note bad" role="alert" data-source={item.source}><Icon name="cross" size={13} /><span><strong>{sourceLabel(item.source)}: </strong>{bi(item.text, zh)}</span></div>;
     }
   };
 
@@ -160,7 +185,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
         </div>}
         {items.map(item => <Fragment key={item.key}>{render(item)}</Fragment>)}
         {busy && <div className="as-thinking" role="status" data-testid="as-thinking"><span className="as-dots"><i /><i /><i /></span><span>{running ? (zh ? running.label_zh : undefined) ?? running.label : L('Thinking…', '思考中…')}</span><button className="wb-btn small ghost" onClick={() => void assistant.cancel()}><Icon name="stop" size={11} />{L('Stop', '停止')}</button></div>}
-        {error && <div className="as-note bad" role="alert"><Icon name="cross" size={13} /><span>{bi(error, zh)}</span></div>}
+        {error && <div className="as-note bad" role="alert" data-source="platform"><Icon name="cross" size={13} /><span><strong>{sourceLabel('platform')}: </strong>{bi(error, zh)}</span></div>}
       </div>
       <footer className="as-foot as-rise">
         {!busy && suggestions.length > 0 && <div className="as-suggestions" data-testid="as-suggestions">{suggestions.map(value => <button key={value} onClick={() => submit(value)}>{value}</button>)}</div>}
@@ -172,7 +197,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
           <button type="submit" className="as-send" disabled={connecting || submitting || busy || !text.trim() || needsConnection} aria-label={connecting && !setupFailed && !error ? L('Connecting…', '正在连接…') : L('Send', '发送')} data-testid="as-send"><Icon name="send" size={15} /></button>
         </form>
         {connecting && !needsConnection && !error && !setupFailed && <small className="hint" role="status">{L('Connecting… Your message will stay here until the conversation is ready.', '正在连接… 对话就绪前，你的消息会保留在这里。')}</small>}
-        {setupFailed && !error && <div className="as-note bad" role="alert" data-testid="as-connect-failure"><Icon name="cross" size={13} /><span>{connectionError}</span>{onRetry && <button className="wb-btn small" onClick={onRetry} data-testid="as-connect-retry">{L('Retry', '重试')}</button>}</div>}
+        {setupFailed && !error && <div className="as-note bad" role="alert" data-testid="as-connect-failure" data-source="platform"><Icon name="cross" size={13} /><span><strong>{sourceLabel('platform')}: </strong>{connectionError}</span>{onRetry && <button className="wb-btn small" onClick={onRetry} data-testid="as-connect-retry">{L('Retry', '重试')}</button>}</div>}
         <small className="as-fine">{L('Plans are proposals. Your scene changes only when you press Confirm.', '方案只是提议。只有按下“确认”后，场景才会改变。')}</small>
       </footer>
     </>}

@@ -15,7 +15,7 @@ from aeroagentsim.agents.tools import strict_json
 
 from .connection import ConnectionStore, provider_detail
 from .prompts import SYSTEM_PROMPT, plan_status, state_message
-from .sessions import SessionStore
+from .sessions import SessionStore, TextSource, TurnStatus
 from .tools import ToolRunner, compact_json, tool_label, tool_schemas
 
 LOG = logging.getLogger(__name__)
@@ -28,7 +28,9 @@ def recent_history(transcript: list[dict[str, Any]], recent_turns: int = 8) -> l
     if cut:
         older = [{"role": m["role"], "text": str(m.get("content", ""))[:500]} for m in transcript[:cut] if m.get("role") == "user" or (m.get("role") == "assistant" and not m.get("tool_calls"))]
         messages.append({"role": "system", "content": "Earlier conversation summary (data): " + json.dumps(older[-12:], ensure_ascii=False)})
-    for message in copy.deepcopy(transcript[cut:]):
+    for record in transcript[cut:]:
+        # Provenance and verbatim audit text are not provider message fields.
+        message = {key: copy.deepcopy(record[key]) for key in ("role", "content", "tool_calls", "tool_call_id", "name") if key in record}
         content = message.get("content")
         if isinstance(content, str) and len(content) > 6500:
             message["content"] = compact_json({"truncated": True, "preview": content[:5800]})
@@ -221,8 +223,8 @@ class Harness:
         try:
             thread.start()
         except RuntimeError:
-            self.sessions.emit(identifier, "error", code="TURN_START", message="Could not start the conversation turn / 无法启动对话处理")
-            self.sessions.finish_turn(identifier, result["turn"], elapsed_s=0.0, model_calls=0)
+            self.sessions.emit(identifier, "error", status="error", code="TURN_START", message="Could not start the conversation turn / 无法启动对话处理")
+            self.sessions.finish_turn(identifier, result["turn"], status="error", elapsed_s=0.0, model_calls=0)
             raise
         return result
 
@@ -256,10 +258,10 @@ class Harness:
     def _cancelled(self, identifier: str, turn: int) -> bool:
         if not self.sessions.cancelled(identifier, turn):
             return False
-        self.sessions.emit(identifier, "notice", text="Turn cancelled; compiled proposals remain available / 对话已取消；已编译的方案仍可查看")
+        self.sessions.emit(identifier, "notice", status="cancelled", text="Turn cancelled; compiled proposals remain available / 对话已取消；已编译的方案仍可查看")
         return True
 
-    def _grounded_reply(self, identifier: str, text: str, evidence: dict | None, context: dict[str, Any] | None = None) -> str:
+    def _grounded_reply(self, identifier: str, text: str, evidence: dict | None, context: dict[str, Any] | None = None) -> tuple[str, TextSource]:
         """Fixed observation actions render recorded facts instead of historical model prose."""
         session = self.sessions.get(identifier)
         question = next((m["content"] for m in reversed(session["transcript"]) if m["role"] == "user"), "")
@@ -268,9 +270,9 @@ class Harness:
             details_url = evidence.get("details_url") or f"/v1/assistant/sessions/{identifier}/story/{evidence['run_id']}"
             if "unavailable" in evidence:
                 return ((f"无法读取运行 {evidence['run_id']} 的记录：" if zh else f"Could not read the records for run {evidence['run_id']}: ") + evidence["unavailable"][:600] +
-                        f"\n\n[{'查看记录' if zh else 'Recorded details'}]({details_url})")
+                        f"\n\n[{'查看记录' if zh else 'Recorded details'}]({details_url})"), "platform"
             if evidence.get("coverage") is None:
-                return text
+                return text, "model"
             coverage = evidence["coverage"]
             rows = evidence.get("expectations", [])
             happened = sum(row["status"] == "happened" for row in rows)
@@ -309,7 +311,7 @@ class Harness:
             result = "\n\n".join(lines)
             if len(result) > 5500:
                 result = result[:5200] + ("\n\n更多记录见详情。" if zh else "\n\nMore records are available in details.")
-            return result + details
+            return result + details, "platform"
         if isinstance(self.tools, ToolRunner) and question.strip() in {"What should I watch for when I run it?", "运行时我应该关注什么？"}:
             from .scene import expectations
 
@@ -326,7 +328,7 @@ class Harness:
                     lines.append(f"- {place['id']}: " + ("容量 " if zh else "capacity ") + str(place["details"]["lowalt.site_capacity"]) + ", ENU " + json.dumps(place["position"]))
             lines.extend("- " + row["text_zh" if zh else "text"] for row in expectations(document, scene)[:12])
             lines.append("这些步骤取决于运行时条件，完成情况以事件记录为准。" if zh else "These steps depend on runtime conditions; recorded events establish the outcome.")
-            return "\n\n".join(lines)
+            return "\n\n".join(lines), "platform"
         if isinstance(self.tools, ToolRunner) and re.search(r"saved draft|current position|changed.*Form|已保存|表单.*修改", question, re.I):
             # Reject an absence/deletion inference for a real participant named in the reply.
             current = self.tools.get_current_scene(identifier)
@@ -335,19 +337,21 @@ class Harness:
                 named = [identity for identity in identities if identity in text or identity in question]
                 if named:
                     facts = [self.tools.get_current_scene(identifier, id=identity)["participant"]["entity"] for identity in named]
-                    return ("已保存草稿中仍存在这些对象：\n\n" if zh else "These participants exist in the saved draft:\n\n") + "\n\n".join(json.dumps(entity, ensure_ascii=False) for entity in facts)
-        return text
+                    return ("已保存草稿中仍存在这些对象：\n\n" if zh else "These participants exist in the saved draft:\n\n") + "\n\n".join(json.dumps(entity, ensure_ascii=False) for entity in facts), "platform"
+        return text, "model"
 
-    def _answer(self, identifier: str, message: dict[str, Any], evidence: dict | None = None, context: dict[str, Any] | None = None) -> None:
+    def _answer(self, identifier: str, message: dict[str, Any], evidence: dict | None = None,
+                context: dict[str, Any] | None = None, *, status: TurnStatus = "completed") -> None:
         content = message.get("content")
+        self.sessions.record_model_reply(identifier, content if isinstance(content, str) else None)
         if not isinstance(content, str) or not content.strip():
             raise ProviderError("PROTOCOL", "empty final completion")
         text, suggestions = split_suggestions(content)
         if not text:
             raise ProviderError("PROTOCOL", "empty final completion")
-        grounded = self._grounded_reply(identifier, text, evidence, context)
-        used_grounded_facts = grounded != text
-        text = grounded
+        text, source = self._grounded_reply(identifier, text, evidence, context)
+        used_grounded_facts = source == "platform"
+        platform_parts: list[dict[str, str]] = []
         session = self.sessions.get(identifier)
         plan = session["plans"].get(str(session["plan_version"]))
         zh = str((context or {}).get("locale", session["locale"])).startswith("zh")
@@ -361,7 +365,10 @@ class Harness:
                 else:
                     _, scene = self.tools._scene(identifier)
                     wind = scene["environment"]["wind"]
-                text = ground_wind_prose(text, wind, zh=zh)
+                corrected = ground_wind_prose(text, wind, zh=zh)
+                if corrected != text:
+                    source = "platform"
+                text = corrected
         if plan is not None and not (used_grounded_facts and evidence is not None):
             # Validation can finish while the provider is writing its completion.
             # Render status from the store, replacing the provider's status prose.
@@ -373,9 +380,12 @@ class Harness:
             workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
             authoritative_workflow = workspace is not None and any(record["plan_version"] == plan["version"] for record in session["applied"])
             if not used_grounded_facts:
-                text = without_state_assertions(text, expanded=expanded, session=session, plan=plan,
-                                                workspace=workspace, evidence=evidence,
-                                                authoritative_workflow=authoritative_workflow)
+                filtered = without_state_assertions(text, expanded=expanded, session=session, plan=plan,
+                                                    workspace=workspace, evidence=evidence,
+                                                    authoritative_workflow=authoritative_workflow)
+                if filtered != text:
+                    source = "platform"
+                text = filtered
             if authoritative_workflow:
                 suggestions = [cleaned for suggestion in suggestions if (cleaned := without_state_assertions(
                     suggestion, session=session, plan=plan, workspace=workspace, authoritative_workflow=True))]
@@ -384,19 +394,21 @@ class Harness:
             if unapplied and plan.get("what_changes"):
                 from .presentation import change_summaries
 
-                has_effects = without_effects_section(text) != text
+                filtered = without_effects_section(text)
+                has_effects = filtered != text
                 if expanded or has_effects:
-                    text = without_effects_section(text)
+                    if has_effects:
+                        source = "platform"
+                    text = filtered
                     difference = plan.get("diff_previous") if plan.get("parent") else None
                     rows = change_summaries(difference) if difference is not None else plan["what_changes"]
                     if rows:
                         key = "text_zh" if zh else "text"
                         effects = ("实际变更：\n" if zh else "What this changes:\n") + "\n".join("- " + row[key] for row in rows)
-                        text = (text + "\n\n" if text else "") + effects
-            status = plan_status(session, plan, workspace=workspace, evidence=evidence, zh=zh)
-            text = (text + "\n\n" if text else "") + status
-        self.sessions.append(identifier, {"role": "assistant", "content": text + ("\nSuggestions: " + " | ".join(suggestions) if suggestions else "")})
-        self.sessions.emit(identifier, "assistant", text=text, suggestions=suggestions)
+                        platform_parts.append({"text": effects, "source": "platform"})
+            platform_parts.append({"text": plan_status(session, plan, workspace=workspace, evidence=evidence, zh=zh), "source": "platform"})
+        parts = ([{"text": text, "source": source}] if text else []) + platform_parts
+        self.sessions.answer(identifier, parts, suggestions, model_reply=content, status=status)
 
     def _closing(self, identifier: str, context: dict[str, Any] | None = None) -> str:
         """A grounded closing line from the session's current plan, for a turn the model did not close."""
@@ -411,6 +423,7 @@ class Harness:
     def run_turn(self, identifier: str, turn: int, context: dict[str, Any] | None = None) -> None:
         started = time.monotonic()
         model_calls, tokens, usage_seen = 0, 0, False
+        outcome: TurnStatus = "completed"
         try:
             session = self.sessions.get(identifier)
             scene = self.tools.get_current_scene(identifier)
@@ -420,6 +433,7 @@ class Harness:
             schemas = tool_schemas()
             for step in range(self.max_calls + 1):
                 if self._cancelled(identifier, turn):
+                    outcome = "cancelled"
                     break
                 # Plan selection/application and asynchronous validation are not model history.
                 # Refresh the authoritative state for every completion, including the final one.
@@ -429,28 +443,40 @@ class Harness:
                 messages[1] = state_message(session, scene, context, evidence)
                 exhausted = step == self.max_calls
                 if exhausted:
+                    outcome = "budget_exhausted"
+                    self.sessions.emit(identifier, "notice", status=outcome, text="The model exhausted this turn's tool budget; review the latest proposal or send another message / 模型已用尽本轮工具预算；请查看最新方案或发送下一条消息")
                     messages.append({"role": "system", "content": "Tool budget exhausted. Give a concise grounded final answer now; mention unfinished work and do not call tools. / 工具预算已用尽，请基于已有结果简要回答并说明尚未完成的工作。"})
                 model_calls += 1
                 reply = provider.complete(messages, [] if exhausted else schemas, timeout_s=90, max_tokens=2500)
+                if not isinstance(reply, dict):
+                    raise ProviderError("PROTOCOL", "invalid completion")
                 usage = reply.get("usage")
                 if isinstance(usage, dict) and type(usage.get("total_tokens")) is int:
                     tokens += usage["total_tokens"]
                     usage_seen = True
+                message = reply.get("message")
                 if self._cancelled(identifier, turn):
+                    if isinstance(message, dict) and message.get("role") == "assistant" and (exhausted or not message.get("tool_calls")):
+                        content = message.get("content")
+                        self.sessions.record_model_reply(identifier, content if isinstance(content, str) else None)
+                    outcome = "cancelled"
                     break
-                message = reply["message"]
                 if not isinstance(message, dict) or message.get("role") != "assistant":
                     raise ProviderError("PROTOCOL", "invalid assistant message")
                 calls = message.get("tool_calls")
                 if not calls:
-                    self._answer(identifier, message, evidence, context)
+                    self._answer(identifier, message, evidence, context, status=outcome)
                     break
                 if exhausted:
-                    # Some models keep asking for tools even when none are offered; the turn still
-                    # ends with an answer, the model's own text if it gave any, else the plan's state.
                     content = message.get("content")
-                    self._answer(identifier, {"role": "assistant", "content": content if isinstance(content, str) and content.strip() else self._closing(identifier, context)}, evidence, context)
-                    self.sessions.emit(identifier, "notice", text="The model exhausted this turn's tool budget; review the latest proposal or send another message / 模型已用尽本轮工具预算；请查看最新方案或发送下一条消息")
+                    if isinstance(content, str) and content.strip():
+                        self._answer(identifier, message, evidence, context, status=outcome)
+                    else:
+                        # A platform closing is not a final provider completion.
+                        raw = content if isinstance(content, str) else None
+                        self.sessions.record_model_reply(identifier, raw)
+                        self.sessions.answer(identifier, [{"text": self._closing(identifier, context), "source": "platform"}], [],
+                                             model_reply=raw, status=outcome)
                     break
                 if not isinstance(calls, list) or len(calls) > 12:
                     raise ProviderError("PROTOCOL", "invalid tool call batch")
@@ -466,7 +492,7 @@ class Harness:
                     args = function.get("arguments", "")
                     normalized.append({"id": call_id, "type": "function", "function": {"name": name if isinstance(name, str) else "invalid_tool", "arguments": json.dumps(args, ensure_ascii=False, allow_nan=False) if isinstance(args, dict) else args if isinstance(args, str) else ""}})
                 assistant = {"role": "assistant", "content": message.get("content") if isinstance(message.get("content"), str) else None, "tool_calls": normalized}
-                self.sessions.append(identifier, assistant)
+                self.sessions.append(identifier, {**assistant, "source": "model"})
                 messages.append(assistant)
                 for call in normalized:
                     name, call_id = call["function"]["name"], call["id"]
@@ -514,11 +540,14 @@ class Harness:
                     self.sessions.append(identifier, response)
                     messages.append(response)
         except ProviderError as error:
-            self.sessions.emit(identifier, "error", code=error.code, message=provider_detail(error))
-        except ValueError as error:
-            self.sessions.emit(identifier, "error", code="CONFIGURATION", message=str(error))
+            outcome = "provider_error"
+            self.sessions.emit(identifier, "error", status=outcome, code=error.code, message=provider_detail(error))
+        except ValueError:
+            outcome = "error"
+            self.sessions.emit(identifier, "error", status=outcome, code="CONFIGURATION", message="Could not prepare this turn; check the model connection and session / 无法准备本轮对话；请检查模型连接和会话")
         except Exception as error:
+            outcome = "error"
             LOG.error("Assistant turn failed (%s)", type(error).__name__)
-            self.sessions.emit(identifier, "error", code="TURN_ERROR", message=f"Could not finish this turn ({type(error).__name__}); the session remains available / 本轮未能完成（{type(error).__name__}）；会话仍可继续")
+            self.sessions.emit(identifier, "error", status=outcome, code="TURN_ERROR", message=f"Could not finish this turn ({type(error).__name__}); the session remains available / 本轮未能完成（{type(error).__name__}）；会话仍可继续")
         finally:
-            self.sessions.finish_turn(identifier, turn, elapsed_s=round(time.monotonic() - started, 3), model_calls=model_calls, **({"tokens": tokens} if usage_seen else {}))
+            self.sessions.finish_turn(identifier, turn, status=outcome, elapsed_s=round(time.monotonic() - started, 3), model_calls=model_calls, **({"tokens": tokens} if usage_seen else {}))

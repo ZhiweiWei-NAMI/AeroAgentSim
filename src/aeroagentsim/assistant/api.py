@@ -42,7 +42,7 @@ def session_data(sessions: SessionStore, connection: ConnectionStore, identifier
     plan = session["plans"].get(str(session["plan_version"]))
     settings = connection.get()
     return {
-        **{k: session[k] for k in ("id", "created_at", "updated_at", "workspace_id", "title", "locale", "busy", "last_seq", "events", "alternatives", "applied")},
+        **{k: session[k] for k in ("id", "created_at", "updated_at", "workspace_id", "title", "locale", "busy", "last_seq", "events", "turns", "alternatives", "applied")},
         "plan": public_plan(plan) if plan else None,
         "plan_versions": [{"version": p["version"], "note": p["note"], "variant": p["variant"], "parent": p["parent"], "created_at": p["created_at"], "compile_ok": p["compile"]["ok"], "validation_state": p["validation"]["state"]} for p in session["plans"].values()],
         "connection": {k: settings[k] for k in ("configured", "model", "status")},
