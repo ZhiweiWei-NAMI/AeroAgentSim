@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ from aeroagentsim.platform import RunSession, Simulation
 from aeroagentsim.platform import simulation as runtime
 from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
 from aeroagentsim.scenario import Scenario, load_scenario
+from aeroagentsim.services import feed_index
 from aeroagentsim.services.storage import RunStorage
 
 
@@ -726,6 +728,30 @@ def live_owned_scenario() -> Scenario:
     return load_scenario(document, base=authored.base)
 
 
+def invoke_live_operation(session: RunSession, operation: str) -> None:
+    if operation == "submit":
+        session.submit_live(
+            "fast",
+            CommandRequest(
+                "aas.stream.observe",
+                "fast",
+                Instant(50_000_000),
+                {"value": 21.5},
+                idempotency_key="failed-admission",
+            ),
+            Stamp("fast-clock", 50_000_000, 1, "fast-ns"),
+            stream_id="fast-source",
+        )
+    elif operation == "watermark":
+        session.advance_watermark(1_000_000, stream_id="fast-source")
+    else:
+        assert operation == "progress"
+        # The pinned 20ms lateness bound makes this a 1ms closed prefix.
+        session.advance_source_progress(
+            Stamp("fast-clock", 21_000_000, 1, "fast-ns"), stream_id="fast-source"
+        )
+
+
 @pytest.mark.parametrize("operation", ["submit", "watermark", "progress"])
 def test_real_live_wal_failure_faults_session_without_ack_or_frontier_advance(
     tmp_path: Path,
@@ -768,27 +794,7 @@ def test_real_live_wal_failure_faults_session_without_ack_or_frontier_advance(
         # Header, construction artifacts and start all succeeded with real fsync.
         monkeypatch.setattr("aerokernel.journal.os.fsync", fail_sync)
         with pytest.raises(KernelError, match="JOURNAL_IO") as caught:
-            if operation == "submit":
-                session.submit_live(
-                    "fast",
-                    CommandRequest(
-                        "aas.stream.observe",
-                        "fast",
-                        Instant(50_000_000),
-                        {"value": 21.5},
-                        idempotency_key="failed-admission",
-                    ),
-                    Stamp("fast-clock", 50_000_000, 1, "fast-ns"),
-                    stream_id="fast-source",
-                )
-            elif operation == "watermark":
-                session.advance_watermark(1_000_000, stream_id="fast-source")
-            else:
-                # The pinned 20ms lateness bound makes this a 1ms closed prefix.
-                session.advance_source_progress(
-                    Stamp("fast-clock", 21_000_000, 1, "fast-ns"),
-                    stream_id="fast-source",
-                )
+            invoke_live_operation(session, operation)
         assert caught.value.code == "JOURNAL_IO"
         assert caught.value.__cause__ is failure
         assert journal.failed
@@ -815,6 +821,238 @@ def test_real_live_wal_failure_faults_session_without_ack_or_frontier_advance(
         assert sync_calls == [descriptor]
     finally:
         session.close()
+
+
+@pytest.mark.parametrize("operation", ["submit", "watermark", "progress"])
+@pytest.mark.parametrize("fail_final_index", [False, True])
+@pytest.mark.parametrize("sidecar", [False, True])
+def test_fault_finalization_and_status_index_only_the_kernel_ack(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    live_owned_scenario: Scenario,
+    ownership: Ownership,
+    operation: str,
+    fail_final_index: bool,
+    sidecar: bool,
+) -> None:
+    directory = tmp_path / "run"
+    session = RunSession(live_owned_scenario, directory)
+    try:
+        session.start()
+        kernel = session.simulation.kernel
+        # Leave one real ACK unindexed: finalization must extend to it, not just
+        # freeze the last host index or scan through the failed physical tail.
+        kernel.advance_watermark(500_000, stream_id="fast-source")
+        prefix = kernel.acknowledged_prefix
+        acknowledged = kernel.journal.bytes
+        assert session.storage.offset < prefix[0]
+        if sidecar:
+            session.storage.publish_prefix(*prefix)
+        original_index = session.storage.index
+        indexed_through: list[int | None] = []
+        failure = OSError("injected live fsync failure")
+
+        def fail_sync(fd: int) -> None:
+            raise failure
+
+        def index(**kwargs: Any) -> None:
+            indexed_through.append(kwargs.get("through_bytes"))
+            if fail_final_index and len(indexed_through) == 1:
+                raise OSError("injected final index failure")
+            original_index(**kwargs)
+
+        monkeypatch.setattr("aerokernel.journal.os.fsync", fail_sync)
+        monkeypatch.setattr(session.storage, "index", index)
+        with pytest.raises(KernelError, match="JOURNAL_IO") as caught:
+            invoke_live_operation(session, operation)
+        assert caught.value.__cause__ is failure
+        assert kernel.acknowledged_prefix == prefix
+        assert indexed_through == [prefix[0], prefix[0]]
+        if fail_final_index:
+            assert "injected final index failure" in diagnostics(caught.value)
+        # Both the normal close pass and the status retry must keep the complete
+        # unacknowledged record on disk, but exclude it from committed evidence.
+        physical = (directory / "journal.jsonl").read_bytes()
+        assert physical[: prefix[0]] == acknowledged
+        assert len(physical) > prefix[0]
+        assert list(iter_records(directory / "journal.jsonl"))[-1]["index"] == (
+            prefix[1] + 1
+        )
+        storage = RunStorage(directory)
+        assert storage.offset == prefix[0]
+        assert [entry["index"] for entry in storage.entries] == list(range(prefix[1] + 1))
+        assert [record["index"] for record in storage.records(0, prefix[1] + 2)] == (
+            list(range(prefix[1] + 1))
+        )
+        metadata = storage.metadata()
+        assert metadata["status"] == "faulted"
+        assert metadata["final_cursor"] == prefix[1] + 1
+        if sidecar:
+            # A later worker-owned status call must honor its published ACK too.
+            storage.status("faulted", error=metadata["error"])
+            assert RunStorage(directory).offset == prefix[0]
+        else:
+            assert not (directory / "committed-prefix.json").exists()
+        cuts = feed_index.page(directory, 1, prefix[1] + 2)
+        assert [cut["commitIndex"] for cut in cuts] == list(range(1, prefix[1] + 1))
+        state = feed_index.results_state(directory)
+        assert state["results_final"] is True
+        assert state["results_cursor"] == prefix[1] + 1
+        assert state["final_commit_index"] == prefix[1]
+        ownership.assert_released()
+        session.close()
+        ownership.assert_released()
+        assert (directory / "journal.jsonl").read_bytes() == physical
+    finally:
+        session.close()
+
+
+@pytest.mark.parametrize("operation", ["submit", "watermark", "progress"])
+@pytest.mark.parametrize("stage", ["write", "flush", "fsync"])
+@pytest.mark.parametrize("failure_type", [KeyboardInterrupt, SystemExit])
+def test_live_io_abort_taints_closes_and_preserves_the_original_exception(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    live_owned_scenario: Scenario,
+    ownership: Ownership,
+    operation: str,
+    stage: str,
+    failure_type: type[BaseException],
+) -> None:
+    directory = tmp_path / "run"
+    session = RunSession(live_owned_scenario, directory)
+    try:
+        session.start()
+        # Pending ingress makes Kernel.close attempt run_stop. Taint must block
+        # that append rather than committing anything after the uncertain write.
+        session.submit_live(
+            "slow",
+            CommandRequest(
+                "aas.stream.observe", "slow", Instant(50_000_000), {"value": 18.0}
+            ),
+            Stamp("slow-clock", 24_999_500, 1, "slow-ticks"),
+            stream_id="slow-source",
+        )
+        kernel = session.simulation.kernel
+        journal = kernel.journal
+        prefix = kernel.acknowledged_prefix
+        acknowledged = journal.bytes
+        records = kernel.records
+        watermarks = dict(kernel.ingress_watermarks)
+        primary = failure_type(f"{operation} {stage} interrupted")
+        cause = RuntimeError("original abort cause")
+        primary.__cause__ = cause
+        for engine in ownership.engines:
+            engine.close_failure = RuntimeError(f"close {engine.partition.id} failed")
+        original_io = os.fsync if stage == "fsync" else getattr(journal.sink, stage)
+        original_flush = journal.sink.flush
+        original_append = journal.append
+        interrupted = False
+        appends: list[tuple[str, bool]] = []
+
+        def interrupt(*args: Any, **kwargs: Any) -> Any:
+            nonlocal interrupted
+            result = original_io(*args, **kwargs)
+            if not interrupted:
+                interrupted = True
+                if stage == "write":
+                    original_flush()
+                raise primary
+            return result
+
+        def append(record: dict[str, Any], **kwargs: Any) -> bytes:
+            appends.append((record["type"], journal.failed))
+            return original_append(record, **kwargs)
+
+        monkeypatch.setattr(journal, "append", append)
+        if stage == "fsync":
+            monkeypatch.setattr("aerokernel.journal.os.fsync", interrupt)
+        else:
+            monkeypatch.setattr(journal.sink, stage, interrupt)
+        with pytest.raises(failure_type) as caught:
+            invoke_live_operation(session, operation)
+        assert caught.value is primary
+        assert primary.__cause__ is cause
+        assert interrupted
+        assert session._failure is primary
+        assert session.closed and journal.failed
+        assert kernel.acknowledged_prefix == prefix
+        assert journal.bytes == acknowledged
+        assert kernel.records == records
+        assert dict(kernel.ingress_watermarks) == watermarks
+        assert len(appends) == 2
+        assert appends[0][1] is False
+        assert appends[1] == ("run_stop", True)
+        text = diagnostics(primary)
+        for detail in ("JOURNAL_TAINTED", "close fast failed", "close slow failed"):
+            assert detail in text
+        physical = (directory / "journal.jsonl").read_bytes()
+        assert physical[: prefix[0]] == acknowledged
+        assert len(physical) > prefix[0]
+        assert RunStorage(directory).offset == prefix[0]
+        metadata = session.storage.metadata()
+        assert metadata["status"] == "faulted"
+        assert metadata["final_cursor"] == prefix[1] + 1
+        assert str(primary) in metadata["error"]
+        ownership.assert_released()
+        with pytest.raises(KernelError, match="JOURNAL_TAINTED"):
+            original_append({"type": "must-not-write"})
+        with pytest.raises(RuntimeError, match="started open run session"):
+            invoke_live_operation(session, operation)
+        session.close()
+        ownership.assert_released()
+        assert (directory / "journal.jsonl").read_bytes() == physical
+    finally:
+        session.close()
+
+
+@pytest.mark.parametrize("operation", ["submit", "watermark", "progress"])
+@pytest.mark.parametrize("failure_type", [KeyboardInterrupt, SystemExit, ValueError])
+def test_live_path_abort_is_terminal_but_validation_rejection_is_not(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    live_owned_scenario: Scenario,
+    ownership: Ownership,
+    operation: str,
+    failure_type: type[BaseException],
+) -> None:
+    session = RunSession(live_owned_scenario, tmp_path / "run")
+    try:
+        session.start()
+        kernel = session.simulation.kernel
+        journal = kernel.journal
+        prefix = kernel.acknowledged_prefix
+        acknowledged = journal.bytes
+        primary = failure_type("live policy path interrupted or rejected")
+
+        def reject(*args: Any, **kwargs: Any) -> Any:
+            raise primary
+
+        # Inject before Journal.append, independently of its failed flag.
+        with monkeypatch.context() as patch:
+            patch.setattr(kernel, "_policy", reject)
+            with pytest.raises(failure_type) as caught:
+                invoke_live_operation(session, operation)
+        assert caught.value is primary
+        assert kernel.acknowledged_prefix == prefix
+        assert journal.bytes == acknowledged
+        if isinstance(primary, Exception):
+            assert not session.closed and not journal.failed
+            assert not journal.sink.closed
+            assert not ownership.closed_kernels
+            assert all(engine.close_calls == 0 for engine in ownership.engines)
+            assert all(engine.provider.close_calls == 0 for engine in ownership.engines)
+            invoke_live_operation(session, operation)
+            assert kernel.acknowledged_prefix[0] > prefix[0]
+            assert not session.closed and not journal.failed
+        else:
+            assert session.closed and journal.failed
+            assert session._failure is primary
+            assert session.storage.metadata()["status"] == "faulted"
+            ownership.assert_released()
+    finally:
+        session.close()
+    ownership.assert_released()
 
 
 @pytest.mark.parametrize(

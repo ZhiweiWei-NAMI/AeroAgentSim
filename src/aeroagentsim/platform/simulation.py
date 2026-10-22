@@ -463,8 +463,10 @@ class RunSession:
             )
 
     def _index(self) -> None:
+        # Read the kernel coordinate before taking the host storage lock.
+        byte_length, _ = self.simulation.kernel.acknowledged_prefix
         with self._storage_lock:
-            self.storage.index()
+            self.storage.index(through_bytes=byte_length)
 
     def _status(
         self,
@@ -473,14 +475,21 @@ class RunSession:
         error: str | None = None,
         waiting: dict[str, object] | None = None,
     ) -> None:
+        prefix = self.simulation.kernel.acknowledged_prefix if self.closed else None
         with self._storage_lock:
-            self.storage.status(status, error=error, waiting=waiting)
+            if prefix is None:
+                self.storage.status(status, error=error, waiting=waiting)
+            else:
+                self.storage.status(
+                    status, error=error, waiting=waiting, acknowledged_prefix=prefix
+                )
 
     def report_wait(self, wait: IngressWait | None) -> None:
         """Publish actual input-wait metadata and its committed journal prefix."""
         try:
+            byte_length, _ = self.simulation.kernel.acknowledged_prefix
             with self._storage_lock:
-                self.storage.index()
+                self.storage.index(through_bytes=byte_length)
                 self.storage.status(
                     "running" if wait is None else "waiting_for_input",
                     waiting=None
@@ -517,7 +526,7 @@ class RunSession:
             )
         except BaseException as exc:
             # Ordinary ingress rejection is not a terminal session failure.
-            if self.simulation.kernel.journal.failed:
+            if not isinstance(exc, Exception) or self.simulation.kernel.journal.failed:
                 self._fault(exc)
             raise
         self._index_or_fault()
@@ -529,7 +538,7 @@ class RunSession:
         try:
             self.simulation.advance_watermark(ns, stream_id=stream_id)
         except BaseException as exc:
-            if self.simulation.kernel.journal.failed:
+            if not isinstance(exc, Exception) or self.simulation.kernel.journal.failed:
                 self._fault(exc)
             raise
         self._index_or_fault()
@@ -542,7 +551,7 @@ class RunSession:
         try:
             self.simulation.advance_source_progress(stamp, stream_id=stream_id)
         except BaseException as exc:
-            if self.simulation.kernel.journal.failed:
+            if not isinstance(exc, Exception) or self.simulation.kernel.journal.failed:
                 self._fault(exc)
             raise
         self._index_or_fault()
@@ -601,6 +610,10 @@ class RunSession:
             raise
 
     def _fault(self, failure: BaseException) -> None:
+        if not isinstance(failure, Exception):
+            # Journal.append cannot know how much an interrupted write persisted.
+            # Taint before close can attempt another append (including run_stop).
+            self.simulation.kernel.journal.failed = True
         with self._storage_lock:
             if self._failure is None:
                 self._failure = failure
