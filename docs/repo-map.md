@@ -12,6 +12,7 @@ relative to the repository root; all cited paths are verified to exist.
 | `containers/` | Docker build/service bundles for external simulators: `px4-gazebo/`, `sumo/`, `ns3/` (each with `Dockerfile`, `service/`, `smoke.py`, `tests/`). |
 | `frontend/` | The Studio/newcomer web console (React/TS). Pages under `frontend/src/`, Playwright e2e under `frontend/e2e/`. |
 | `scenarios/` | Runnable authored scenarios, demos, adapters/agents/behaviours example YAML, and `scenarios/templates/` (see below). |
+| `examples/plugins/` | External scenario-plugin package examples; start with the [scenario plugin guide](guides/scenario-plugins.md). |
 | `tests/` | Python test suites mirroring `src/aeroagentsim` (`tests/platform/`, `tests/packs/`, `tests/adapters/`, `tests/agents/`, `tests/behaviours/`, `tests/authoring/`, `tests/observations/`, `tests/integrations/`, `tests/demos/`). |
 | `tools/` | Developer tooling: `tools/docs/` (link checker, GIF/media recording), `tools/assets/` (city pack builder), `tools/scenarios/`, `tools/templates/`, `tools/demos/`. |
 | `docs/` | Release documentation: `concepts/`, `guides/`, `reference/`, `getting-started/`, `examples/`, `media/`. |
@@ -33,6 +34,7 @@ relative to the repository root; all cited paths are verified to exist.
 | Change low-altitude tasks / energy / airspace / rules | `src/aeroagentsim/packs/lowalt/`: `tasks.py`, `energy.py`, `airspace.py`, `rules.py` (shared `lowalt.rules` behaviour package), `core.py` (read-only committed snapshots), `everyday.py`, `city_traffic.py`, plus registry overlay `registry.overlay.yaml` |
 | Work on the traffic-accident pack | `src/aeroagentsim/packs/traffic_accident/` (`decisions.py`, `traffic_assessment.py`, `road_motion.py`, `route_inputs.py`, `narratives.py`); scenario template `scenarios/templates/traffic-accident/`; tests `tests/demos/traffic_accident/` |
 | Add or inspect an allocation/routing algorithm slot | `src/aeroagentsim/algorithms/` (`protocols.py` — immutable inputs/proposals, `builtins.py`, `llm.py`, `routes.py`, `metadata.py`) |
+| Package templates and knob hooks | `src/aeroagentsim/plugin_api.py` (`ScenarioPlugin`, `TemplateSource`, API version and discovery); `src/aeroagentsim/scenarios/` (built-in registrations); `examples/plugins/` (external packages); [guide](guides/scenario-plugins.md), [contracts](reference/plugin-contracts.md) |
 | Add a domain plugin / external-simulator adapter | `src/aeroagentsim/adapters/`: `px4_gazebo.py`, `sumo.py`, `ns3.py`, `container.py` (Docker lifecycle), `lockstep_base.py`, `runner.py`; plugin entry points in `src/aeroagentsim/platform/plugins.py` |
 | Build or patch simulator containers | `containers/px4-gazebo/`, `containers/sumo/`, `containers/ns3/` (Dockerfiles, `service/`, `smoke.py`); guides `docs/guides/containers.md`, `px4-gazebo.md`, `sumo.md` |
 | Find LangGraph agent code | `src/aeroagentsim/agents/`: `langgraph.py` (typed causal WAL decision engine), `langgraph_client.py`, `decision.py`, `dispatch.py`, `observation.py`, `tools.py` |

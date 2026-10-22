@@ -1,10 +1,20 @@
 # Plugins
 
-Every capability in a run is a **plugin engine** built from a factory and
+Every runtime capability in a run is a **plugin engine** built from a factory and
 bound into the one kernel by the scenario. Engines own fields, submit typed
 commands, emit typed events and receive kernel receipts. The kernel remains
 the sole authority for identities, state history, time, delivery and
 receipts.
+
+## Scenario plugins
+
+Scenario plugins package templates and named knob hooks; they are not runtime
+engines and do not own simulation fields. `ScenarioPlugin` and `TemplateSource`
+in `aeroagentsim.plugin_api` define API version 1. Built-in templates use the
+same contract as external distributions in the `aeroagentsim.scenarios`
+entry-point group. Installed names replace matching builtins; duplicate installed
+names are rejected. See the [scenario plugin guide](../guides/scenario-plugins.md)
+and [plugin contracts](../reference/plugin-contracts.md).
 
 ## Discovery and builtins
 

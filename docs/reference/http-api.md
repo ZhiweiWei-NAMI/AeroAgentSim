@@ -45,6 +45,18 @@ Run status values: `created`, `running`, `paused`, `waiting_for_input`,
 Terminal statuses are `completed`, `stopped`, `faulted`, `interrupted`,
 `input_timeout` and carry a `final_cursor`.
 
+## Plugin catalog
+
+| Endpoint | Method | Semantics |
+| --- | --- | --- |
+| `/v1/plugins` | GET | Plugin catalog: `{api_version, scenarios: [{name, origin, distribution, templates, apply_hooks}], engines, algorithms, models}`. `api_version` is `1`. |
+
+Scenario entries describe discovered builtins and installed plugins in
+`aeroagentsim.scenarios`. Installed names take precedence over matching builtins;
+duplicate installed names are errors. The CLI counterpart is
+[`aeroagentsim plugins`](cli.md#aeroagentsim-plugins). See
+[plugin contracts](plugin-contracts.md) for the plugin APIs.
+
 ## Run execution API
 
 | Endpoint | Method | Semantics |

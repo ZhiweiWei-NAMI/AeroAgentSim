@@ -23,6 +23,20 @@ Prints a JSON summary: `run`, `elapsed_wall_s`, `simulated_s`, `rtf`,
 `peak_rss_kib`. These are the timings of your own run — do not compare them
 against timings taken from other profiles or hardware.
 
+## aeroagentsim plugins
+
+```console
+aeroagentsim plugins
+```
+
+Prints the plugin catalog as JSON: `{api_version, scenarios, engines,
+algorithms, models}`. `api_version` is `1`; each scenario entry has
+`{name, origin, distribution, templates, apply_hooks}`. Scenario discovery merges
+builtins with installed `aeroagentsim.scenarios` entries; installed names take
+precedence and duplicate installed names are errors. See
+[plugin contracts](plugin-contracts.md) and the matching
+[`GET /v1/plugins` response](http-api.md#plugin-catalog).
+
 ## aeroagentsim templates and run-template
 
 ```console
@@ -30,7 +44,7 @@ aeroagentsim templates
 aeroagentsim run-template traffic-accident --set accident_time_s=5 --set physics_hz=2 --headless
 ```
 
-`templates` lists the shipped registry. Both commands accept
+`templates` lists templates from built-in and installed scenario plugins. Both commands accept
 `--templates-root DIR` for an operator registry. `run-template` accepts
 `--out` (default `runs/templates`) and `--port` (default `0`, a free port).
 Without `--headless`, it opens the project in the workbench (`/w/<workspace>`) and requires

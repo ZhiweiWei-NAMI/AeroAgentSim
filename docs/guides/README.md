@@ -11,6 +11,7 @@ Start with [installation and acceptance checks / 安装与验收](../../INSTALL.
 | Inspect the region API / 查看区域 API | [Preview/apply contract](blank-project-tutorial.md#region-api-behind-the-buttons) · [HTTP reference](../reference/http-api.md) |
 | Try a preconfigured example / 体验预配置示例 | [Quickstart](../getting-started/quickstart.md) · [Templates](templates.md) |
 | Build through conversation / 用对话搭建 | [Assistant](assistant.md) |
+| Package a scenario / 打包场景插件 | [Scenario plugins](scenario-plugins.md) · [Plugin contracts](../reference/plugin-contracts.md) |
 | Configure execution and decisions / 配置执行与决策 | [Plugins](plugins.md) · [Algorithms](algorithms.md) · [Agents](agents.md) |
 | Author rules / 编写规则 | [Predicates](predicates.md) · [Event chains](behaviours.md) · [Low-altitude rules](lowalt-rules.md) |
 | Weather and traffic / 天气与交通 | [Weather](weather.md) · [SUMO](sumo.md) |

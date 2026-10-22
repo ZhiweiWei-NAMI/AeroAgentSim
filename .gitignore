@@ -17,6 +17,12 @@ paper_code/
 TCCN_auto_planner/
 pddl_planner/
 examples/
+# Ship the external scenario example, but keep research examples ignored.
+!/examples/
+/examples/*
+!/examples/plugins/
+/examples/plugins/*
+!/examples/plugins/aeroagentsim-example-scenario/
 !docs/examples/
 !docs/examples/**
 data/
