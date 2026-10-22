@@ -3,9 +3,10 @@
 Every reported number comes from a real run (no invented or zero-filled
 measurements): the coordinator validates typed knob variations against the
 template registry in the parent, then executes each (configuration, seed)
-cell as its own run — a direct child of the run root — in a spawned worker
-process. There is no queued process-pool backlog: at most ``jobs`` cells are
-submitted at once. Matched seeds 0..seeds-1 and an optional horizon override are
+cell as its own run — a direct child of the run root — in a private invocation
+process owned by a spawned Linux subreaper. There is no queued process-pool
+backlog: at most ``jobs`` cells are submitted at once, each with one supervisor.
+Matched seeds 0..seeds-1 and an optional horizon override are
 applied to the pinned scenario document BEFORE final ``load_scenario``
 expansion, so unexpanded low-altitude generators observe them.
 
@@ -23,6 +24,9 @@ import itertools
 import json
 import math
 import multiprocessing
+import os
+import signal
+import sys
 import threading
 import time
 import uuid
@@ -146,27 +150,25 @@ def _finish_run(
     error: str | None,
     *,
     waiting: dict[str, Any] | None = None,
-    preserve_terminal: bool = True,
+    recovering: bool = True,
 ) -> dict[str, Any]:
-    """Finalize a closed/dead writer without promoting an unacknowledged tail.
+    """Reconcile a closed/dead writer without promoting an unacknowledged tail.
 
     RunStorage.status() intentionally indexes visible complete records. That is
     not a recovery operation: a terminated invocation can have written complete
     but unacknowledged bytes. Only the owner's ACK may extend the derived index.
-    Recovery returns terminal metadata verbatim, including input timeouts.
-    The owning child may instead refresh its final ACK/index while retaining
-    the terminal outcome/error/waiting that RunSession already persisted.
+    Terminal outcomes/errors/waiting stay authoritative, but even a terminal
+    writer may have died between publishing its final ACK and rebuilding its
+    derived index/final cursor. Recovery must finish that reconciliation too.
     """
     from .storage import committed_prefix
 
     metadata = _run_metadata(path)
-    if metadata.get("status") in _TERMINAL:
-        if preserve_terminal:
-            return metadata
+    terminal = metadata.get("status") in _TERMINAL
+    if terminal:
         outcome = metadata["status"]
-        error, waiting = metadata.get("error"), metadata.get("waiting")
     else:
-        observed = metadata.get("execution_outcome") if preserve_terminal else None
+        observed = metadata.get("execution_outcome") if recovering else None
         if isinstance(observed, dict) and observed.get("status") in {"faulted", "input_timeout", "interrupted"}:
             if outcome == "interrupted":
                 metadata["cleanup_interrupted"] = True
@@ -181,6 +183,7 @@ def _finish_run(
         temporary.replace(target)
 
     entries: list[dict[str, int]] = []
+    metadata.pop("recovery_error", None)
     try:
         prefix = committed_prefix(path)
         if prefix is not None:
@@ -210,13 +213,14 @@ def _finish_run(
         metadata["recovery_error"] = f"{type(exc).__name__}: {exc}"
     atomic("index.json", entries)
     metadata["status"] = outcome
-    metadata.pop("waiting", None)
-    if waiting is not None:
-        metadata["waiting"] = waiting
-    if error is not None:
-        metadata["error"] = metadata.get("error") or error
-    elif outcome == "completed":
-        metadata.pop("error", None)
+    if not terminal:
+        metadata.pop("waiting", None)
+        if waiting is not None:
+            metadata["waiting"] = waiting
+        if error is not None:
+            metadata["error"] = metadata.get("error") or error
+        elif outcome == "completed":
+            metadata.pop("error", None)
     atomic("manifest.json", metadata)
     return metadata
 
@@ -393,7 +397,7 @@ def _child_run(
                 pending_failure = pending_failure or exc
             error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
         publish(force=True)
-        _finish_run(path, outcome, error, waiting=waiting, preserve_terminal=False)
+        _finish_run(path, outcome, error, waiting=waiting, recovering=False)
     if pending_failure is not None:
         raise pending_failure
     result = _run_result(path)
@@ -423,16 +427,155 @@ def _child_run(
     return result
 
 
+def _publish_cell_result(output: str, result: dict[str, Any]) -> None:
+    path = Path(output)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(result, allow_nan=False))
+    temporary.replace(path)
+
+
 def _cell_worker(arguments: tuple[Any, ...], cancelled: Any, output: str) -> None:
     """Publish a detached result atomically; no possibly blocking result pipe."""
     try:
         result = {"result": _child_run(*arguments, cancelled=cancelled)}
     except Exception as exc:  # noqa: BLE001 - exception objects need not pickle
         result = {"worker_error": f"{type(exc).__name__}: {exc}"}
-    path = Path(output)
-    temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps(result, allow_nan=False))
-    temporary.replace(path)
+    _publish_cell_result(output, result)
+
+
+def _cell_supervisor(
+    worker: Any, arguments: tuple[Any, ...], cancelled: Any, output: str,
+    force: Any, reaped: Any,
+) -> None:
+    """Own/reap one Linux subtree outside the killable invocation process.
+
+    A new session/process group is not an ownership boundary: the renderer and
+    Chromium can detach into their own sessions. A per-cell subreaper adopts
+    their orphans instead. It never executes scenario/plugin code itself, and
+    the coordinator requests escalation without killing this supervisor.
+    """
+    terminate_requested = False
+
+    def request_terminate(signum: int, frame: Any) -> None:
+        nonlocal terminate_requested
+        terminate_requested = True
+
+    try:
+        if sys.platform != "linux" or not hasattr(os, "fork"):
+            raise OSError("experiment subprocess supervision requires Linux /proc")
+        import ctypes
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        # PR_SET_CHILD_SUBREAPER applies only to this private supervisor, not to
+        # the server or another manager's workers. Fail before starting a cell
+        # if the host cannot provide the required ownership boundary.
+        if libc.prctl(36, 1, 0, 0, 0) != 0:
+            code = ctypes.get_errno()
+            raise OSError(code, os.strerror(code))
+        pid = os.getpid()
+        children = Path(f"/proc/{pid}/task/{pid}/children")
+        children.read_text()  # Check procfs availability before forking.
+        signal.signal(signal.SIGTERM, request_terminate)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # Keep children waitable/PIDs pinned.
+        worker_pid = os.fork()
+    except Exception as exc:  # noqa: BLE001 - no invocation has been started
+        reaped.value = 1
+        _publish_cell_result(output, {
+            "worker_error": f"subprocess supervision: {type(exc).__name__}: {exc}",
+        })
+        return
+
+    if worker_pid == 0:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        signal.signal(signal.SIGINT, signal.default_int_handler)
+        try:
+            worker(arguments, cancelled, output)
+        except BaseException:
+            os._exit(1)
+        os._exit(0)
+
+    escalate_at: float | None = None
+    while True:
+        while True:
+            try:
+                exited, _ = os.waitpid(-1, os.WNOHANG)
+            except ChildProcessError:
+                # With subreaper ownership, ECHILD proves that neither the cell
+                # nor any adopted local helper remains, even as a zombie.
+                reaped.value = 1
+                return
+            except InterruptedError:
+                continue
+            if exited == 0:
+                break
+            if exited == worker_pid:
+                # Also clean up helpers leaked by an otherwise normal/faulted
+                # cell exit; do not wait for a later manager.close().
+                escalate_at = time.monotonic() + _TERMINATE_GRACE_S
+        if terminate_requested and escalate_at is None:
+            # Also handle multiprocessing's interpreter-exit SIGTERM without
+            # getting stuck forever on a cell that ignores that signal.
+            escalate_at = time.monotonic() + _TERMINATE_GRACE_S
+        phase = max(force.value, int(escalate_at is not None))
+        if escalate_at is not None and time.monotonic() >= escalate_at:
+            phase = 2
+        if phase:
+            try:
+                owned = children.read_text().split()
+            except OSError:
+                owned = []  # No proof of exit: keep the supervisor alive.
+            for child in owned:
+                try:
+                    # Only direct, unreaped children are signalled. Their PIDs
+                    # cannot be reused before our next waitpid. Killing a parent
+                    # adopts its children here, regardless of setsid(), and the
+                    # next pass signals/reaps those too.
+                    os.kill(int(child), signal.SIGKILL if phase >= 2 else signal.SIGTERM)
+                except OSError:
+                    # The coordinator's budget will report unconfirmed exit if
+                    # the OS denies control; never falsely acknowledge cleanup.
+                    pass
+        time.sleep(_CANCEL_POLL_S / 5)
+
+
+class _CellProcess:
+    """Process-compatible control of a cell without killing its subreaper."""
+
+    def __init__(
+        self, context: Any, arguments: tuple[Any, ...], cancelled: Any,
+        output: str, *, name: str,
+    ) -> None:
+        self._force = context.RawValue("b", 0)
+        self._reaped = context.RawValue("b", 0)
+        self._process = context.Process(
+            target=_cell_supervisor,
+            args=(_cell_worker, arguments, cancelled, output, self._force, self._reaped),
+            name=name,
+            daemon=True,
+        )
+
+    @property
+    def termination_confirmed(self) -> bool:
+        return bool(self._reaped.value)
+
+    def start(self) -> None:
+        self._process.start()
+
+    def is_alive(self) -> bool:
+        return bool(self._process.is_alive())
+
+    def join(self, timeout: float | None = None) -> None:
+        self._process.join(timeout=timeout)
+
+    def terminate(self) -> None:
+        self._force.value = max(self._force.value, 1)
+
+    def kill(self) -> None:
+        self._force.value = 2
+
+    def close(self) -> None:
+        self._process.close()
 
 
 def _report_view(report: dict[str, Any]) -> dict[str, Any]:
@@ -552,8 +695,10 @@ class ExperimentManager:
 
     ``create`` validates bounded counts before copying axes/materializing the
     factorial, then validates typed knobs synchronously. A coordinator owns at
-    most ``jobs`` spawned cell processes per batch, with no queued submissions.
-    Artifact recovery/aggregation waits until the batch has no live siblings,
+    most ``jobs`` invocation processes per batch, each owned by a private spawned
+    Linux subreaper, with no queued submissions. Subreapers adopt/reap detached
+    local helpers without changing the server's process ownership. Artifact
+    recovery/aggregation waits until the batch has no live siblings,
     so large dead-cell journals cannot delay control of a blocked live cell.
 
     ``close`` rejects further creates, signals all owned coordinators first,
@@ -718,7 +863,8 @@ class ExperimentManager:
                 "cooperative_grace_s": _CANCEL_GRACE_S,
                 "terminate_grace_s": _TERMINATE_GRACE_S,
                 "kill_grace_s": _KILL_GRACE_S,
-                "scope": "owned_cell_processes",
+                "scope": "owned_cell_process_trees",
+                "supervision": "linux_subreaper",
             },
             "completed": 0,
             "failed": 0,
@@ -944,11 +1090,9 @@ class ExperimentManager:
                     break
                 arguments = self._arguments(entry, config_index, seed)
                 output = entry["directory"] / f"cell-c{config_index}-s{seed}.json"
-                process = context.Process(
-                    target=_cell_worker,
-                    args=(arguments, entry["cancelled"], str(output)),
+                process = _CellProcess(
+                    context, arguments, entry["cancelled"], str(output),
                     name=f"{report['id']}-c{config_index}-s{seed}",
-                    daemon=True,
                 )
                 cell = {
                     "config_index": config_index,
@@ -970,7 +1114,7 @@ class ExperimentManager:
             entry["abort"].wait(_CANCEL_POLL_S)
 
     def _stop_active(self, entry: dict[str, Any], active: list[dict[str, Any]]) -> None:
-        """Cooperate, terminate, kill; never join an unresponsive child forever."""
+        """Cooperate, terminate, kill owned trees; never join forever."""
         entry["cancelling"] = True  # Parent-owned; never read a dead child's lock.
         entry["cancelled"].set()
         waiter = threading.Event()
@@ -1005,28 +1149,32 @@ class ExperimentManager:
         # signaling the batch's blocked live cells.
         self._recover_ready(entry)
         for cell in list(active):
-            # OS-level unkillability is outside the process-wait guarantee. Do
-            # not race a still-live writer by editing its manifest or index.
-            error = "cell still alive after kill budget; run artifacts left untouched"
-            with entry["lock"]:
-                entry["report"]["shutdown_error"] = error
-            try:
-                result = _run_result(cell["path"], collection_error=error)
-            except (OSError, ValueError, KeyError):
-                result = {
-                    "run": str(cell["path"]) if cell["path"].exists() else None,
-                    "run_id": None, "status": None, "error": None,
-                    "collection_error": error, "cut": None, "cursor": None,
-                    "kpis": {}, "kpi_meta": {},
-                }
-            # The writer is still alive: a cancellation request is not an
-            # observed terminal interruption. Keep its actual status, or None.
-            result["cancellation_requested"] = True
-            result["termination_confirmed"] = False
-            result["attempted"] = True
-            result["control_errors"] = cell.get("control_errors", [])
+            result = self._unconfirmed_cell(entry, cell)
             self._record(entry, cell["config_index"], cell["seed"], result)
             active.remove(cell)
+
+    @staticmethod
+    def _unconfirmed_cell(entry: dict[str, Any], cell: dict[str, Any]) -> dict[str, Any]:
+        # OS-level unkillability or a lost supervisor is outside the process-wait
+        # guarantee. Do not race an unconfirmed writer by editing its artifacts.
+        error = "cell process tree exit unconfirmed; run artifacts left untouched"
+        with entry["lock"]:
+            entry["report"]["shutdown_error"] = error
+        try:
+            result = _run_result(cell["path"], collection_error=error)
+        except (OSError, ValueError, KeyError):
+            result = {
+                "run": str(cell["path"]) if cell["path"].exists() else None,
+                "run_id": None, "status": None, "error": None,
+                "collection_error": error, "cut": None, "cursor": None,
+                "kpis": {}, "kpi_meta": {},
+            }
+        # A cancellation request is not an observed terminal interruption.
+        result["cancellation_requested"] = bool(entry.get("cancelling"))
+        result["termination_confirmed"] = False
+        result["attempted"] = True
+        result["control_errors"] = cell.get("control_errors", [])
+        return result
 
     def _fill_unstarted(self, entry: dict[str, Any]) -> None:
         recorded = {(run["config_id"], run["seed"]) for run in entry["report"]["runs"]}
@@ -1090,7 +1238,7 @@ class ExperimentManager:
 
     @staticmethod
     def _collect(entry: dict[str, Any], active: list[dict[str, Any]]) -> bool:
-        """Reap dead handles only; never parse artifacts inside a kill deadline."""
+        """Reap supervisors and retain their tree-exit proof, without artifact I/O."""
         ready = entry.setdefault("ready", [])
         changed = False
         for cell in list(active):
@@ -1098,6 +1246,7 @@ class ExperimentManager:
             if process.is_alive():
                 continue
             process.join(timeout=0)
+            cell["termination_confirmed"] = getattr(process, "termination_confirmed", True)
             process.close()
             active.remove(cell)
             ready.append(cell)
@@ -1109,6 +1258,11 @@ class ExperimentManager:
         ready = entry.get("ready", [])
         while ready:
             cell = ready.pop(0)
+            confirmed = cell.get("termination_confirmed", True)
+            if not confirmed:
+                result = self._unconfirmed_cell(entry, cell)
+                self._record(entry, cell["config_index"], cell["seed"], result)
+                continue
             try:
                 result = self._recover_cell(entry, cell)
             except Exception as exc:  # noqa: BLE001 - preserve terminal status on recovery failure
@@ -1159,12 +1313,10 @@ class ExperimentManager:
                 "collection_error": error, "cut": None, "cursor": None,
                 "kpis": {}, "kpi_meta": {},
             }
-        metadata = _run_metadata(path)
-        if metadata.get("status") not in _TERMINAL:
-            _finish_run(
-                path, "interrupted" if cancelled else "faulted",
-                error or ("experiment cancelled" if cancelled else "cell exited unexpectedly"),
-            )
+        _finish_run(
+            path, "interrupted" if cancelled else "faulted",
+            error or ("experiment cancelled" if cancelled else "cell exited unexpectedly"),
+        )
         actual = _run_result(path)
         result = payload.get("result")
         if isinstance(result, dict):

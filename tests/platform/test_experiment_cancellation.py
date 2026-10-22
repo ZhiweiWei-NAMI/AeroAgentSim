@@ -8,6 +8,8 @@ import math
 import multiprocessing
 import os
 import signal
+import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -162,11 +164,19 @@ def _blocked_cell_worker(arguments, cancelled, output) -> None:
 
 
 class _TrackedProcess:
-    def __init__(self, process) -> None:
+    def __init__(self, process, force, reaped) -> None:
         self.process = process
+        self.force = force
+        self.reaped = reaped
         self.closed = False
-        self.terminated = False
-        self.killed = False
+
+    @property
+    def terminated(self):
+        return self.force.value >= 1
+
+    @property
+    def killed(self):
+        return self.force.value >= 2
 
     def start(self):
         self.process.start()
@@ -178,12 +188,11 @@ class _TrackedProcess:
         self.process.join(timeout=timeout)
 
     def terminate(self):
-        self.terminated = True
-        self.process.terminate()
+        self.force.value = max(self.force.value, 1)
 
     def kill(self):
-        self.killed = True
-        self.process.kill()
+        # Test cleanup must not kill the subreaper itself and orphan its tree.
+        self.force.value = 2
 
     def close(self):
         self.process.close()
@@ -191,17 +200,22 @@ class _TrackedProcess:
 
 
 class _BlockedContext:
-    def __init__(self, context, target=_blocked_cell_worker) -> None:
+    def __init__(self, context, target=_blocked_cell_worker, *, supervisor=None) -> None:
         self.context = context
         self.target = target
+        self.supervisor = supervisor or experiments._cell_supervisor
         self.processes: list[_TrackedProcess] = []
 
     def RawValue(self, *args):
         return self.context.RawValue(*args)
 
     def Process(self, **kwargs):
-        kwargs["target"] = self.target
-        process = _TrackedProcess(self.context.Process(**kwargs))
+        assert kwargs["target"] is experiments._cell_supervisor
+        kwargs["target"] = self.supervisor
+        _, *arguments = kwargs["args"]
+        kwargs["args"] = (self.target, *arguments)
+        force, reaped = arguments[-2:]
+        process = _TrackedProcess(self.context.Process(**kwargs), force, reaped)
         self.processes.append(process)
         return process
 
@@ -214,6 +228,7 @@ def _wait_for(predicate, timeout=10.0) -> None:
         time.sleep(0.01)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux subreaper regression")
 def test_close_kills_blocked_cells_without_backlog_and_preserves_ack(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -282,6 +297,135 @@ def test_close_kills_blocked_cells_without_backlog_and_preserves_ack(
         closer.join(timeout=2)
 
 
+def _supervisor_with_ignored_sigchld(*args) -> None:
+    # An embedding host may ignore SIGCHLD; the supervisor must restore waitable
+    # children before relying on waitpid for ownership/reaping proof.
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+    experiments._cell_supervisor(*args)
+
+
+def _detached_renderer_worker(arguments, cancelled, output) -> None:
+    """Exercise BrowserRenderer's real session/pipe setup without Node/Chromium."""
+    from aeroagentsim.observations import renderer as rendering
+
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    path = Path(arguments[2])
+    _run_files(path)
+    browser_script = (
+        "import os, signal, sys, threading\n"
+        "from pathlib import Path\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "Path(sys.argv[1]).write_text(str(os.getpid()))\n"
+        "threading.Event().wait()\n"
+    )
+    bridge_script = (
+        "import os, signal, subprocess, sys, threading\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "subprocess.Popen([sys.executable, '-c', sys.argv[1], sys.argv[2]], "
+        "start_new_session=True)\n"
+        "fd = int(os.environ['AEROAGENTSIM_RENDERER_READY_FD'])\n"
+        "os.write(fd, b'{\"contract\":\"aeroagentsim.viewer-ready/v1\"}\\n')\n"
+        "os.close(fd)\n"
+        # Like a bridge stuck awaiting page.evaluate: stdin EOF does not stop it.
+        "threading.Event().wait()\n"
+    )
+    popen = subprocess.Popen
+
+    def start_bridge(command, **kwargs):
+        assert kwargs["start_new_session"] is True
+        return popen([
+            sys.executable, "-c", bridge_script, browser_script, str(path / "browser.pid"),
+        ], **kwargs)
+
+    rendering.subprocess.Popen = start_bridge
+    os.environ.pop("AEROAGENTSIM_CHROMIUM", None)
+    renderer = rendering.BrowserRenderer("http://unused.invalid", node_modules=path)
+    bridge = renderer._start()
+    browser_file = path / "browser.pid"
+    _wait_for(lambda: browser_file.exists() and bool(browser_file.read_text()))
+    browser_pid = int(browser_file.read_text())
+    (path / "renderer-pids.json").write_text(json.dumps({
+        "cell": os.getpid(), "bridge": bridge.pid, "browser": browser_pid,
+        "bridge_session": os.getsid(bridge.pid), "browser_session": os.getsid(browser_pid),
+    }))
+    (path / "blocked.ready").write_text("ready")
+    if arguments[0].get("test_exit_without_renderer_cleanup"):
+        return  # A dead invocation must not make a still-live helper disappear.
+    renderer._read_reply(time.monotonic() + 300, "blocked render")
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux subreaper regression")
+@pytest.mark.parametrize("exit_without_cleanup", [False, True])
+def test_close_reaps_separately_sessioned_renderer_and_browser_descendants(
+    exit_without_cleanup: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RendererRegistry(_Registry):
+        def apply(self, template_id, knobs):
+            prepared = super().apply(template_id, knobs)
+            prepared.document["test_exit_without_renderer_cleanup"] = exit_without_cleanup
+            return prepared
+
+    context = _BlockedContext(
+        multiprocessing.get_context("spawn"), _detached_renderer_worker,
+        supervisor=_supervisor_with_ignored_sigchld,
+    )
+    monkeypatch.setattr(experiments, "multiprocessing", SimpleNamespace(get_context=lambda method: context))
+    monkeypatch.setattr(experiments, "_CANCEL_GRACE_S", 0.05)
+    monkeypatch.setattr(experiments, "_TERMINATE_GRACE_S", 0.05)
+    root = tmp_path / "runs"
+    manager = ExperimentManager(root, RendererRegistry(tmp_path))
+    unrelated = subprocess.Popen([
+        sys.executable, "-c", "import threading; threading.Event().wait()",
+    ], start_new_session=True)
+    closer = None
+    try:
+        created = manager.create("probe", vary={}, seeds=1)
+        _wait_for(lambda: len(list(root.glob("*/blocked.ready"))) == 1)
+        path = next(root.glob("*/blocked.ready")).parent
+        identities = json.loads((path / "renderer-pids.json").read_text())
+        assert identities["bridge_session"] == identities["bridge"]
+        assert identities["browser_session"] == identities["browser"]
+        assert identities["bridge_session"] != identities["browser_session"]
+        before = {name: (path / name).read_bytes()
+                  for name in ("journal.jsonl", "committed-prefix.json")}
+        closer = threading.Thread(target=manager.close, daemon=True)
+        closer.start()
+        closer.join(timeout=4)
+        assert not closer.is_alive(), "close stranded a renderer/browser subtree"
+        result = manager.wait(created["id"])["runs"][0]
+        assert result["termination_confirmed"] is True and result["kpis"] == {}
+        assert all(process.closed and process.reaped.value for process in context.processes)
+        assert all(not Path(f"/proc/{identities[name]}").exists()
+                   for name in ("cell", "bridge", "browser"))
+        assert unrelated.poll() is None, "another process owner's helper was signalled"
+        assert {name: (path / name).read_bytes() for name in before} == before
+    finally:
+        for process in context.processes:
+            if process.is_alive():
+                process.kill()
+                process.join(timeout=2)
+        if closer is None:
+            closer = threading.Thread(target=manager.close, daemon=True)
+            closer.start()
+        closer.join(timeout=2)
+        unrelated.kill()
+        unrelated.wait(timeout=2)
+
+
+def test_supervision_unavailable_fails_before_invoking_cell(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden_worker(*args):
+        pytest.fail("cell ran without subprocess ownership supervision")
+
+    force, reaped = SimpleNamespace(value=0), SimpleNamespace(value=0)
+    output = tmp_path / "result.json"
+    monkeypatch.setattr(experiments, "sys", SimpleNamespace(platform="unsupported"))
+    experiments._cell_supervisor(forbidden_worker, (), None, str(output), force, reaped)
+    assert reaped.value == 1
+    assert "requires Linux /proc" in json.loads(output.read_text())["worker_error"]
+
+
 class _UncooperativeProcess:
     def __init__(self) -> None:
         self.alive = True
@@ -342,11 +486,17 @@ def test_shutdown_phase_deadlines_are_shared_not_per_child(
 def test_recovery_preserves_every_actual_terminal_outcome_and_original_error(
     status: str, cancelled: bool, tmp_path: Path
 ) -> None:
+    from aeroagentsim.services.feed_index import _results_state
+
     path = tmp_path / "run"
     original_error = None if status == "completed" else f"original {status}"
     prefix = _run_files(path, status=status, error=original_error)
     (path / "index.json").write_text("not a valid derived index")
-    names = ["manifest.json", "index.json", "journal.jsonl", "committed-prefix.json"]
+    metadata = json.loads((path / "manifest.json").read_text())
+    metadata["final_cursor"] = 1  # Terminal status preceded the newer ACK.
+    metadata["recovery_error"] = "previous interrupted reconciliation"
+    (path / "manifest.json").write_text(json.dumps(metadata))
+    names = ["journal.jsonl", "committed-prefix.json"]
     before = {name: (path / name).read_bytes() for name in names}
     output = tmp_path / "result.json"
     output.write_text(json.dumps({"worker_error": "exception could not be transported"}))
@@ -362,6 +512,15 @@ def test_recovery_preserves_every_actual_terminal_outcome_and_original_error(
     if status == "input_timeout":
         assert result["waiting"] == {"stream_ids": ["source"], "at_ns": "10"}
     assert {name: (path / name).read_bytes() for name in names} == before
+    repaired = json.loads((path / "manifest.json").read_text())
+    assert repaired == {
+        key: (2 if key == "final_cursor" else value)
+        for key, value in metadata.items() if key != "recovery_error"
+    }
+    assert [row["index"] for row in json.loads((path / "index.json").read_text())] == [0, 1]
+    assert _results_state(path, repaired, {"next": 2}) == {
+        "results_final": True, "results_cursor": 2, "final_commit_index": 1,
+    }
 
 
 def test_terminal_manifest_overrides_stale_worker_result(tmp_path: Path) -> None:
@@ -380,11 +539,13 @@ def test_terminal_manifest_overrides_stale_worker_result(tmp_path: Path) -> None
 
 
 @pytest.mark.parametrize("ack", ["missing", "invalid", "valid"])
-def test_dead_nonterminal_recovery_never_promotes_visible_tail_or_trusts_index(
-    ack: str, tmp_path: Path
+@pytest.mark.parametrize("status", ["running", "completed", "faulted", "input_timeout"])
+def test_dead_writer_recovery_never_promotes_visible_tail_or_trusts_index(
+    ack: str, status: str, tmp_path: Path
 ) -> None:
     path = tmp_path / "run"
-    prefix = _run_files(path)
+    original_error = "original failure" if status in {"faulted", "input_timeout"} else None
+    prefix = _run_files(path, status=status, error=original_error)
     (path / "index.json").write_text("corrupt derived cache")
     if ack == "missing":
         (path / "committed-prefix.json").unlink()
@@ -398,7 +559,12 @@ def test_dead_nonterminal_recovery_never_promotes_visible_tail_or_trusts_index(
         "path": path, "output": tmp_path / "absent.json",
     })
     metadata = json.loads((path / "manifest.json").read_text())
-    assert result["status"] == metadata["status"] == "interrupted"
+    expected_status = "interrupted" if status == "running" else status
+    assert result["status"] == metadata["status"] == expected_status
+    if original_error is not None:
+        assert result["error"] == metadata["error"] == original_error
+    if status == "input_timeout":
+        assert result["waiting"] == {"stream_ids": ["source"], "at_ns": "10"}
     assert result["kpis"] == {}
     assert (path / "journal.jsonl").read_bytes() == journal
     index = json.loads((path / "index.json").read_text())
@@ -413,11 +579,12 @@ def test_dead_nonterminal_recovery_never_promotes_visible_tail_or_trusts_index(
 
 
 @pytest.mark.parametrize("kind", ["beyond_eof", "wrong_index", "partial_record"])
+@pytest.mark.parametrize("status", ["running", "faulted", "completed"])
 def test_invalid_ack_reconciliation_cannot_be_reported_as_a_known_cut(
-    kind: str, tmp_path: Path,
+    kind: str, status: str, tmp_path: Path,
 ) -> None:
     path = tmp_path / "run"
-    prefix = _run_files(path)
+    prefix = _run_files(path, status=status)
     if kind == "beyond_eof":
         prefix["bytes"] = (path / "journal.jsonl").stat().st_size + 1
     elif kind == "wrong_index":
@@ -432,7 +599,8 @@ def test_invalid_ack_reconciliation_cannot_be_reported_as_a_known_cut(
     result = ExperimentManager._recover_cell(entry, {
         "path": path, "output": tmp_path / "absent.json",
     })
-    assert result["status"] == "interrupted" and result["kpis"] == {}
+    assert result["status"] == ("interrupted" if status == "running" else status)
+    assert result["kpis"] == {}
     assert result["cut"] is result["cursor"] is None
     assert result["collection_error"]
     assert ack.read_bytes() == before
@@ -822,11 +990,33 @@ def test_unconfirmed_termination_retains_live_observed_status_and_control_errors
     assert {file.name: file.read_bytes() for file in path.glob("*")} == before
 
 
+def test_dead_supervisor_without_reaping_proof_does_not_finalize_writer(tmp_path: Path) -> None:
+    class LostSupervisor(_UncooperativeProcess):
+        termination_confirmed = False
+
+    path = tmp_path / "run"
+    _run_files(path)
+    before = {file.name: file.read_bytes() for file in path.glob("*")}
+    process = LostSupervisor()
+    process.alive = False
+    active = [{"process": process, "path": path, "output": tmp_path / "absent.json",
+               "config_index": 0, "seed": 0}]
+    entry = _entry()
+    manager = ExperimentManager(tmp_path / "runs", _Registry(tmp_path))
+    manager._collect(entry, active)
+    assert not active and process.closed
+    manager._recover_ready(entry)
+    result = entry["report"]["runs"][0]
+    assert result["termination_confirmed"] is False
+    assert result["status"] == "running" and result["collection_error"]
+    assert {file.name: file.read_bytes() for file in path.glob("*")} == before
+
+
 def test_child_owner_refreshes_final_ack_without_overwriting_terminal_failure(tmp_path: Path) -> None:
     path = tmp_path / "run"
     prefix = _run_files(path, status="input_timeout", error="original timeout")
     (path / "index.json").write_text("corrupt derived cache")
-    metadata = experiments._finish_run(path, "faulted", "later collection error", preserve_terminal=False)
+    metadata = experiments._finish_run(path, "faulted", "later collection error", recovering=False)
     assert metadata["status"] == "input_timeout" and metadata["error"] == "original timeout"
     assert metadata["waiting"] == {"stream_ids": ["source"], "at_ns": "10"}
     assert metadata["final_cursor"] == 2
@@ -898,6 +1088,85 @@ def test_base_exception_never_fabricates_completed_outcome(
     assert recovered["status"] == "interrupted" and recovered["kpis"] == {}
 
 
+def _terminal_cleanup_ack_worker(arguments, cancelled, output) -> None:
+    """Stop after cleanup persisted a fault, published a newer ACK, then stalled."""
+    from aeroagentsim.platform import simulation
+
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    patch = pytest.MonkeyPatch()
+    _patch_session(patch, cancel_on_wait=cancelled)
+
+    def fail_close(self):
+        self.closed = True
+        # RunSession.close() persists its cleanup fault using the PREVIOUS ACK.
+        self.storage.status("faulted", error="cleanup: RuntimeError: renderer cleanup failed")
+        lines = (self.path / "journal.jsonl").read_bytes().splitlines(keepends=True)
+        # Model the stop record acknowledged during cleanup. _child_run will
+        # publish this newer coordinate before it enters _finish_run().
+        self.simulation.kernel.acknowledged_prefix = (sum(map(len, lines[:3])), 2)
+        raise RuntimeError("renderer cleanup failed")
+
+    def block_reconciliation(path, *args, **kwargs):
+        index = json.loads((path / "index.json").read_text())
+        (path / "index.json").write_text(json.dumps(index[:2]))
+        (path / "reconciliation.ready").write_text("ready")
+        threading.Event().wait()
+
+    patch.setattr(simulation.RunSession, "close", fail_close)
+    patch.setattr(experiments, "_finish_run", block_reconciliation)
+    experiments._cell_worker(arguments, cancelled, output)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux subreaper regression")
+def test_killed_terminal_cleanup_reconciles_newer_ack_and_projection_finality(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.services.feed_index import _results_state
+
+    context = _BlockedContext(multiprocessing.get_context("spawn"), _terminal_cleanup_ack_worker)
+    monkeypatch.setattr(experiments, "multiprocessing", SimpleNamespace(get_context=lambda method: context))
+    monkeypatch.setattr(experiments, "_CANCEL_GRACE_S", 0.05)
+    monkeypatch.setattr(experiments, "_TERMINATE_GRACE_S", 0.05)
+    root = tmp_path / "runs"
+    manager = ExperimentManager(root, _Registry(tmp_path))
+    created = manager.create("probe", vary={}, seeds=1)
+    closer = None
+    try:
+        _wait_for(lambda: len(list(root.glob("*/reconciliation.ready"))) == 1)
+        path = next(root.glob("*/reconciliation.ready")).parent
+        original = json.loads((path / "manifest.json").read_text())
+        prefix = json.loads((path / "committed-prefix.json").read_text())
+        assert original["status"] == "faulted" and original["final_cursor"] == 2
+        assert prefix["index"] == 2  # New final cursor must be 3, not 2.
+        assert _results_state(path, original, {"next": 3})["results_final"] is False
+        before = {name: (path / name).read_bytes()
+                  for name in ("journal.jsonl", "committed-prefix.json")}
+        closer = threading.Thread(target=manager.close, daemon=True)
+        closer.start()
+        closer.join(timeout=4)
+        assert not closer.is_alive()
+        result = manager.wait(created["id"])["runs"][0]
+        repaired = json.loads((path / "manifest.json").read_text())
+        assert result["status"] == repaired["status"] == original["status"]
+        assert result["error"] == repaired["error"] == original["error"]
+        assert result["cut"] == prefix and result["cursor"] == repaired["final_cursor"] == 3
+        assert result["termination_confirmed"] is True and result["kpis"] == {}
+        assert [row["index"] for row in json.loads((path / "index.json").read_text())] == [0, 1, 2]
+        assert _results_state(path, repaired, {"next": 3}) == {
+            "results_final": True, "results_cursor": 3, "final_commit_index": 2,
+        }
+        assert {name: (path / name).read_bytes() for name in before} == before
+    finally:
+        for process in context.processes:
+            if process.is_alive():
+                process.kill()
+                process.join(timeout=2)
+        if closer is None:
+            closer = threading.Thread(target=manager.close, daemon=True)
+            closer.start()
+        closer.join(timeout=2)
+
+
 def _failure_cleanup_worker(arguments, cancelled, output) -> None:
     from aerokernel.errors import KernelError
 
@@ -914,6 +1183,7 @@ def _failure_cleanup_worker(arguments, cancelled, output) -> None:
     experiments._cell_worker(arguments, cancelled, output)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux subreaper regression")
 @pytest.mark.parametrize(("stage", "kind"), [("start", "faulted"), ("run", "faulted"), ("run", "input_timeout")])
 def test_observed_failure_survives_killed_blocked_cleanup(
     stage: str, kind: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

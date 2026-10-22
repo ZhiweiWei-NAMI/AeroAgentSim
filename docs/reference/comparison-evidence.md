@@ -15,7 +15,7 @@ starting workers:
 
 | Coordinate | Inclusive limit |
 | --- | --- |
-| `jobs` (active cell processes) | 1–32 |
+| `jobs` (active invocation cells, each with one supervisor) | 1–32 |
 | Configurations (product of axis lengths; an empty `vary` means one) | 1–256 |
 | `seeds` (replicates per configuration) | 1–1,000 |
 | Total configuration × seed cells | 4,096 |
@@ -38,8 +38,21 @@ For active cells the shutdown policy is:
 
 1. Request cooperative cancellation; poll at 50 ms intervals and allow one second
    to stop at a safe boundary.
-2. Terminate remaining cell processes and allow one shared second to exit.
+2. Terminate remaining cell process trees and allow one shared second to exit.
 3. Kill survivors and allow one shared second to reap them.
+
+Each invocation runs under a private **Linux child subreaper**, outside the
+killable cell. The supervisor adopts, signals and reaps orphaned local helpers,
+including the renderer's separately sessioned Node bridge and browser processes;
+closing their stdin or killing only the Python invocation is not sufficient.
+Escalation requests do not kill the supervisor itself. A cell is confirmed
+terminated only after its supervisor has reaped the entire owned subtree, not
+merely the invocation. Helpers leaked by a normal cell exit are also cleaned up.
+The server's child-reaping policy and other managers' processes are unchanged.
+This requires Linux `fork`, child-subreaper support and readable `/proc` child
+lists; if unavailable, the worker reports a supervision failure **before running
+scenario/plugin code**, rather than silently admitting unsupervised helpers.
+There is one additional supervisor process per active cell, not per queued cell.
 
 The phase deadlines are shared across active cells, not multiplied by `jobs`.
 Only process control/reaping occurs inside them; artifact parsing, ACK-index
@@ -47,8 +60,9 @@ recovery and report writing are deferred until live siblings have been controlle
 Those operations add to `close()` latency: its total wall time is not capped at
 three seconds. These are process-control budgets under responsive OS scheduling,
 not hard real-time guarantees against a stalled filesystem or unkillable OS task.
-External/native descendants and already-issued model requests may have effects
-that process termination cannot undo.
+Already-issued model requests and work delegated to external services or
+container daemons may have effects that local process termination cannot undo;
+these are not local descendants owned by the supervisor.
 
 An interrupted cell retains its **last published acknowledged byte/index
 prefix**. Visible unacknowledged tail bytes are not promoted to measurements,
@@ -59,14 +73,21 @@ identified rather than represented as successful runs.
 
 Persisted terminal outcomes (`completed`, `faulted`, `stopped`, `interrupted`,
 `input_timeout`) remain authoritative, even if result transport or KPI projection
-fails afterward. Such a collection failure is recorded separately as
-`collection_error`; a completed simulation is not rewritten as a different
-terminal outcome just because its measurements are unavailable. Interrupted and
-failed cells have no synthesized KPI values. Observed execution failures are saved
-as `execution_outcome` before potentially blocking cleanup; this is not an early
-success/finality marker. If cleanup is killed, recovery retains that fault/timeout
-and records cleanup interruption separately. A run whose termination cannot be
-confirmed retains its observed status (or `null`) with
+fails afterward. Dead terminal writers still have their derived index and
+`final_cursor` reconciled against the admitted ACK: a cleanup fault can have
+persisted terminal status before the final stop-record ACK was published. This
+repair preserves the original terminal status, error and waiting metadata,
+never advances the ACK or promotes its unacknowledged tail, and lets
+`final_commit_index` / `results_final` agree once the full ACK has been projected.
+It does not infer success from a stop record. Collection failures are recorded
+separately as `collection_error`; a completed simulation is not rewritten as a
+different terminal outcome just because its measurements are unavailable.
+Interrupted and failed cells have no synthesized KPI values. Observed execution
+failures are saved as `execution_outcome` before potentially blocking cleanup;
+this is not an early success/finality marker. If cleanup is killed, recovery
+retains that fault/timeout and records cleanup interruption separately. On
+cancellation, a run whose termination cannot be confirmed retains its observed
+status (or `null`) with
 `termination_confirmed: false` and `cancellation_requested: true`; it is not
 represented as confirmed dead or assigned an invented terminal interruption.
 
