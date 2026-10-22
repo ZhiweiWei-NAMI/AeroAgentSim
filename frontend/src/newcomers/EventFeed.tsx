@@ -11,25 +11,23 @@ export interface EventFeedProps {
   events: BusinessEvent[];
   entityNames?:Map<string,string>;
   available?:boolean;onExplore?:()=>void;
-  /** Explicit raw-record destination; otherwise derived from the current workbench URL. */
+  /** Explicit raw inspector; without one or onExplore, offer the run's Records panel. */
   rawRecordsHref?:string;
   onSelect?: (event: BusinessEvent) => void;
   /** Entity ids currently selected elsewhere (e.g. clicked in the 3D view); matching events are highlighted. */
   selectedEntities?: string[];
 }
 
-/**
- * A reachable view of the committed records when no readable business feed was
- * projected. The workbench URL carries the run, not this panel, so derive the
- * destination from it instead of naming a view the workbench does not expose.
- */
+/** Without a raw disclosure callback, honestly offer the run's Records panel. */
 function rawRecordsTarget(): string {
-  const query = new URLSearchParams(window.location.search);
-  const run = query.get('run'), api = query.get('api');
-  if (!run) return `/?records=1${api ? `&api=${encodeURIComponent(api)}` : ''}`;
-  const mode = query.get('mode') === 'live' ? 'live' : 'replay';
-  const cut = query.get('cut');
-  return `/agents/${encodeURIComponent(run)}?mode=${mode}${api ? `&api=${encodeURIComponent(api)}` : ''}${cut ? `&cut=${encodeURIComponent(cut)}` : ''}`;
+  const current = new URLSearchParams(window.location.search), query = new URLSearchParams();
+  for (const key of ['run', 'mode', 'api', 'cut', 't']) {
+    const value = current.get(key);
+    if (value !== null) query.set(key, value);
+  }
+  query.set('records', '1');
+  const path = window.location.pathname.startsWith('/w/') ? window.location.pathname : '/';
+  return `${path}?${query}`;
 }
 
 const SEVERITIES: Severity[] = ['info', 'notice', 'warning', 'critical'];
@@ -81,11 +79,13 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
       {visible.length === 0 ? (
         <p className="newc-feed-empty" role="status">
           {events.length === 0
-            ? (available?t('No events yet at this moment. Follow the run to watch what happens next.'):L('This run has no readable event summaries. Open its raw records instead.', '这次运行没有可读的事件摘要。请改为查看原始记录。'))
+            ? (available ? t('No events yet at this moment. Follow the run to watch what happens next.')
+              : onExplore || rawRecordsHref ? L('This run has no readable event summaries. Open its raw records instead.', '这次运行没有可读的事件摘要。请改为查看原始记录。')
+                : L('This run has no readable event summaries. Open the run’s Records panel instead.', '这次运行没有可读的事件摘要。请改为打开运行的“记录”面板。'))
             : t('No events match the filters you picked. Clear a filter above to see the rest.')}
           {!available && (onExplore
             ? <button className="console-btn" onClick={onExplore}>{t('Explore recorded activity')}</button>
-            : <a className="console-btn" data-testid="event-feed-raw-records" href={rawRecordsHref ?? rawRecordsTarget()}>{t('Explore recorded activity')}</a>)}
+            : <a className="console-btn" data-testid="event-feed-raw-records" href={rawRecordsHref ?? rawRecordsTarget()}>{rawRecordsHref ? t('Explore recorded activity') : L('Open the run’s Records panel', '打开运行的“记录”面板')}</a>)}
         </p>
       ) : (
         <ul className="newc-feed-list">

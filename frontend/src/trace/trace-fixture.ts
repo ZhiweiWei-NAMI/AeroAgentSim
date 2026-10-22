@@ -38,3 +38,31 @@ const commits: FeedCommit[] = [
   { ...empty(5, '1000000000', 3), chainInstances: [notice] },
 ];
 export const traceStore = () => { const value = new TemporalFeedStore(header); commits.forEach(commit => value.ingest(commit)); value.seek('2000000000'); return value; };
+
+/** Distinct occurrences can share schema, payload, subjects and cut. */
+export function duplicateEventTraceStore(triggerMessageId?: string) {
+  const value = new TemporalFeedStore(header);
+  for (const commit of commits) value.ingest({
+    ...commit,
+    messages: commit.commitIndex === 4 ? [...commit.messages, { ...message, id: 'm2' }] : commit.messages,
+    chainInstances: commit.commitIndex === 5 && triggerMessageId !== undefined
+      ? [{ ...notice, trigger: { event: message.schemaId, message_id: triggerMessageId } }]
+      : commit.chainInstances,
+  });
+  value.seek('2000000000');
+  return value;
+}
+
+/** The public summary has no recorded message handle, even with one candidate. */
+export function sameCutContextStore(candidates: Array<'step' | 'event' | 'command'>) {
+  const value = new TemporalFeedStore(header);
+  value.ingest(commits[0]);
+  value.ingest({
+    ...commits[3],
+    events: commits[3].events!.map(event => ({ ...event, text_zh: '车辆已停下' })),
+    chainInstances: candidates.includes('step') ? [raise] : [],
+    messages: candidates.flatMap(kind => kind === 'step' ? [] : [{ ...message, id: kind, kind }]),
+  });
+  value.seek('2000000000');
+  return value;
+}

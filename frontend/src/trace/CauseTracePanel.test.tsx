@@ -1,17 +1,20 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InspectionPanel } from '../pages/InspectionPanel';
 import { CauseTracePanel } from './CauseTracePanel';
 import { subscribeCauseTrace, openCauseTrace } from './bus';
 import { explain } from './cause-trace';
-import { incident, traceStore } from './trace-fixture';
+import { duplicateEventTraceStore, incident, sameCutContextStore, traceStore } from './trace-fixture';
 import { I18nProvider } from '../i18n/I18nProvider';
 
-it('tells the story in plain words and lets each follow-up continue the walk', () => {
+beforeEach(() => localStorage.clear());
+afterEach(() => localStorage.clear());
+
+it('tells a selected step’s story and lets each recorded follow-up continue the walk', () => {
   const store = traceStore(), open = vi.fn();
-  const model = explain(store, { kind: 'event', text: 'Car stopped' })!;
+  const model = explain(store, { kind: 'step', instanceId: 'chain:a', revision: 1 })!;
   render(<CauseTracePanel store={store} model={model} canGoBack={false} onOpen={open} onBack={() => {}} onClose={() => {}} onSelectEntity={() => {}} onSeek={() => {}} />);
-  for (const heading of ['What set it off', 'What ran', 'What changed in the shared state', 'What happened next']) expect(screen.getByText(heading)).toBeTruthy();
+  for (const heading of ['What set it off', 'What ran', 'What changed in the shared state', 'Recorded follow-ups']) expect(screen.getByText(heading)).toBeTruthy();
   expect(screen.getByText("Car 1's speed = 0")).toBeTruthy();
   expect(screen.getAllByText(/Only event chains may write this field/)).toHaveLength(1);
   expect(screen.getByText('false')).toBeTruthy(); expect(screen.getByText('true')).toBeTruthy();
@@ -49,9 +52,9 @@ it('lets other pages open a trace through the bus and the entity panel opens mom
 it('localizes the complete cause walk while Back, close, entity focus and seek retain exact references', () => {
   localStorage.setItem('aeroagentsim.locale','zh-CN');
   const store=traceStore(), open=vi.fn(), back=vi.fn(), close=vi.fn(), seek=vi.fn(), select=vi.fn();
-  const model=explain(store,{kind:'event',text:'Car stopped'},'zh-CN')!;
+  const model=explain(store,{kind:'step',instanceId:'chain:a',revision:1},'zh-CN')!;
   const view=render(<I18nProvider><CauseTracePanel store={store} model={model} canGoBack onOpen={open} onBack={back} onClose={close} onSelectEntity={select} onSeek={seek}/></I18nProvider>);
-  for(const heading of ['是什么触发了它','执行了什么','共享状态发生了哪些变化','接下来发生了什么']) expect(screen.getByText(heading)).toBeTruthy();
+  for(const heading of ['是什么触发了它','执行了什么','共享状态发生了哪些变化','已记录的后续活动']) expect(screen.getByText(heading)).toBeTruthy();
   expect(screen.getByText('车辆 1的速度 = 0')).toBeTruthy();
   expect(screen.getByText(/此字段仅允许事件链写入/)).toBeTruthy();
   expect(screen.getByText('涉及对象：')).toBeTruthy();
@@ -70,6 +73,51 @@ it('uses the Chinese recorded-link and same-cut wording without calling either a
   expect(screen.getAllByText(/同一时刻上下文/).length).toBeGreaterThan(0);
   expect(screen.queryByText(/因果/)).toBeNull();
   view.unmount(); localStorage.clear();
+});
+
+it.each(['en-US', 'zh-CN'])('uses neutral headings and trigger wording for duplicate event occurrences (%s)', locale => {
+  localStorage.setItem('aeroagentsim.locale', locale);
+  const store = duplicateEventTraceStore();
+  for (const messageId of ['m1', 'm2']) {
+    const model = explain(store, { kind: 'message', messageId, cut: 4 }, locale)!;
+    const view = render(<I18nProvider><CauseTracePanel store={store} model={model} canGoBack={false} onOpen={vi.fn()} onBack={vi.fn()} onClose={vi.fn()} onSelectEntity={vi.fn()} onSeek={vi.fn()} /></I18nProvider>);
+    expect(screen.getByRole('heading', { name: locale === 'zh-CN' ? '已记录的后续活动' : 'Recorded follow-ups' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: locale === 'zh-CN' ? '同一时刻的状态记录' : 'Same-cut state records' })).toBeInTheDocument();
+    expect(screen.getByText(locale === 'zh-CN' ? /匹配的已记录触发条件/ : /matching recorded trigger/)).toBeInTheDocument();
+    expect(screen.getByTestId('cause-trace')).not.toHaveTextContent(/reacted|已响应|响应了该事件|Sent by the chain|Announced by the chain/);
+    if (messageId === 'm1') expect(screen.getByRole('heading', { name: locale === 'zh-CN' ? '匹配的已记录步骤' : 'Matching recorded step' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: locale === 'zh-CN' ? '是什么触发了它' : 'What set it off' })).toBeNull();
+    view.unmount();
+  }
+  const model = explain(store, { kind: 'step', instanceId: 'chain:b', revision: 1 }, locale)!;
+  const view = render(<I18nProvider><CauseTracePanel store={store} model={model} canGoBack={false} onOpen={vi.fn()} onBack={vi.fn()} onClose={vi.fn()} onSelectEntity={vi.fn()} onSeek={vi.fn()} /></I18nProvider>);
+  expect(screen.getByRole('heading', { name: locale === 'zh-CN' ? '记录的触发条件' : 'Recorded trigger' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: locale === 'zh-CN' ? '打开匹配的记录' : 'Open matching record' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: locale === 'zh-CN' ? '是什么触发了它' : 'What set it off' })).toBeNull();
+  view.unmount();
+});
+
+it.each(['en-US', 'zh-CN'])('keeps the event as the focus and labels each contextual choice, even the first or only one (%s)', locale => {
+  localStorage.setItem('aeroagentsim.locale', locale);
+  const cases: Array<Array<'step' | 'event' | 'command'>> = [['step'], ['event'], ['command'], ['step', 'event', 'command']];
+  for (const candidates of cases) {
+    const store = sameCutContextStore(candidates), open = vi.fn();
+    const model = explain(store, { kind: 'event', text: 'Car stopped' }, locale)!;
+    const view = render(<I18nProvider><CauseTracePanel store={store} model={model} canGoBack={false} onOpen={open} onBack={vi.fn()} onClose={vi.fn()} onSelectEntity={vi.fn()} onSeek={vi.fn()} /></I18nProvider>);
+    expect(screen.getByRole('heading', { name: locale === 'zh-CN' ? '车辆已停下' : 'Car stopped' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: locale === 'zh-CN' ? '执行了什么' : 'What ran' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: locale === 'zh-CN' ? '是什么触发了它' : 'What set it off' })).toBeNull();
+    const choices = view.container.querySelector<HTMLElement>('.ct-choices')!;
+    const buttons = within(choices).getAllByRole('button');
+    expect(buttons).toHaveLength(candidates.length);
+    expect(open).not.toHaveBeenCalled();
+    for (const [index, button] of buttons.entries()) {
+      expect(within(button).getByText(locale === 'zh-CN' ? '同一时刻上下文' : 'same-cut context')).toHaveAttribute('data-basis', 'same-cut');
+      fireEvent.click(button);
+      expect(open).toHaveBeenNthCalledWith(index + 1, model.choices[index].ref);
+    }
+    view.unmount();
+  }
 });
 
 it('opens a new explanation at its heading and retains reading position as live follow-ups arrive', () => {

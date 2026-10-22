@@ -406,8 +406,9 @@ function triggerOf(store: TemporalFeedStore, index: Index, step: StepRec): Trigg
     return { kind: 'predicate', summary: t('The condition "{condition}" became true', {condition:view.label}), at: when, predicate: view, ref: view.ref };
   }
   if (typeof trigger.event === 'string') {
-    const found = findSender(store, index, trigger.event, trigger.payload, step.cut);
-    return { kind: 'event', summary: t('The event "{event}" arrived', {event:readableLabel(trigger.event,locale)}), at: found?.message ? found.message.message.at : step.commit.at, source: found?.text, ref: found?.ref, ...(found?.basis ? { basis: found.basis } : {}) };
+    const found = findSender(store, index, trigger.event, trigger.payload, step.cut, text(trigger.message_id));
+    const event = readableLabel(trigger.event, locale);
+    return { kind: 'event', summary: locale === 'zh-CN' ? `已记录的事件触发条件：“${event}”` : `Recorded event trigger: "${event}"`, at: found?.message ? found.message.message.at : step.commit.at, source: found?.text, ref: found?.ref, basis: 'recorded' };
   }
   if (typeof trigger.timer === 'string') {
     const ref: CauseRef | undefined = typeof trigger.instance === 'string' && trigger.revision !== undefined && index.stepByKey.has(stepKey(trigger.instance, trigger.revision)) ? { kind: 'step', instanceId: trigger.instance, revision: revision(trigger.revision) } : undefined;
@@ -417,21 +418,25 @@ function triggerOf(store: TemporalFeedStore, index: Index, step: StepRec): Trigg
     const sent = index.messages.get(trigger.command_id), status = text(trigger.status);
     const sender = sent ? (index.stepsByCut.get(sent.cut) ?? []).find(row => row.rec.instanceId === step.rec.instanceId) : undefined;
     const command = readableLabel(text(trigger.receipt) ?? 'command',locale);
-    return { kind: 'command', summary: status ? t('The command "{command}" finished: {status}', {command,status:readableLabel(status,locale)}) : t('The command "{command}" reported back', {command}), at: step.commit.at, source: sent ? t('Sent to {writer}', {writer:sent.message.target ? writerName(String(sent.message.target),locale) : t('an engine')}) : undefined, ref: sender ? { kind: 'step', instanceId: sender.rec.instanceId, revision: revision(sender.rec.revision) } : undefined, ...(sent ? { basis: 'recorded' as const } : {}) };
+    const terminal = status !== undefined && ['succeeded', 'failed', 'rejected', 'canceled'].includes(status);
+    const summary = !status ? t('The command "{command}" reported back', { command })
+      : terminal ? t('The command "{command}" finished: {status}', { command, status: readableLabel(status, locale) })
+        : locale === 'zh-CN' ? `指令“${command}”报告状态：${readableLabel(status, locale)}` : `The command "${command}" reported status: ${readableLabel(status, locale)}`;
+    return { kind: 'command', summary, at: step.commit.at, source: sent ? t('Sent to {writer}', {writer:sent.message.target ? writerName(String(sent.message.target),locale) : t('an engine')}) : undefined, ref: sender ? { kind: 'step', instanceId: sender.rec.instanceId, revision: revision(sender.rec.revision) } : undefined, ...(sent ? { basis: 'recorded' as const } : {}) };
   }
   if (trigger.deadline !== undefined) return { kind: 'deadline', summary: t('A time limit ran out'), at: step.commit.at };
   if (trigger.instance === 'activated') return { kind: 'start', summary: t('The chain was just activated'), at: step.commit.at };
   return { kind: 'other', summary: t('Triggered by a recorded condition'), at: step.commit.at };
 }
-function findSender(store: TemporalFeedStore, index: Index, schema: string, payload: unknown, before: number): { text: string; ref?: CauseRef; basis?: LinkBasis; message?: { cut: number; message: Message } } | undefined {
+function findSender(store: TemporalFeedStore, index: Index, schema: string, payload: unknown, before: number, messageId?: string): { text: string; ref?: CauseRef; basis?: LinkBasis; message?: { cut: number; message: Message } } | undefined {
   const wanted = exactValue(payload);
   let best: { cut: number; message: Message } | undefined;
-  for (const [, row] of index.messages) if (row.cut <= before && row.message.kind === 'event' && row.message.schemaId === schema && exactValue(row.message.payload) === wanted && (!best || row.cut > best.cut)) best = row;
+  for (const [, row] of index.messages) if (row.cut <= before && row.message.kind === 'event' && row.message.schemaId === schema && (messageId === undefined ? exactValue(row.message.payload) === wanted : row.message.id === messageId) && (!best || row.cut > best.cut)) best = row;
   if (!best) return undefined;
   const sources = best.message.source;
   if (sources === 'behaviour') {
     const origin = (index.stepsByCut.get(best.cut) ?? []).find(candidate => producedMessages(candidate, chainDef(index, candidate.rec.templateId, candidate.rec.transitionId), 'event').some(item => item.message.id === best!.message.id));
-    if (origin) return { text: translate(index.locale,'Announced by the chain "{chain}"', {chain:readableLabel(origin.rec.templateId,index.locale)}), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) }, basis: 'recorded', message: best };
+    if (origin) return { text: matchingChainStep(origin.rec.templateId, index.locale), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) }, basis: 'recorded', message: best };
   }
   void store;
   return { text: translate(index.locale,'Sent by the {writer}', {writer:writerName(sources,index.locale)}), ref: { kind: 'message', messageId: best.message.id, cut: best.cut }, basis: 'recorded', message: best };
@@ -444,13 +449,27 @@ function evalsByEntity(index: Index): Map<string, EvalRec[]> {
   index.evalsByEntity = map; return map;
 }
 
+/** Payload equality correlates occurrences; only an explicit id narrows the occurrence. */
+function matchingEventSteps(index: Index, message: Message, cut: number): StepRec[] {
+  return (index.byEventSchema.get(message.schemaId) ?? []).filter(row => {
+    if (row.cut < cut) return false;
+    const trigger = isObject(row.rec.trigger) ? row.rec.trigger : {};
+    return typeof trigger.message_id === 'string' ? trigger.message_id === message.id : exactValue(trigger.payload) === exactValue(message.payload);
+  });
+}
+const matchingChainStep = (templateId: string, locale: string) => locale === 'zh-CN'
+  ? `匹配的已记录事件链步骤：“${readableLabel(templateId, locale)}”` : `Matching recorded chain step: "${readableLabel(templateId, locale)}"`;
+const matchingTrigger = (locale: string) => locale === 'zh-CN' ? '匹配的已记录触发条件' : 'matching recorded trigger';
+const matchingTriggerCount = (count: number, locale: string) => locale === 'zh-CN'
+  ? `${count} 个匹配的已记录触发条件` : `${count} matching recorded trigger${count === 1 ? '' : 's'}`;
+
 function followUpsOfStep(store: TemporalFeedStore, index: Index, step: StepRec, effects: EffectView[]): FollowUpView[] {
   const definition = chainDef(index, step.rec.templateId, step.rec.transitionId), result: FollowUpView[] = [], locale = index.locale, t = translator(locale);
   for (const item of producedMessages(step, definition, 'event')) {
     const message = item.message;
-    const receivers = (index.byEventSchema.get(message.schemaId) ?? []).filter(row => row.cut >= step.cut && exactValue((row.rec.trigger as { payload?: unknown }).payload) === exactValue(message.payload));
-    result.push({ kind: 'event', label: t('Announced "{event}"', {event:readableLabel(message.schemaId,locale)}), detail: receivers.length ? receivers.length === 1 ? t('1 chain step reacted') : t('{count} chain steps reacted', {count:receivers.length}) : t('No event-chain step reacted to it'), at: message.at, ref: { kind: 'message', messageId: message.id, cut: step.cut }, basis: 'recorded' });
-    for (const receiver of receivers.slice(0, 4)) result.push(stepFollowUp(store, index, receiver, 'reacted to the announcement', 'recorded'));
+    const receivers = matchingEventSteps(index, message, step.cut);
+    result.push({ kind: 'event', label: t('Announced "{event}"', {event:readableLabel(message.schemaId,locale)}), detail: matchingTriggerCount(receivers.length, locale), at: message.at, ref: { kind: 'message', messageId: message.id, cut: step.cut }, basis: 'recorded' });
+    for (const receiver of receivers.slice(0, 4)) result.push(stepFollowUp(store, index, receiver, matchingTrigger(locale), 'recorded'));
   }
   for (const item of producedMessages(step, definition, 'command')) {
     const message = item.message, receipt = index.receipts.get(message.id);
@@ -516,11 +535,11 @@ function explainPredicate(store: TemporalFeedStore, index: Index, contextId: str
   for (const step of index.steps) {
     if (step.cut < row.commit.commitIndex) continue;
     const trigger = isObject(step.rec.trigger) ? step.rec.trigger : {};
-    if (isObject(trigger.evaluation) && trigger.evaluation.contextId === contextId) followUps.push(stepFollowUp(store, index, step, 'ran because of it', 'recorded'));
+    if (isObject(trigger.evaluation) && trigger.evaluation.contextId === contextId) followUps.push(stepFollowUp(store, index, step, index.locale === 'zh-CN' ? '匹配的已记录求值' : 'matching recorded evaluation', 'recorded'));
     if (followUps.length >= 6) break;
   }
   const t = translator(index.locale);
-  if (!followUps.length) followUps.push({ kind: 'none', label: t('No chain step is waiting on this condition'), detail: t('It was recorded but nothing reacted to it.') });
+  if (!followUps.length) followUps.push({ kind: 'none', label: index.locale === 'zh-CN' ? '没有匹配的已记录步骤' : 'No matching recorded steps', detail: index.locale === 'zh-CN' ? '未找到匹配此求值上下文的已记录触发条件。' : 'No recorded trigger matched this evaluation context.' });
   const model: TraceModel = {
     focus: 'predicate', heading: t('"{condition}" is {value}', {condition:view.label,value:view.value === null ? t('unknown') : view.value ? t('true') : t('false')}), subtitle: t('checked at {at}', {at:at(store, view.at)}), at: view.at, cut: row.commit.commitIndex,
     predicate: view, effects: [], followUps, involved: [], choices: [], notes: [t(LEAN_NOTE)],
@@ -533,8 +552,8 @@ function explainMessage(store: TemporalFeedStore, index: Index, messageId: strin
   const found = index.messages.get(messageId); if (!found) return undefined;
   const { message, cut } = found, followUps: FollowUpView[] = [];
   const origin = message.source === 'behaviour' ? (index.stepsByCut.get(cut) ?? []).find(step => producedMessages(step, chainDef(index, step.rec.templateId, step.rec.transitionId), message.kind).some(item => item.message.id === message.id)) : undefined;
-  const receivers = message.kind === 'event' ? (index.byEventSchema.get(message.schemaId) ?? []).filter(row => row.cut >= cut && exactValue((row.rec.trigger as { payload?: unknown }).payload) === exactValue(message.payload)) : index.byCommand.get(message.id) ?? [];
-  for (const receiver of receivers.slice(0, 6)) followUps.push(stepFollowUp(store, index, receiver, 'reacted', 'recorded'));
+  const receivers = message.kind === 'event' ? matchingEventSteps(index, message, cut) : index.byCommand.get(message.id) ?? [];
+  for (const receiver of receivers.slice(0, 6)) followUps.push(stepFollowUp(store, index, receiver, matchingTrigger(index.locale), 'recorded'));
   const locale = index.locale, t = translator(locale);
   // Traverse only recorded message handles, never entity/time proximity.
   const visited = new Set([message.id]), queue = [...(index.children.get(message.id) ?? [])];
@@ -547,12 +566,12 @@ function explainMessage(store: TemporalFeedStore, index: Index, messageId: strin
     queue.push(...(index.children.get(id) ?? []));
   }
   followUps.sort((a, b) => a.at && b.at ? BigInt(a.at.ns) < BigInt(b.at.ns) ? -1 : BigInt(a.at.ns) > BigInt(b.at.ns) ? 1 : a.at.microstep - b.at.microstep : 0);
-  if (!followUps.length) followUps.push({ kind: 'none', label: t('Nothing reacted to this'), detail: t('No chain step was waiting for it.') });
+  if (!followUps.length) followUps.push({ kind: 'none', label: locale === 'zh-CN' ? '没有匹配的已记录后续步骤' : 'No matching recorded follow-ups', detail: locale === 'zh-CN' ? '未找到匹配的已记录触发条件或消息关联。' : 'No matching recorded trigger or message link was found.' });
   const parents = (index.parents.get(message.id) ?? []).map(id => index.messages.get(id)).filter((row): row is { cut: number; message: Message } => !!row);
   const effects = store.commits.find(row => row.commitIndex === cut)?.facts.filter(fact => fact.producer === message.source && (message.subjects ?? []).some(key => entityId(key) === entityId(fact.entity))).map(fact => effectView(store, fact, cut, undefined, locale, 'same-cut')) ?? [];
   const model: TraceModel = {
     focus: 'message', heading: messageLabel(message.schemaId,locale), subtitle: message.kind === 'event' ? t('announced at {at}', {at:at(store, message.at)}) : t('requested at {at}', {at:at(store, message.at)}), at: message.at, cut,
-    sender: origin ? { text: t('Sent by the chain "{chain}"', {chain:readableLabel(origin.rec.templateId,locale)}), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) }, basis: 'recorded' } : { text: t('Sent by the {writer}', {writer:writerName(message.source,locale)}) },
+    sender: origin ? { text: matchingChainStep(origin.rec.templateId, locale), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) }, basis: 'recorded' } : { text: t('Sent by the {writer}', {writer:writerName(message.source,locale)}) },
     trigger: parents.length ? { kind: parents[0].message.kind, summary: messageLabel(parents[0].message.schemaId, locale), at: parents[0].message.at, ref: { kind: 'message', messageId: parents[0].message.id, cut: parents[0].cut }, basis: 'recorded' } : undefined,
     effects, followUps, involved: [], choices: parents.slice(1).map(parent => ({ label: messageLabel(parent.message.schemaId, locale), at: parent.message.at, ref: { kind: 'message', messageId: parent.message.id, cut: parent.cut }, basis: 'recorded' as const })), notes: [t(LEAN_NOTE)],
   };
@@ -616,37 +635,33 @@ export function explain(store: TemporalFeedStore, ref: CauseRef, locale = 'en-US
       if (cut === undefined && ref.kind === 'event') {
         const match = store.commits.find(commit => (commit.events ?? []).some(event => (!ref.atNs || event.at_ns === ref.atNs) && (!ref.text || event.text === ref.text)));
         cut = match?.commitIndex;
-        if (!entities && match) entities = (match.events ?? []).find(event => !ref.text || event.text === ref.text)?.entities;
       }
       if (cut === undefined) return undefined;
       const commit = store.commits.find(row => row.commitIndex === cut); if (!commit) return undefined;
-      const steps = momentSteps(store, index, cut, entities);
-      const named = (model: TraceModel) => { if (entities?.length) model.eventEntities = entities; return model; };
-      if (steps.length) {
-        const model = named(explainStep(store, index, steps[0]));
-        model.choices = steps.slice(1, 8).map(step => { const view = stepView(store, index, step); return { label: `${view.chainLabel}: ${stepSentence(view,locale)}`, ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } as CauseRef, at: step.commit.at, basis: 'same-cut' as const }; });
-        return model;
-      }
-      const ids = entities?.length ? new Set(entities) : undefined;
-      const messages = commit.messages.filter(message => message.kind === 'event' && !message.schemaId.startsWith('aas.behaviour.') && (!ids || (message.subjects ?? []).some(key => ids.has(key.id))));
-      if (messages.length) {
-        const model = named(explainMessage(store, index, messages[0].id)!);
-        model.choices = messages.slice(1, 8).map(message => ({ label: readableLabel(message.schemaId,locale), ref: { kind: 'message', messageId: message.id, cut } as CauseRef, at: message.at, basis: 'same-cut' as const }));
-        return model;
-      }
       const event = (commit.events ?? []).find(row => ref.kind === 'cut' || ((!ref.atNs || row.at_ns === ref.atNs) && (!ref.text || row.text === ref.text)));
-      if (event) {
-        const namedIds = new Set(event.entities), names = new Map([...store.entities.values()].map(entity => [entity.key.id, displayName(entity, store.header, locale)]));
-        return {
-          focus: 'moment', heading: eventNarrative(event, locale, names), subtitle: t('at {at}', { at: displayTime(event.at_ns, store.header.start.ns) }),
-          at: commit.at, cut, effects: [], followUps: [], choices: [],
-          involved: [...store.entities.values()].filter(entity => namedIds.has(entity.key.id)).map(entity => entity.key), eventEntities: event.entities,
-          notes: [locale === 'zh-CN' ? '此业务事件已记录；这条日志没有关联的事件链步骤或类型化消息。可在对象的“经历”页查看记录的状态变化。' : 'This business event is recorded. Its journal entry has no linked chain step or typed message. Open the object’s Story tab to inspect its recorded state changes.'],
-        };
-      }
+      entities ??= event?.entities;
+      const steps = momentSteps(store, index, cut, entities);
+      const ids = entities?.length ? new Set(entities) : undefined;
+      const messages = commit.messages.filter(message => !message.schemaId.startsWith('aas.behaviour.') && (!ids || (message.subjects ?? []).some(key => ids.has(key.id))));
+      // No business-summary message identity is recorded in this contract. Every
+      // proximity candidate, including the first/only one, stays contextual.
+      const choices: TraceModel['choices'] = [
+        ...steps.map(step => {
+          const view = stepView(store, index, step);
+          return { label: `${view.chainLabel}: ${stepSentence(view, locale)}`, ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } as CauseRef, at: step.commit.at, basis: 'same-cut' as const };
+        }),
+        ...messages.map(message => ({ label: messageLabel(message.schemaId, locale), ref: { kind: 'message', messageId: message.id, cut } as CauseRef, at: message.at, basis: 'same-cut' as const })),
+      ].slice(0, 8);
+      const namedIds = new Set(entities), names = new Map([...store.entities.values()].map(entity => [entity.key.id, displayName(entity, store.header, locale)]));
+      const contextNote = locale === 'zh-CN' ? '这些记录仅提供同一时刻的上下文；没有已记录的因果关联可将其作为此事件的解释。' : 'These records are same-cut context, not a recorded causal explanation of this event.';
       return {
-        focus: 'moment', heading: t('Nothing recorded as a cause here'), subtitle: t('at {at}', {at:at(store, commit.at)}), at: commit.at, cut, effects: [], followUps: [], involved: [], choices: [],
-        notes: [t('No event-chain step or announcement was recorded at this moment. Only engines wrote state here; select a field in "What changed" to see its writer.')],
+        focus: 'moment', heading: event ? eventNarrative(event, locale, names) : locale === 'zh-CN' ? '此日志位置的已记录活动' : 'Recorded activity at this cut',
+        subtitle: t('at {at}', { at: event ? displayTime(event.at_ns, store.header.start.ns) : at(store, commit.at) }),
+        at: commit.at, cut, effects: [], followUps: [], choices,
+        involved: [...store.entities.values()].filter(entity => namedIds.has(entity.key.id)).map(entity => entity.key), eventEntities: entities,
+        notes: [choices.length ? contextNote : event
+          ? locale === 'zh-CN' ? '此业务事件已记录；这条日志没有关联的事件链步骤或类型化消息。可在对象的“经历”页查看记录的状态变化。' : 'This business event is recorded. Its journal entry has no linked chain step or typed message. Open the object’s Story tab to inspect its recorded state changes.'
+          : locale === 'zh-CN' ? '此日志位置没有记录与这些对象相关的事件链步骤或类型化消息。' : 'No chain steps or typed messages for these subjects were recorded at this cut.'],
       };
     }
   }

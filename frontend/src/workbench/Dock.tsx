@@ -1,4 +1,6 @@
-import { useMemo, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { RunOperations } from '../behaviours/RunOperations';
+import { RunsApi } from '../feeds/http';
 import { AGENT_RECORD_SCHEMAS, canonicaliseRecords, type AgentRecordInput, type CanonicalDecision } from '../agents/records';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
@@ -75,35 +77,52 @@ function recordsAt(store: TemporalFeedStore, cut: number): { records: AgentRecor
   return { records, subjects };
 }
 
+type GenerationEvidence = Map<string, Array<{ cut: number; generation: string }>>;
+
 /**
- * A selected drone scopes the dock only when the record can actually identify
- * it. Exact subjects/observation fields must match the generation. Engine-name
- * or payload-id matches are accepted only when the viewed prefix has no
- * conflicting generation: zero means the selection is the only generation
- * evidence; a recorded generation must match it. Otherwise the generation stays
- * unknown and the decision is not attributed to the selection.
+ * Only recorded subjects identify an entity. Engine names are a separate
+ * namespace; this feed has no authored engine-to-entity mapping to consult.
+ * A generation-less subject can use an unambiguous creation already recorded
+ * when the decision began, never the selection or a later creation.
  */
-function decisionMatches(decision: CanonicalDecision, selected: EntityKey, knownGenerations: ReadonlySet<string>, subjects: Map<string, EntityKey[]>): boolean {
-  const exact = new Set<string>();
-  let loose = false;
+function decisionIdentities(decision: CanonicalDecision, subjects: Map<string, EntityKey[]>, creations: GenerationEvidence): Map<string, Set<string>> {
+  const identities = new Map<string, Set<string>>();
+  const add = (ref: ObservedRef) => {
+    const generations = identities.get(ref.id) ?? new Set<string>();
+    if (ref.generation !== undefined) generations.add(ref.generation);
+    identities.set(ref.id, generations);
+  };
   for (const phase of decision.phases) {
-    for (const rawId of phase.rawIds) for (const key of subjects.get(rawId) ?? []) if (key.id === selected.id) exact.add(String(key.generation));
-    for (const ref of observedRefs(phase.data)) {
-      if (ref.id !== selected.id) continue;
-      if (ref.generation !== undefined) exact.add(ref.generation);
-      else loose = true;
-    }
+    for (const rawId of phase.rawIds) for (const key of subjects.get(rawId) ?? []) add({ id: key.id, generation: generationText(key.generation) });
+    for (const data of [phase.data, ...phase.views.map(view => view.data)]) observedRefs(data).forEach(add);
   }
-  if (exact.size > 0) return exact.has(String(selected.generation));
-  const slash = decision.decisionId.lastIndexOf('/');
-  const engine = slash > 0 ? decision.decisionId.slice(0, slash) : decision.decisionId;
-  const normalized = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  const engineMatch = engine === selected.id
-    || ['.', '_', ':', '/'].some(separator => engine.endsWith(separator + selected.id))
-    || normalized(engine) === normalized(selected.id)
-    || normalized(engine).endsWith(`_${normalized(selected.id)}`);
-  if (!engineMatch && !loose) return false;
-  return knownGenerations.size === 0 || knownGenerations.size === 1 && knownGenerations.has(String(selected.generation));
+  const firstCut = decision.phases[0]?.cut ?? -1;
+  for (const [id, generations] of identities) {
+    if (generations.size > 0) continue;
+    const known = new Set((creations.get(id) ?? []).filter(row => row.cut <= firstCut).map(row => row.generation));
+    if (known.size === 1) known.forEach(value => generations.add(value));
+  }
+  return identities;
+}
+
+/** Reuse the existing typed-message disclosure, without enabling operations. */
+function RawRecords({ session, cut }: { session: RunSession; cut?: number }) {
+  const { t } = useI18n();
+  const root = useRef<HTMLDivElement>(null);
+  const base = new URLSearchParams(window.location.search).get('api') ?? window.location.origin;
+  const api = useMemo(() => new RunsApi(base), [base]);
+  const title = t('Decision / LangGraph and typed event records at this cut');
+  useLayoutEffect(() => {
+    const disclosure = Array.from(root.current?.querySelectorAll('details') ?? []).find(details => details.firstElementChild?.textContent === title);
+    if (disclosure) {
+      disclosure.open = true;
+      disclosure.querySelector('summary')?.focus();
+    }
+  }, [session.store, title]);
+  return <div ref={root} data-testid="wb-raw-records">
+    <RunOperations api={api} runId={session.store.header.runId} store={session.store} commitCut={cut}
+      mode="replay" interactive={false} onSelect={() => {}} onSeek={session.seekCut} />
+  </div>;
 }
 
 function modelCallName(data: unknown): string | undefined {
@@ -121,8 +140,8 @@ function proposalName(kind: unknown, L: (en: string, zh: string) => string): str
   return kind === 'event' ? L('Proposed event', '建议事件') : kind === 'command' ? L('Proposed command', '建议命令') : L('Proposed fact', '建议事实');
 }
 
-function DecisionCard({ decision, locale, startNs, L, href }: {
-  decision: CanonicalDecision; locale: string; startNs: string;
+function DecisionCard({ decision, generationUnknown, locale, startNs, L, href }: {
+  decision: CanonicalDecision; generationUnknown: boolean; locale: string; startNs: string;
   L: (en: string, zh: string) => string; href: string;
 }) {
   return <article className="wb-agent-decision" data-testid="wb-agent-decision" data-decision-id={decision.decisionId} style={{ borderTop: '1px solid var(--wb-line)', padding: '8px 0' }}>
@@ -130,6 +149,7 @@ function DecisionCard({ decision, locale, startNs, L, href }: {
       <strong>{L('Decision', '决策')} <span className="wb-mono">{decision.decisionId}</span></strong>
       <span className="wb-tag">{displayTime(decision.simNs, startNs)}</span>
       <span>{L(`${decision.counts.records} record${decision.counts.records === 1 ? '' : 's'}`, `${decision.counts.records} 条记录`)}</span>
+      {generationUnknown && <span className="wb-tag" data-testid="wb-agent-generation-unknown">{L('generation unknown', '代次未知')}</span>}
     </header>
     <ul style={{ listStyle: 'none', padding: 0, margin: '5px 0' }}>
       {decision.phases.map(phase => <li key={phase.recordId} data-phase={phase.phase} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', margin: '2px 0' }}>
@@ -139,8 +159,8 @@ function DecisionCard({ decision, locale, startNs, L, href }: {
         {phase.sourceMessageId && phase.sourceMessageId !== phase.recordId && <span>{`${L('source', '来源')} ${phase.sourceMessageId}`}</span>}
       </li>)}
     </ul>
-    {decision.modelCalls.length > 0 && <div data-testid="wb-agent-tool-calls">
-      <b>{L('Tool calls', '工具调用')}</b> <span className="wb-tag">{decision.modelCalls.length}</span>
+    {decision.modelCalls.length > 0 && <div data-testid="wb-agent-model-calls">
+      <b>{L('Model calls', '模型调用')}</b> <span className="wb-tag">{decision.modelCalls.length}</span>
       <ul style={{ margin: '3px 0', paddingLeft: 18 }}>
         {decision.modelCalls.map(phase => <li key={phase.recordId}>
           {modelCallName(phase.data) ?? readableLabel('model_call', locale)} · <span className="wb-mono">{phase.recordId}</span> · {L('cut', '记录位置')} {phase.cut}
@@ -189,18 +209,26 @@ export function Dock({ session, events, kpiIds, kpis, series, entityNames, selec
   const latest = events.at(-1);
   const startNs = store.header.start.ns;
   const hasAgentRecords = useMemo(() => store.commits.some(commit => commit.messages.some(message => AGENT_SCHEMAS.has(message.schemaId))), [store, store.revision]);
+  const [showRawRecords, setShowRawRecords] = useState(false);
   const agents = useMemo(() => {
-    if (cut === undefined) return { decisions: [] as CanonicalDecision[], problems: [] as string[] };
-    const { records, subjects } = recordsAt(store, cut);
+    const { records, subjects } = recordsAt(store, cut ?? -1);
     const entities = new Set([...store.entities.values()].map(entity => entity.key.id));
-    const generations = new Set<string>();
-    if (selected) for (const commit of store.commits) {
-      if (commit.commitIndex > cut) continue;
-      for (const key of commit.created) if (key.id === selected.id) generations.add(String(key.generation));
+    const creations: GenerationEvidence = new Map();
+    for (const commit of store.commits) {
+      if (commit.commitIndex > (cut ?? -1)) continue;
+      for (const key of commit.created) {
+        const rows = creations.get(key.id) ?? [];
+        rows.push({ cut: commit.commitIndex, generation: String(key.generation) });
+        creations.set(key.id, rows);
+      }
     }
     const timeline = canonicaliseRecords(records, { entities });
+    const decisions = timeline.decisions.map(decision => {
+      const identities = decisionIdentities(decision, subjects, creations);
+      return { decision, identities, generationUnknown: identities.size === 0 || [...identities.values()].some(generations => generations.size === 0) };
+    });
     return {
-      decisions: selected ? timeline.decisions.filter(decision => decisionMatches(decision, selected, generations, subjects)) : timeline.decisions,
+      decisions: selected ? decisions.filter(row => row.identities.get(selected.id)?.has(String(selected.generation))) : decisions,
       problems: timeline.problems,
     };
   }, [store, store.revision, cut, selected?.id, selected?.generation]);
@@ -236,14 +264,17 @@ export function Dock({ session, events, kpiIds, kpis, series, entityNames, selec
       <button onClick={onToggle} aria-expanded={open} aria-label={open ? L('Collapse dock', '收起') : L('Expand dock', '展开')}>{open ? '▾' : '▴'}</button>
     </div>
     {open && <div className="wb-dock-body">
-      {tab === 'events' && <EventFeed events={events} entityNames={entityNames} available={store.commits.some(commit => commit.events !== undefined)} selectedEntities={selected ? [selected.id] : []} rawRecordsHref={agentHref} onSelect={event => { const row = events.find(item => item === event); if (row) onEvent(row); }} />}
+      {tab === 'events' && <>
+        <EventFeed events={events} entityNames={entityNames} available={store.commits.some(commit => commit.events !== undefined)} selectedEntities={selected ? [selected.id] : []} onExplore={() => setShowRawRecords(true)} onSelect={event => { const row = events.find(item => item === event); if (row) onEvent(row); }} />
+        {showRawRecords && <RawRecords key={store.header.runId} session={session} cut={cut} />}
+      </>}
       {tab === 'results' && <KpiPanel ids={kpiIds} values={kpis} series={series} loading={false} />}
       {tab === 'photos' && photos}
       {tab === 'why' && why}
       {tab === 'agents' && hasAgentRecords && <div data-testid="wb-agent-list">
         {agents.problems.length > 0 && <p className="ct-note">{L(`${agents.problems.length} agent record${agents.problems.length === 1 ? '' : 's'} could not be read.`, `${agents.problems.length} 条智能体记录无法读取。`)}</p>}
         {agents.decisions.length === 0 ? <p className="ct-note">{selected ? L('No agent decisions for the selected drone and generation at this cut.', '此时刻没有所选无人机及代际的智能体决策。') : L('No agent decisions recorded at this cut.', '此时刻没有记录智能体决策。')}</p>
-          : agents.decisions.map(decision => <DecisionCard key={decision.decisionId} decision={decision} locale={locale} startNs={startNs} L={L} href={agentHref} />)}
+          : agents.decisions.map(({ decision, generationUnknown }) => <DecisionCard key={decision.decisionId} decision={decision} generationUnknown={generationUnknown} locale={locale} startNs={startNs} L={L} href={agentHref} />)}
       </div>}
     </div>}
   </section>;
