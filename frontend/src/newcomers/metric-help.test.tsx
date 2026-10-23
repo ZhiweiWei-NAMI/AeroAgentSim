@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { metricLabel, metricHelp, metricUnit, metricValueText } from './metric-help';
+import { metricLabel, metricHelp, metricUnit, metricValueText, metricDirection, type MetricMetadata } from './metric-help';
 it('labels medical latency before its first value in both languages', () => {
   expect(metricLabel('medical_mean_task_latency_s', 'medical_mean_task_latency_s', 'en-US')).toBe('Medical task latency');
   expect(metricLabel('medical_mean_task_latency_s', 'medical_mean_task_latency_s', 'zh-CN')).toBe('医疗任务平均用时');
@@ -52,4 +52,29 @@ it('declares SI units for the rescue KPIs and formats rescue_success as Yes/No',
   expect(metricValueText('rescue_plans', 4, 'count', 'en-US')).toBe('4');
   expect(metricValueText('rescue_time_to_confirmation_s', 12.345, 's', 'en-US')).toBe('12.3 s');
   expect(metricValueText('rescue_radio_bytes', 900, 'B', 'en-US')).toBe('900 B');
+});
+
+it('gives descriptor text and units precedence over every legacy ID-based fallback', () => {
+  const row: MetricMetadata = {label: 'plugin:custom_label', label_zh: '插件自定义标签', unit: 'ha', direction: null,
+    aggregation: 'Sum the observed area.', missing_data_policy: 'None until an area is recorded.'};
+  expect(metricLabel('rescue_success', row, 'en-US')).toBe(row.label);
+  expect(metricLabel('rescue_success', row, 'zh-CN')).toBe(row.label_zh);
+  expect(metricUnit('rescue_success', row)).toBe('ha');
+  expect(metricUnit('energy_used_kj', {...row, unit: ''})).toBe('');
+  expect(metricHelp('rescue_success', 'en-US', row)).toBe(`Aggregation: ${row.aggregation}\nMissing data: ${row.missing_data_policy}`);
+  expect(metricHelp('rescue_success', 'zh-CN', row)).toBe(`汇总方式：${row.aggregation}\n缺失数据：${row.missing_data_policy}`);
+  expect(metricDirection(row)).toBe('neutral');
+  expect(metricValueText('rescue_success', 0, row.unit, 'zh-CN', row)).toBe('0 ha');
+  expect(metricValueText('rescue_success', null, row.unit, 'zh-CN', row)).toBe('—');
+});
+
+it('does not fill partial descriptors with legacy help, labels or direction', () => {
+  const row: MetricMetadata = {label: 'provider_label', unit: '', direction: null};
+  expect(metricLabel('tasks_completed', row, 'zh-CN')).toBe(row.label);
+  expect(metricUnit('energy_used_kj', row)).toBe('');
+  expect(metricHelp('tasks_completed', 'en-US', row)).toBeUndefined();
+  expect(metricDirection(row)).toBe('neutral');
+  expect(metricDirection({...row, direction: undefined})).toBe('neutral');
+  expect(metricDirection({...row, direction: 'higher'})).toBe('max');
+  expect(metricDirection({...row, direction: 'lower'})).toBe('min');
 });

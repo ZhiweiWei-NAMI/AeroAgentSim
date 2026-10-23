@@ -8,7 +8,13 @@ export type KnobValue = string|number|boolean;
 export interface TemplateKnob {id:string;label:string;label_zh?:string;type:'integer'|'number'|'choice'|'boolean';default:KnobValue;min?:number;max?:number;options?:KnobValue[];options_zh?:string[];pointer?:string;apply?:string;description?:string;description_zh?:string}
 export interface ScenarioTemplate {format:'aeroagentsim.template/v1';id:string;title:string;title_zh?:string;summary:string;summary_zh?:string;category:Category;difficulty:'beginner'|'intermediate'|'advanced';duration_s:number;scenario:string;thumbnail?:string;thumbnail_url?:string;observe:string[];observe_zh?:string[];try:string[];try_zh?:string[];knobs:TemplateKnob[];kpis:string[]}
 export interface BusinessEvent {at_ns:string;category:Category;severity:Severity;text:string;text_zh?:string;entities:string[];position?:[number,number,number]}
-export interface KpiValue {value:number|null;unit:string;label:string;label_zh?:string;direction?:'min'|'max'|'neutral'}
+/** Additive KPI v1 descriptor fields; older rows may omit them entirely. */
+export interface KpiValue {
+ value:number|null;unit:string;label:string;label_zh?:string;
+ /** Descriptor direction is higher/lower/null; min/max/neutral are legacy wire aliases. */
+ direction?:'higher'|'lower'|null|'min'|'max'|'neutral';
+ aggregation?:string;missing_data_policy?:string;
+}
 export type KpiValues = Record<string,KpiValue>;
 export interface KpiSample {commitIndex?:number;at_ns:string;kpis:KpiValues}
 export interface RunKpis {format?:'aeroagentsim.kpi/v1';run_id:string;final:KpiValues;series:KpiSample[]}

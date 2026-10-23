@@ -47,10 +47,9 @@ function Sparkline({ series, kpiId }: { series: KpiSample[]; kpiId: string }) {
 function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; series: KpiSample[] }) {
   const { t, locale } = useI18n();
   const [showHelp, setShowHelp] = useState(false);
-  const help = metricHelp(id, locale);
-  const label = metricLabel(id, kpi.label, locale, kpi.label_zh);
-  // A known id keeps its declared unit even before the service publishes a value.
-  const unit = kpi.unit || metricUnit(id) || '';
+  const help = metricHelp(id, locale, kpi);
+  const label = metricLabel(id, kpi, locale);
+  const unit = metricUnit(id, kpi) ?? '';
   return (
     <div className="newc-kpi-card">
       <span className="newc-kpi-label">
@@ -68,7 +67,7 @@ function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; seri
       </span>
       {showHelp && help !== undefined && <p className="newc-kpi-help-text">{help}</p>}
       <span className={`newc-kpi-value${kpi.value === null ? ' is-null' : ''}`} title={kpi.value === null ? t('Not measured') : undefined}>
-        {metricValueText(id, kpi.value, unit, locale)}
+        {metricValueText(id, kpi.value, unit, locale, kpi)}
       </span>
       <Sparkline series={series} kpiId={id} />
     </div>

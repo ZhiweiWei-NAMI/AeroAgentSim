@@ -225,7 +225,12 @@ class KPIProjector:
     def snapshot(self) -> dict[str, Any]:
         values = self._metrics.snapshot()
         return {
-            name: {"value": values[name], "unit": descriptor.unit, "label": descriptor.label}
+            name: {
+                "value": values[name], "unit": descriptor.unit, "label": descriptor.label,
+                "label_zh": descriptor.label_zh, "direction": descriptor.direction,
+                "aggregation": descriptor.aggregation,
+                "missing_data_policy": descriptor.missing_data_policy,
+            }
             for name, descriptor in self.descriptors.items()
         }
 

@@ -291,15 +291,59 @@ observed its empty counters are zero, while unknown success/times stay `None`.
 
 ## Service, comparison and CLI shapes
 
-Reducers return **scalar mappings**. The service wraps them in the unchanged
-[viewer/KPI shape](viewer-feed.md#kpis-and-business-narratives):
-`{metric_id: {value, unit, label}}`. The full descriptor catalogue remains available
-on the accumulator/projector; the feed does not replace each metric row with the
-new descriptor dataclass. Run summaries and comparisons consume the same KPI
-projection. The comparison metadata catalogue includes installed descriptors even
-when their samples are all `None`. An available-prefix `final` map is not a claim
-that `results_final` is true; terminal status and completed KPI/Story projection
-remain separate.
+Reducers return **scalar mappings**. The service wraps them in the additive
+[viewer/KPI v1 shape](viewer-feed.md#kpis-and-business-narratives). Existing
+`value`, `unit` and `label` fields and their values are unchanged. Rows backed by a
+`MetricDescriptor`, including installed plugins, also carry:
+
+| Additive row field | Wire meaning |
+| --- | --- |
+| `label_zh` | Chinese label from the descriptor; `label` supplies the English label. |
+| `direction` | `"higher"`, `"lower"` or JSON `null`. `null` means no preferred comparison direction, not a default to maximize/minimize. |
+| `aggregation` | Descriptor prose specifying the population, denominator and accumulation rule. |
+| `missing_data_policy` | Descriptor prose explaining unavailable measurements versus observed zero. This describes the value; it does not coerce it. |
+
+For example, the external reducer above initially produces:
+
+```json
+{
+  "acme.distance_m": {
+    "value": null,
+    "unit": "m",
+    "label": "Observed segment distance",
+    "label_zh": "已观测航段距离",
+    "direction": null,
+    "aggregation": "Sum distance_m from acme.flight.segment events, once per message ID.",
+    "missing_data_policy": "None before a segment; a recorded zero measures zero."
+  }
+}
+```
+
+The same fields accompany rows in `final`, time-series `kpis`, viewer commits,
+run summaries and comparisons' `runs[].kpis` maps. Descriptorless legacy rows
+remain unchanged; readers must accept omitted fields and must not treat an
+explicit `null` direction as permission to apply a legacy metric-ID guess.
+Summary-only payloads omit run-local provenance and remain deterministic for the
+same evidence and selected descriptors. This is an additive KPI v1 change, not a
+new envelope or a change to reducer arithmetic or result finality.
+
+The result cards (`KpiPanel`) and run comparison (`CompareRuns`) use row labels in
+the active locale, row units, and `aggregation` plus `missing_data_policy` for help.
+Help headings are bilingual; descriptor prose is displayed verbatim, not translated
+through a builtin metric-ID table. Descriptor `null` or missing direction stays
+neutral; disagreements across present rows also disable ranking. Best-value and
+better/worse highlighting still require final results. `null` values display as
+unavailable, never as zero. The browser retains documented ID-based fallbacks only
+for legacy rows without descriptor metadata (and older ID-only helper callers).
+Those fallbacks never override a supplied descriptor, including one replacing a
+builtin metric ID. This bounded change does not migrate the Workbench's ID-only
+calls or the separate experiment aggregate-report contract.
+
+The full descriptor catalogue remains available on the accumulator/projector;
+rows are plain JSON, not serialized dataclass instances. The comparison metadata
+catalogue includes installed descriptors even when their samples are all `None`.
+An available-prefix `final` map is not a claim that `results_final` is true;
+terminal status and completed KPI/Story projection remain separate.
 
 The [CLI routing](../../src/aeroagentsim/services/kpis.py) is intentionally explicit:
 

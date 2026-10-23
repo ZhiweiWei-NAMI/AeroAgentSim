@@ -52,7 +52,7 @@ and these arrays:
 | `receipts` | `{commandId, status, result?}`. |
 | `predicateTruth?` | Behaviour extension (below). |
 | `chainInstances?` | Behaviour extension (below). |
-| `kpis` | Cumulative measured KPI map `{name: {value, unit, label}}` at this committed cut. |
+| `kpis` | Cumulative measured KPI map `{name: {value, unit, label, label_zh?, direction?, aggregation?, missing_data_policy?}}` at this committed cut; descriptor fields are described below. |
 | `events` | Business narratives `{at_ns, category, severity, text, entities: [ids], position?: [e,n,u]}` generated from committed event emissions. |
 | `projection_provenance?` | Compact definition-digest reference and mode for this commit (below); no descriptor bodies or run-local identities. |
 
@@ -79,6 +79,22 @@ cursors include the earlier journal prefix, so reconnecting does not reset
 metrics. `/v1/runs/{id}/kpis` exposes final values for the available prefix and
 their time series; `/v1/runs` includes the same summary.
 
+KPI v1 rows retain `value`, `unit` and `label` unchanged. When backed by a
+[metric descriptor](metrics-plugins.md#service-comparison-and-cli-shapes), they
+add `label_zh` (Chinese label), `direction` (`"higher"`, `"lower"` or JSON `null`),
+`aggregation` (population/denominator and accumulation prose), and
+`missing_data_policy` (unmeasured versus observed-zero prose). Builtin and
+installed metric plugins use the same fields, including before the first sample.
+These fields accompany every projected row in commits, final values, series,
+run summaries and comparisons' `runs[].kpis` maps; descriptorless legacy rows gain
+no invented metadata.
+The result cards and comparison use the supplied labels/units and both prose
+fields for help. A descriptor with no preferred direction stays neutral, never
+better/worse; `null` measurements remain distinct from zero. There is no envelope
+version bump, change to finality, or run-local identity added to summary-only
+payloads. The documented browser ID tables are legacy-only fallbacks and cannot
+override descriptor data.
+
 `events` is the additive `aeroagentsim.event-feed/v1` projection. It narrates
 committed business emissions once, retaining entity ids from declared
 payload fields. This is independent of the typed `messages[].subjects`
@@ -99,8 +115,9 @@ business events are errors, not invented success messages. See
 
 REST/SSE commit objects and the top-level `/v1/runs/{id}/kpis` response may carry
 `projection_provenance`, with `format: "aeroagentsim.projection-provenance/v1"`.
-Existing viewer-feed/v1 and KPI/v1 fields, numerical definitions, nulls and finality
-semantics are unchanged. KPI series rows and the viewer header are unchanged.
+Provenance does not change existing viewer-feed/v1 and KPI/v1 numerical
+definitions, nulls or finality semantics, or add provenance to KPI series rows
+or the viewer header.
 Summary-only `kpi_result(..., include_series=False)` results (including run-list
 summaries) omit provenance: these remain byte-stable numerical payloads across
 identical service/headless journals, independent of run-local IDs, inodes, and pin

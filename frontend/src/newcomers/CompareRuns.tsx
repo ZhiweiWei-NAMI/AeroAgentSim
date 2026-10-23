@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageState } from '../console/PageState';
 import { TemplateApi, type AlgorithmDescriptor, type AlgorithmSlot, type ComparisonRun, type KnobValue, type ScenarioTemplate, type TemplateKnob } from './api';
 import { comparisonRefreshPolicy, COMPARISON_REFRESH_MS, finalCursors, readComparison, resolveMetricDirection, type ComparisonRead, type ComparisonRunRead, type ComparisonConfiguration, type RunResultState } from './comparison-read';
-import { metricHelp, metricLabel, metricUnit, metricValueText } from './metric-help';
+import { hasMetricDescriptor, LEGACY_METRIC_DIRECTIONS, metricHelp, metricLabel, metricUnit, metricValueText, type MetricMetadata } from './metric-help';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized, translate } from '../i18n/translate';
 import { knobOptionLabel, runStatusLabel } from './presentation';
@@ -132,15 +132,6 @@ function RefreshNote({ read, locale }: { read: ComparisonRead; locale: string })
   </p>;
 }
 
-/** Plain labels for known metric directions; anything unknown is treated as neutral. */
-const DIRECTIONS: Record<string, 'min' | 'max' | 'neutral'> = {
-  tasks_completed: 'max', tasks_created: 'neutral',
-  mean_task_latency_s: 'min', p95_task_latency_s: 'min',
-  energy_used_kj: 'min', distance_flown_km: 'neutral',
-  separation_conflicts: 'min', geofence_violations: 'min', weather_holds: 'min',
-  rescue_success: 'max', rescue_time_to_confirmation_s: 'min', rescue_time_to_delivery_s: 'min',
-};
-
 /** Machine ids read badly for newcomers — split them into words. */
 function humanize(id: string): string {
   return id.replace(/[_-]+/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
@@ -178,7 +169,7 @@ function formatKpi(value: number | null, unit: string): string {
 interface KpiRow {
   id: string;
   label: string;
-  label_zh?: string;
+  metadata?: MetricMetadata;
   unit: string;
   direction: 'min' | 'max' | 'neutral';
   /** True only when every run is final and the metric direction is defined/consistent. */
@@ -206,15 +197,16 @@ function kpiRows(runs: ComparisonRun[], order: string[] = [], final: boolean): K
   const rows = ids.map(id => {
     const values = runs.map(run => run.kpis[id]?.value ?? null);
     const known = values.filter((value): value is number => value !== null && Number.isFinite(value));
-    const declared = resolveMetricDirection(runs, id, DIRECTIONS);
+    const declared = resolveMetricDirection(runs, id, LEGACY_METRIC_DIRECTIONS);
     const direction = declared.direction;
     const rankable = final && declared.defined && declared.consistent && direction !== 'neutral';
     const best = rankable && known.length
       ? (direction === 'min' ? Math.min(...known) : Math.max(...known))
       : undefined;
-    return { id, label: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label ?? humanize(id),
-      label_zh: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label_zh,
-      unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit || metricUnit(id) || '', direction, rankable, values, best };
+    const candidates = runs.flatMap(run => run.kpis[id] ? [run.kpis[id]] : []);
+    const metadata = candidates.find(hasMetricDescriptor) ?? candidates[0];
+    return { id, label: metadata?.label ?? humanize(id), metadata,
+      unit: metricUnit(id, metadata) ?? '', direction, rankable, values, best };
   });
   const rank = (id: string) => {
     const index = order.indexOf(id);
@@ -277,7 +269,9 @@ function Column({ run, entry, final, rows, index, more, template }: {
   rows: KpiRow[]; index: number; more: KpiRow[]; template?: ScenarioTemplate;
 }) {
   const { t, locale } = useI18n();
-  const label = (row: KpiRow) => metricLabel(row.id, row.label, locale, row.label_zh);
+  // Each column keeps its own descriptor copy; a missing row can borrow only metadata.
+  const metadata = (row: KpiRow) => run.kpis[row.id] ?? row.metadata;
+  const label = (row: KpiRow) => metricLabel(row.id, metadata(row) ?? row.label, locale);
   return (
     <section className="newc-compare-col">
       <h3>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || humanize(run.id) })}</h3>
@@ -294,16 +288,17 @@ function Column({ run, entry, final, rows, index, more, template }: {
             const value = row.values.length ? row.values[index] : null;
             const isBest = row.rankable && row.best !== undefined && value !== null && value === row.best;
             const change = kpiDelta(row, index);
+            const metric = metadata(row), help = metricHelp(row.id, locale, metric);
             return (
               <tr key={row.id} className={isBest ? 'is-best' : undefined}>
                 <th scope="row">
                   {label(row)}
-                  {metricHelp(row.id, locale) !== undefined && (
-                    <span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>
+                  {help !== undefined && (
+                    <span className="newc-compare-help" title={help} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>
                   )}
                 </th>
                 <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
-                  {metricValueText(row.id, value, row.unit, locale)}
+                  {metricValueText(row.id, value, metricUnit(row.id, metric) ?? '', locale, metric)}
                   {change && <span className={`newc-kpi-delta${change.className}`} title={locale === 'zh-CN' ? '相对左列的变化' : 'Change from the previous column'}>{change.text}</span>}
                   <Bar value={value} row={row} />
                 </td>
@@ -320,10 +315,11 @@ function Column({ run, entry, final, rows, index, more, template }: {
               {more.map(row => {
                 const value = row.values.length ? row.values[index] : null;
                 const isBest = row.rankable && row.best !== undefined && value !== null && value === row.best;
+                const metric = metadata(row), help = metricHelp(row.id, locale, metric);
                 return (
                   <tr key={row.id} className={isBest ? 'is-best' : undefined}>
-                    <th scope="row">{label(row)}{metricHelp(row.id, locale)&&<span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>}</th>
-                    <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>{metricValueText(row.id, value, row.unit, locale)}</td>
+                    <th scope="row">{label(row)}{help !== undefined && <span className="newc-compare-help" title={help} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>}</th>
+                    <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>{metricValueText(row.id, value, metricUnit(row.id, metric) ?? '', locale, metric)}</td>
                   </tr>
                 );
               })}
