@@ -28,6 +28,7 @@ from ..runs import RunReadError, open_run
 from ..runs.projections import (
     PROJECTION_PINS_FILENAME,
     _IMPLEMENTATION_FILES,
+    _definitions_digest,
     _provenance_for_cut,
     projection_definitions,
 )
@@ -54,6 +55,7 @@ class _Projection:
     narratives: NarrativeProjector
     storage: RunStorage
     provenance: dict[str, Any] | None
+    definition_digests: dict[str, str | None] | None
 
 
 # A bounded working set, never the source of truth. The committed SQLite blob
@@ -144,8 +146,11 @@ def _connect(path: Path) -> sqlite3.Connection:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS cuts "
         "(idx INTEGER PRIMARY KEY, at_ns TEXT NOT NULL, payload BLOB NOT NULL, "
-        "kpis TEXT NOT NULL)"
+        "kpis TEXT NOT NULL, cut_bytes INTEGER)"
     )
+    # Older rebuildable indexes predate the internal ACK byte-bound column.
+    if "cut_bytes" not in {row[1] for row in connection.execute("PRAGMA table_info(cuts)")}:
+        connection.execute("ALTER TABLE cuts ADD COLUMN cut_bytes INTEGER")
     connection.execute(
         "CREATE TABLE IF NOT EXISTS checkpoint "
         "(id INTEGER PRIMARY KEY CHECK(id=1), data BLOB NOT NULL)"
@@ -336,6 +341,16 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             else state.get("projection_provenance") if valid
             else _new_provenance(path, signature, storage)
         )
+        # Hash full definitions only on admission, not for each cut or warm page.
+        definition_digests = (
+            cached.definition_digests if valid and cached is not None
+            else state.get("projection_definition_digests") if valid
+            else {
+                "pinned_digest": _definitions_digest(provenance["pinned_definitions"]),
+                "current_digest": _definitions_digest(provenance["current_definitions"]),
+            } if provenance is not None
+            else None
+        )
         target = min(target, requested_target, cursor + 64)
         while cursor < target:
             records = storage.records(cursor, min(256, target - cursor))
@@ -355,25 +370,33 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                 record = projection_record(record)
                 cut = project(record, subjects=subjects, kpis=kpis)
                 cut["events"] = narratives.consume(record)
+                cut_bytes = None
                 if provenance is not None:
                     entry = storage.entries[cursor]
                     if entry["index"] != cursor:
                         raise ValueError("Projection provenance: offset index differs from projected cut")
+                    cut_bytes = entry["offset"] + entry["length"]
                     provenance = {
                         **provenance,
                         "source_cut": {
                             **provenance["source_cut"], "cut_index": cursor,
-                            "cut_bytes": entry["offset"] + entry["length"],
+                            "cut_bytes": cut_bytes,
                         },
                     }
-                    cut["projection_provenance"] = provenance
+                    cut["projection_provenance"] = {
+                        "format": provenance["format"],
+                        "mode": provenance["mode"],
+                        "cut_index": cursor,
+                        "definitions": definition_digests,
+                    }
                 database.execute(
-                    "INSERT INTO cuts VALUES (?, ?, ?, ?)",
+                    "INSERT INTO cuts (idx, at_ns, payload, kpis, cut_bytes) VALUES (?, ?, ?, ?, ?)",
                     (
                         cursor,
                         cut["at"]["ns"],
                         _encode(cut),
                         json.dumps(cut["kpis"], separators=(",", ":")),
+                        cut_bytes,
                     ),
                 )
                 cursor += 1
@@ -386,6 +409,7 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                 "narratives": narratives.cursor(),
                 "final": kpis.snapshot(),
                 "projection_provenance": provenance,
+                "projection_definition_digests": definition_digests,
             }
         )
         database.execute(
@@ -397,7 +421,10 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                          (cursor, signature_text))
         database.commit()
         _retain(
-            path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives, storage, provenance)
+            path, _Projection(
+                checkpoint, signature, cursor, subjects, kpis, narratives, storage,
+                provenance, definition_digests,
+            )
         )
         return cursor >= requested_target
 
@@ -459,19 +486,15 @@ def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, A
                 if tables == {"cuts", "checkpoint", "projection_progress"} else None
             )
             if row is not None and row[0] == json.dumps(_signature(path), separators=(",", ":")):
-                records = [
-                    _decode(item[0])
-                    for item in database.execute(
-                        "SELECT payload FROM cuts WHERE idx>=? AND idx<=? ORDER BY idx LIMIT ?",
-                        (max(1, start), prefix["index"], limit),
-                    )
-                ]
-                if records and (path / "journal.jsonl").stat().st_size >= prefix["bytes"]:
-                    if all(
-                        record.get("projection_provenance", {}).get("source_cut", {}).get("cut_bytes", 0)
-                        <= prefix["bytes"] for record in records
-                    ):
-                        return records
+                rows = database.execute(
+                    "SELECT payload, cut_bytes FROM cuts WHERE idx>=? AND idx<=? ORDER BY idx LIMIT ?",
+                    (max(1, start), prefix["index"], limit),
+                ).fetchall()
+                if rows and (path / "journal.jsonl").stat().st_size >= prefix["bytes"]:
+                    # Source coordinates stay internal; cuts carry only content refs.
+                    if all(cut_bytes is None or cut_bytes <= prefix["bytes"]
+                           for _, cut_bytes in rows):
+                        return [_decode(payload) for payload, _ in rows]
     return page(path, start, limit)
 
 

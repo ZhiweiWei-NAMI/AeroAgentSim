@@ -169,6 +169,32 @@ Only explicit absence fields (snapshot/authored inputs, entry point/distribution
 metadata, descriptor direction) may be `None`; missing reducer knowledge is not
 proof of historical definition drift.
 
+The read-only function `aeroagentsim.runs.projections.projection_provenance(directory)`
+(also exported from `aeroagentsim.runs`) returns this **full** DTO, including source
+identities and complete descriptors. A full `/v1/runs/{id}/kpis` response exposes the
+same DTO once at its top level for the projected prefix; it is not repeated in KPI
+series rows. Summary-only KPIs remain provenance-free and byte-stable.
+
+Viewer-feed/v1 REST/SSE cuts instead carry only:
+
+```text
+projection_provenance: {format, mode, cut_index,
+                       definitions: {pinned_digest, current_digest}}
+```
+
+Each reference is under 1 KiB, with no descriptor bodies or run-local/environment
+identities. The two digests are `sha256:` plus lowercase hex SHA-256 of the full
+`pinned_definitions` and `current_definitions` respectively. Canonicalization is
+UTF-8 `json.dumps(definitions, ensure_ascii=False, sort_keys=True,
+separators=(",", ":"), allow_nan=False)`: recursive key sorting, no whitespace,
+unescaped Unicode and no non-finite numbers. An absent pin has `pinned_digest=null`,
+not a hash of `null` or an empty tree. Readers can hash the full DTO's definition
+records to match a cut reference; `cut_index` identifies that commit, while the
+read-only DTO's source cut reflects its own captured ACK. Modes keep the same
+meaning in both forms; missing knowledge is never inferred as `original`.
+Full definitions are retained in the service feed checkpoint, not every cut row;
+warm pages do not decode that checkpoint or rehash the full definitions.
+
 `projection_provenance(directory)` is a filesystem-read-only **metadata diagnostic**:
 it creates no sidecars, repairs no indexes and opens no SQLite databases. With an
 ACK, it captures and validates a snapshot through `open_run`; malformed/empty ACKs

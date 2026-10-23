@@ -70,6 +70,11 @@ def _json_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def _definitions_digest(definitions: dict[str, Any] | None) -> str | None:
+    """Identify the full definition tree, including descriptors; absence is unknown."""
+    return _digest(_json_bytes(definitions)) if definitions is not None else None
+
+
 def _implementation_digest() -> str:
     base = Path(__file__).resolve().parents[1]
     identities = {name: _digest((base / name).read_bytes()) for name in _IMPLEMENTATION_FILES}

@@ -54,7 +54,7 @@ and these arrays:
 | `chainInstances?` | Behaviour extension (below). |
 | `kpis` | Cumulative measured KPI map `{name: {value, unit, label}}` at this committed cut. |
 | `events` | Business narratives `{at_ns, category, severity, text, entities: [ids], position?: [e,n,u]}` generated from committed event emissions. |
-| `projection_provenance?` | Separately versioned definition pins, current identities and the reader source cut for this commit (below). |
+| `projection_provenance?` | Compact definition-digest reference and mode for this commit (below); no descriptor bodies or run-local identities. |
 
 Lossless numbers: integers or floats at or above 2⁵³ in magnitude travel as
 `{"$integer": "..."}` / `{"$number": "..."}` tags (optionally wrapped in
@@ -106,11 +106,41 @@ summaries) omit provenance: these remain byte-stable numerical payloads across
 identical service/headless journals, independent of run-local IDs, inodes, and pin
 presence. The full KPI endpoint and the read-only diagnostic expose provenance.
 
-The field contains `source_cut`, `pinned_definitions`, `current_definitions` and
-`mode`. The source uses the [public reader's identities](run-reader.md): service
-and kernel run IDs, epoch, local journal identity, recorded configuration/registry
-digests, inclusive `cut_index` and `cut_bytes`. Each commit identifies its own cut;
-the KPI response identifies its final projected prefix, not a later live ACK.
+Each REST/SSE commit carries only this compact reference (under 1 KiB), not the
+full definition records or descriptor bodies:
+
+```json
+{
+  "projection_provenance": {
+    "format": "aeroagentsim.projection-provenance/v1",
+    "mode": "original",
+    "cut_index": 5,
+    "definitions": {
+      "pinned_digest": "sha256:<64 lowercase hex digits>",
+      "current_digest": "sha256:<64 lowercase hex digits>"
+    }
+  }
+}
+```
+
+`cut_index` is this commit's inclusive journal index, not the latest live ACK.
+Each digest hashes the **full** corresponding definition tree, including reducer
+descriptors: SHA-256 of UTF-8 JSON with recursively sorted keys, no whitespace
+separators (`separators=(",", ":")`), unescaped Unicode (`ensure_ascii=False`), and
+non-finite numbers rejected (`allow_nan=False`). `pinned_digest` is `null` for an
+absent pin, never a hash of an invented empty definition. Run IDs, epoch, inode,
+paths, byte offsets and other source/environment identities are not in the cut
+reference.
+
+The full DTO remains available once at the top level of a full KPI response and
+from `aeroagentsim.runs.projections.projection_provenance(directory)` (also exported
+from `aeroagentsim.runs`). It contains `format`, `mode`, `source_cut`,
+`pinned_definitions` and `current_definitions`, including descriptors. Hashing its
+two definition records as above matches the compact references for those definitions.
+The source uses the [public reader's identities](run-reader.md): service and kernel
+run IDs, epoch, local journal identity, recorded configuration/registry digests,
+inclusive `cut_index` and `cut_bytes`. The KPI DTO identifies its final projected
+prefix, not a later live ACK; the read-only diagnostic captures its own reader ACK.
 Index-only runs without a reader ACK and service-readable sources the public
 reader cannot admit (for example symlinked journals, manifests or ACK sidecars)
 omit this optional response field rather than invent a cut or fail a previously
@@ -121,7 +151,7 @@ are rejected, not interpreted as known definition drift.
 | --- | --- |
 | `original` | A complete run-time projection pin exists and matches the identities used for this projection. |
 | `recomputed-current-code` | A complete run-time pin exists, but the projected definitions differ. Both recorded and current identities remain visible. |
-| `legacy-unpinned` | No projection pin exists. `pinned_definitions` is `null`; current definitions are not evidence of historical meaning. |
+| `legacy-unpinned` | No projection pin exists. The reference's `pinned_digest` and the full DTO's `pinned_definitions` are `null`; current definitions are not evidence of historical meaning. |
 
 New service worker executions durably publish `projection-pins.json` before
 starting the session, after its authored artifacts exist. A unique temporary file
@@ -189,9 +219,13 @@ run. This rebuildable index stores projected cuts and one transactionally
 consistent checkpoint for lifecycle subjects, KPIs and narratives. A seek
 reads indexed cuts directly; newly committed records extend the retained
 prefix. Definition identities and reader admission/omission are computed once
-per source/definition signature; provenance is published transactionally with each
-cut and the checkpoint. Warm pages reuse those bytes without reconstructing storage
-offsets or reparsing the journal header for metadata. Source identity and ACK bounds
+per source/definition signature. Full provenance is retained in the checkpoint,
+not duplicated in cut rows; each cut payload stores only the compact reference.
+The index retains byte bounds separately for internal ACK checks. Full-definition
+digests are computed once on admission and retained with the checkpoint. All are
+published transactionally. Warm pages reuse indexed bytes without decoding the
+checkpoint, hashing full definitions again, reconstructing storage offsets or
+reparsing the journal header for metadata. Source identity and ACK bounds
 are still checked, as are presentation admission and authored-content changes.
 Changes to pinned declarations or projection code invalidate the cache. Journal
 and registry data remain authoritative.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -157,6 +158,28 @@ def _without_provenance(value: dict[str, Any]) -> dict[str, Any]:
     return {key: child for key, child in value.items() if key != "projection_provenance"}
 
 
+def _assert_compact_provenance(cut: dict[str, Any], full: ProjectionProvenance) -> None:
+    def digest(definitions: dict[str, Any] | None) -> str | None:
+        if definitions is None:
+            return None
+        canonical = json.dumps(
+            definitions, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+    reference = cut["projection_provenance"]
+    assert reference == {
+        "format": full.format,
+        "mode": full.mode.value,
+        "cut_index": cut["commitIndex"],
+        "definitions": {
+            "pinned_digest": digest(full.pinned_definitions),
+            "current_digest": digest(full.current_definitions),
+        },
+    }
+    assert len(json.dumps(reference, ensure_ascii=False).encode("utf-8")) < 1024
+
+
 def test_http_launch_records_original_definition_pins(launched: tuple[TestClient, Path]) -> None:
     client, path = launched
     provenance = projection_provenance(path)
@@ -217,8 +240,41 @@ def test_metric_revision_rebuild_exposes_recorded_and_current_identities(
     # original; neither nulls nor any other v1 fields are rewritten by provenance.
     assert _without_provenance(after.json()) == _without_provenance(before)
     cuts = feed_index.page(path, 1, 4096)
-    assert cuts and all(cut["projection_provenance"]["mode"] == "recomputed-current-code" for cut in cuts)
+    assert cuts
+    for cut in cuts:
+        _assert_compact_provenance(cut, provenance)
+        reference = cut["projection_provenance"]["definitions"]
+        assert reference["pinned_digest"] != reference["current_digest"]
     assert (path / projections.PROJECTION_PINS_FILENAME).read_bytes() == pin_bytes
+
+
+def test_descriptor_bodies_stay_out_of_cut_payloads(
+    launched: tuple[TestClient, Path], definitions: _Reducer, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, path = launched
+    before = projection_provenance(path)
+    monkeypatch.setattr(definitions, "descriptors", (
+        replace(definitions.descriptors[0], aggregation="完整 aggregation policy. " * 4096),
+    ))
+    full = projection_provenance(path)
+    assert full.mode is ProjectionMode.RECOMPUTED_CURRENT_CODE
+    assert full.pinned_definitions == before.pinned_definitions
+    assert len(json.dumps(full.current_definitions).encode("utf-8")) > 32_000
+    response = client.get(f"/v1/runs/{path.name}/commits", params={"limit": 4096})
+    assert response.status_code == 200, response.text
+    cuts = response.json()["commits"]
+    assert cuts
+    for cut in cuts:
+        _assert_compact_provenance(cut, full)
+        refs = cut["projection_provenance"]["definitions"]
+        assert refs["pinned_digest"] != refs["current_digest"]
+    result = client.get(f"/v1/runs/{path.name}/kpis")
+    assert result.status_code == 200, result.text
+    assert result.json()["projection_provenance"] == json.loads(json.dumps(asdict(full)))
+    assert all("projection_provenance" not in row for row in result.json()["series"])
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        stored = [feed_index._decode(row[0]) for row in database.execute("SELECT payload FROM cuts ORDER BY idx")]
+    assert stored == cuts
 
 
 @pytest.mark.parametrize("change", ["revision", "data"])
@@ -256,7 +312,11 @@ def test_old_runs_without_projection_pins_are_legacy(
     assert provenance.source_cut is not None
     assert (provenance.current_definitions["presentation_snapshot_digest"] is not None) == presentation_only
     assert feed_index.kpi_result(path)["projection_provenance"]["mode"] == "legacy-unpinned"
-    assert all(cut["projection_provenance"]["mode"] == "legacy-unpinned" for cut in feed_index.page(path))
+    cuts = feed_index.page(path)
+    assert cuts
+    for cut in cuts:
+        _assert_compact_provenance(cut, provenance)
+        assert cut["projection_provenance"]["definitions"]["pinned_digest"] is None
     assert not (path / projections.PROJECTION_PINS_FILENAME).exists()
 
 
@@ -370,12 +430,20 @@ def test_existing_viewer_and_kpi_payloads_change_only_by_optional_provenance(
     assert response.status_code == 200, response.text
     cuts = response.json()["commits"]
     assert cuts and [_without_provenance(cut) for cut in cuts] == expected
+    full = projection_provenance(path)
     for cut in cuts:
-        provenance = cut["projection_provenance"]
-        entry = storage.entries[cut["commitIndex"]]
-        assert provenance["mode"] == "original"
-        assert provenance["source_cut"]["cut_index"] == cut["commitIndex"]
-        assert provenance["source_cut"]["cut_bytes"] == entry["offset"] + entry["length"]
+        _assert_compact_provenance(cut, full)
+        reference = cut["projection_provenance"]["definitions"]
+        assert reference["pinned_digest"] == reference["current_digest"]
+    # The stored cut payload is compact too, not merely stripped by HTTP serving.
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        rows = database.execute("SELECT payload, cut_bytes FROM cuts ORDER BY idx").fetchall()
+        assert [feed_index._decode(payload) for payload, _ in rows] == cuts
+        for cut, (_, cut_bytes) in zip(cuts, rows, strict=True):
+            entry = storage.entries[cut["commitIndex"]]
+            assert cut_bytes == entry["offset"] + entry["length"]
+        checkpoint = feed_index._decode(database.execute("SELECT data FROM checkpoint").fetchone()[0])
+        assert checkpoint["projection_provenance"] == json.loads(json.dumps(asdict(full)))
     assert feed_index.stream_page(path, 1, 4096) == cuts
     # Paging must not relabel a historical cut with the latest reader ACK.
     assert feed_index.page(path, 1, 1) == cuts[:1]
@@ -389,7 +457,7 @@ def test_existing_viewer_and_kpi_payloads_change_only_by_optional_provenance(
                    for cut in expected],
         "results_final": True, "results_cursor": cursor, "final_commit_index": cursor - 1,
     }
-    assert result.json()["projection_provenance"] == cuts[-1]["projection_provenance"]
+    assert result.json()["projection_provenance"] == json.loads(json.dumps(asdict(full)))
 
 
 @pytest.mark.parametrize(("location", "invalid"), [
@@ -505,6 +573,7 @@ def test_warm_live_pages_reuse_offsets_header_and_definition_content(
         for ns in range(1, 13):
             kernel.run_until(ns)
         storage.publish_prefix(*kernel.acknowledged_prefix)
+        full = projection_provenance(path)
 
         constructions: list[Path] = []
         scans: list[int] = []
@@ -539,12 +608,19 @@ def test_warm_live_pages_reuse_offsets_header_and_definition_content(
         assert len(cuts) >= 9
         assert all(cut["projection_provenance"]["mode"] == "original" for cut in cuts)
         assert len(constructions) == len(scans) == len(admissions) == len(definition_reads) == 1
+
+        def no_rehash(*args: Any, **kwargs: Any) -> Any:
+            raise AssertionError("Retained definitions were hashed again")
+
+        monkeypatch.setattr(feed_index, "_definitions_digest", no_rehash)
         for start in (1, 4, 7):
             expected = cuts[start - 1:start + 2]
             assert feed_index.page(path, start, 3) == expected
             assert feed_index.stream_page(path, start, 3) == expected
         assert len(constructions) == len(scans) == len(admissions) == len(definition_reads) == 1
-        assert feed_index.kpi_result(path)["projection_provenance"] == cuts[-1]["projection_provenance"]
+        assert feed_index.kpi_result(path)["projection_provenance"] == json.loads(json.dumps(asdict(full)))
+        for cut in cuts:
+            _assert_compact_provenance(cut, full)
         assert len(scans) == len(admissions) == len(definition_reads) == 1
 
         old_bytes, old_index = kernel.acknowledged_prefix
@@ -559,13 +635,26 @@ def test_warm_live_pages_reuse_offsets_header_and_definition_content(
         assert len(admissions) == len(definition_reads) == 1
         assert (path / "index.json").read_bytes() == initial_index
         for cut in grown:
-            provenance = cut["projection_provenance"]
-            assert provenance["source_cut"]["cut_index"] == cut["commitIndex"]
-            assert old_bytes < provenance["source_cut"]["cut_bytes"] <= kernel.acknowledged_prefix[0]
+            _assert_compact_provenance(cut, full)
+        latest = feed_index.kpi_result(path)["projection_provenance"]["source_cut"]
+        assert latest["cut_index"] == grown[-1]["commitIndex"]
+        assert old_bytes < latest["cut_bytes"] == kernel.acknowledged_prefix[0]
         # SQLite carries the metadata even when the in-memory working set is
         # lost; the ready SSE path needs no storage or header admission at all.
         with feed_index._LOCK:
             feed_index._PROJECTIONS.pop(path, None)
+        with sqlite3.connect(path / feed_index.FILENAME) as database:
+            checkpoint_bytes = database.execute("SELECT data FROM checkpoint").fetchone()[0]
+        original_decode = feed_index._decode
+
+        def decode_cut(value: bytes) -> Any:
+            assert value != checkpoint_bytes, "A warm page decoded the checkpoint"
+            return original_decode(value)
+
+        with monkeypatch.context() as warm:
+            warm.setattr(feed_index, "_decode", decode_cut)
+            assert feed_index.page(path, 1, 3) == cuts[:3]
+            assert feed_index.stream_page(path, 1, 3) == cuts[:3]
 
         def forbidden(*args: Any, **kwargs: Any) -> Any:
             raise AssertionError("A cached SSE page reconstructed source metadata")
@@ -574,6 +663,17 @@ def test_warm_live_pages_reuse_offsets_header_and_definition_content(
             reconnect.setattr(RunStorage, "__init__", forbidden)
             reconnect.setattr(reader, "_admit_header", forbidden)
             assert feed_index.stream_page(path, 1, 3) == cuts[:3]
+        # Resume after eviction from persisted definition digests, without hashing
+        # the descriptor trees or re-admitting the unchanged reader header.
+        admission_count = len(admissions)
+        for ns in range(25, 29):
+            kernel.run_until(ns)
+        storage.publish_prefix(*kernel.acknowledged_prefix)
+        resumed = feed_index.page(path, latest["cut_index"] + 1, 4096)
+        assert resumed
+        for cut in resumed:
+            _assert_compact_provenance(cut, full)
+        assert len(admissions) == admission_count
     finally:
         kernel.close()
 
@@ -586,18 +686,19 @@ def test_cached_provenance_checks_source_identity_and_ack_bounds(
     cuts = feed_index.page(path, 1, 4096)
     journal = path / "journal.jsonl"
     if change == "replacement":
-        old_identity = cuts[0]["projection_provenance"]["source_cut"]["journal_identity"]
+        old_identity = feed_index.kpi_result(path)["projection_provenance"]["source_cut"]["journal_identity"]
         replacement = path / "replacement.jsonl"
         replacement.write_bytes(journal.read_bytes())
         replacement.replace(journal)
         after = feed_index.stream_page(path, 1, 4096)
         identity = [journal.stat().st_dev, journal.stat().st_ino]
         assert identity != old_identity
-        assert after and all(cut["projection_provenance"]["source_cut"]["journal_identity"] == identity
-                             for cut in after)
+        assert after == cuts  # Compact refs exclude run-local source identities.
+        assert feed_index.kpi_result(path)["projection_provenance"]["source_cut"]["journal_identity"] == identity
     elif change == "ack":
-        first = cuts[0]["projection_provenance"]["source_cut"]
-        RunStorage(path).publish_prefix(first["cut_bytes"], first["cut_index"])
+        storage = RunStorage(path)
+        first = storage.entries[cuts[0]["commitIndex"]]
+        storage.publish_prefix(first["offset"] + first["length"], first["index"])
         assert feed_index.stream_page(path, 1, 4096) == cuts[:1]
         assert feed_index.page(path, 1, 4096) == cuts[:1]
     else:
