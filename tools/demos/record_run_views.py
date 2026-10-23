@@ -11,6 +11,7 @@ from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import asdict
 from fractions import Fraction
+from functools import partial
 from pathlib import Path
 from threading import Event
 from time import monotonic
@@ -20,6 +21,7 @@ from urllib.request import urlopen
 
 from aerokernel import Cut, EntityRef, Instant, Stamp
 from aerokernel.codec import decode_record
+from aerokernel.compact import expand_record
 from aerokernel.values import canonical_json, thaw
 
 from aeroagentsim.observations.contracts import CaptureRequest
@@ -27,6 +29,13 @@ from aeroagentsim.observations.png import validate_png
 from aeroagentsim.observations.renderer import BrowserRenderer, Renderer
 from aeroagentsim.runs import RunReadError, Snapshot, open_run
 from aeroagentsim.scenario.loader import contract, text
+from aeroagentsim.services.storage import RunStorage
+
+
+def _has_ack(directory: Path) -> bool:
+    ack = directory / "committed-prefix.json"
+    # A broken symlink is an invalid published ACK, not a legacy input.
+    return ack.exists() or ack.is_symlink()
 
 
 def _metadata(directory: Path) -> dict[str, Any]:
@@ -64,7 +73,32 @@ def _cuts(snapshot: Snapshot) -> list[Cut]:
     return result
 
 
+def _indexed_cuts(directory: Path) -> list[Cut]:
+    """Retain main's indexed admission for runs predating ACK publication."""
+    storage = RunStorage(directory)
+    result: list[Cut] = []
+    cursor = 1
+    while batch := storage.records(cursor, 4096):
+        for offset, row in enumerate(batch):
+            if row["index"] != cursor + offset:
+                raise ValueError(
+                    "recording journal has a gap or unordered indexed prefix"
+                )
+            at = decode_record(expand_record(row)["instant"])
+            if not isinstance(at, Instant):
+                raise TypeError("run has an invalid journal instant")
+            result.append(Cut(row["index"], at))
+        cursor = batch[-1]["index"] + 1
+    if not result:
+        raise ValueError("run has no committed cuts to record")
+    if cursor != storage.metadata()["final_cursor"]:
+        raise ValueError("run index does not cover the manifest final cursor")
+    return result
+
+
 def cuts(directory: Path) -> list[Cut]:
+    if not _has_ack(directory):
+        return _indexed_cuts(directory)
     with open_run(directory) as run:
         snapshot = run.snapshot()
         if snapshot.cut_index + 1 != _final_cursor(_metadata(directory)):
@@ -89,9 +123,24 @@ def recording_source(
     directory: Path, *, timeout_s: float = 20.0,
     results_provider: Callable[[], dict[str, Any]] | None = None,
 ) -> tuple[list[Cut], dict[str, Any], dict[str, Any]]:
-    """Wait for projection finality AND an ACK at exactly the same final cursor."""
+    """Use legacy indexed evidence, or require matching public finality and ACK."""
     if not 0 <= timeout_s < float("inf"):
         raise ValueError("results timeout must be finite and nonnegative")
+    if not _has_ack(directory):
+        metadata = _metadata(directory)
+        if metadata["status"] not in {
+            "completed", "stopped", "faulted", "interrupted",
+        }:
+            raise ValueError("recorder requires a finished run")
+        selected = _indexed_cuts(directory)
+        # This historical path proves index coverage, not reader ACK or service
+        # projection finality. Never invent either claim from a terminal status.
+        return selected, metadata, {
+            "reader_api_version": None,
+            "acknowledged": False,
+            "cut_index": selected[-1].index,
+            "redaction": "none",
+        }
     # Reader v1 has no offline projection-finality capability. Require the
     # service's public DTO/provider instead of interpreting private cache files.
     if results_provider is None:
@@ -218,7 +267,11 @@ def record_views(
             if ffmpeg is None:
                 raise RuntimeError("ffmpeg unavailable; select an installed executable")
             actor = EntityRef.from_data(view["actor"])
-            if actor.run_id != evidence["header"]["kernel_run_id"]:
+            kernel_run_id = (
+                metadata["kernel_run_id"] if evidence.get("acknowledged") is False
+                else evidence["header"]["kernel_run_id"]
+            )
+            if actor.run_id != kernel_run_id:
                 raise ValueError("camera actor belongs to another kernel run")
             filename = (
                 "".join(c if c.isalnum() or c in "-._" else "-" for c in view["id"])
@@ -351,16 +404,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        service_url = args.service_url
-        if service_url is None:
-            viewer = urlsplit(args.viewer_url)
-            if viewer.scheme not in {"http", "https"} or not viewer.netloc:
-                raise ValueError("viewer URL must have an HTTP(S) origin")
-            service_url = viewer._replace(path="", query="", fragment="").geturl()
-        with open_run(args.run) as source:
-            service_run_id = source.header.service_run_id
-        if service_run_id is None:
-            raise ValueError("recording requires a recorded service run ID")
+        results_provider: Callable[[], dict[str, Any]] | None = None
+        if _has_ack(args.run):
+            service_url = args.service_url
+            if service_url is None:
+                viewer = urlsplit(args.viewer_url)
+                if viewer.scheme not in {"http", "https"} or not viewer.netloc:
+                    raise ValueError("viewer URL must have an HTTP(S) origin")
+                service_url = viewer._replace(path="", query="", fragment="").geturl()
+            with open_run(args.run) as source:
+                service_run_id = source.header.service_run_id
+            if service_run_id is None:
+                raise ValueError("recording requires a recorded service run ID")
+            results_provider = partial(public_results, service_url, service_run_id)
+        else:
+            service_run_id = _metadata(args.run)["id"]
         with BrowserRenderer(
             args.viewer_url,
             node_modules=args.node_modules,
@@ -380,7 +438,7 @@ def main(argv: list[str] | None = None) -> int:
                 else shutil.which("ffmpeg"),
                 encoder=args.encoder,
                 results_timeout_s=args.results_timeout_s,
-                results_provider=lambda: public_results(service_url, service_run_id),
+                results_provider=results_provider,
             )
         failed = [row for row in manifest["views"] if row["status"] == "failed"]
         for row in failed:

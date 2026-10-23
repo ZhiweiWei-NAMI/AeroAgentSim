@@ -14,6 +14,8 @@ from typing import Any
 from aeroagentsim.observations.artifacts import ArtifactStore
 from aeroagentsim.runs import RunReadError, open_run
 from aeroagentsim.services.projector import lossless, project
+from aeroagentsim.services.storage import RunStorage
+from aeroagentsim.services.subjects import projection_context
 
 
 DEFAULT_DECISION_SCHEMAS = ("aas.agent.record", "aas.langgraph.record")
@@ -27,15 +29,9 @@ def cell(value: Any) -> str:
     )
 
 
-def export_report(
+def _reader_report_source(
     run: Path,
-    output: Path,
-    *,
-    decision_schemas: tuple[str, ...] = DEFAULT_DECISION_SCHEMAS,
-) -> Path:
-    run, output = run.resolve(), output.resolve()
-    if output == run or output.is_relative_to(run):
-        raise ValueError("report output must be outside the immutable source run")
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
     with open_run(run) as source:
         snapshot = source.snapshot()
         # Reader v1 has no service status/final cursor or full-manifest capability.
@@ -88,6 +84,57 @@ def export_report(
             "header": asdict(snapshot.header),
             "redaction": "none",
         }
+    return manifest, commits, evidence
+
+
+def _indexed_report_source(
+    run: Path,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
+    """Keep main's evidence checks for historical runs without an ACK."""
+    storage = RunStorage(run)
+    manifest = storage.metadata()
+    if manifest["status"] not in {"completed", "stopped", "faulted", "interrupted"}:
+        raise ValueError(
+            "report requires a finished run with an immutable recorded prefix"
+        )
+    subjects = projection_context(run, 1)
+    commits: list[dict[str, Any]] = []
+    cursor = 1
+    while batch := storage.records(cursor, 4096):
+        for offset, record in enumerate(batch):
+            if record["index"] != cursor + offset:
+                raise ValueError("report journal has a gap or unordered indexed prefix")
+            commits.append(project(record, subjects=subjects))
+        cursor = batch[-1]["index"] + 1
+    if not commits:
+        raise ValueError("run has no committed journal records to report")
+    if cursor != manifest["final_cursor"]:
+        raise ValueError("run index does not cover the manifest final cursor")
+    return manifest, commits, {
+        "reader_api_version": None,
+        "acknowledged": False,
+        "cut_index": cursor - 1,
+        "redaction": "none",
+    }
+
+
+def export_report(
+    run: Path,
+    output: Path,
+    *,
+    decision_schemas: tuple[str, ...] = DEFAULT_DECISION_SCHEMAS,
+) -> Path:
+    run, output = run.resolve(), output.resolve()
+    if output == run or output.is_relative_to(run):
+        raise ValueError("report output must be outside the immutable source run")
+    ack = run / "committed-prefix.json"
+    # Invalid published ACKs (including broken symlinks) must fail in the reader,
+    # never authorize fallback to a larger indexed or merely visible prefix.
+    load = (
+        _reader_report_source if ack.exists() or ack.is_symlink()
+        else _indexed_report_source
+    )
+    manifest, commits, evidence = load(run)
     output.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Traffic accident run report",

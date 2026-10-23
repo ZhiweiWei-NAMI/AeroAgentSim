@@ -202,14 +202,17 @@ def test_missing_evidence_raises_before_any_partial_export(
     forbid_live(monkeypatch)
     before = inventory(recorded_run)
     consumers = [
-        lambda: report.export_report(recorded_run, tmp_path / "report"),
-        lambda: video.cuts(recorded_run),
         lambda: thumbnails.source_cut(recorded_run, 0.0),
         lambda: thumbnails.viewer_feed(recorded_run, selected),
     ]
     if damage != "missing-ack":
-        # Pack metrics also admit bare offline journals; other exports need ACKs.
-        consumers.append(lambda: metrics(recorded_run))
+        # Metrics and demo exporters retain their historical no-ACK inputs;
+        # thumbnails still require an acknowledged reader cut.
+        consumers.extend([
+            lambda: report.export_report(recorded_run, tmp_path / "report"),
+            lambda: video.cuts(recorded_run),
+            lambda: metrics(recorded_run),
+        ])
     for consume in consumers:
         with pytest.raises(RunReadError):
             consume()
@@ -389,13 +392,16 @@ def test_recording_manifest_keeps_existing_keys_and_adds_reader_provenance(
     assert inventory(recorded_run) == before
 
 
+@pytest.mark.parametrize("acknowledged", [True, False])
 @pytest.mark.parametrize("service_url", [None, "https://api.invalid:9443/base"])
 def test_recording_cli_defaults_service_to_viewer_origin_and_allows_override(
     recorded_run: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-    service_url: str | None,
+    service_url: str | None, acknowledged: bool,
 ) -> None:
     state = final_state(recorded_run)
     metadata = json.loads((recorded_run / "manifest.json").read_text())
+    if not acknowledged:
+        (recorded_run / "committed-prefix.json").unlink()
     cameras = tmp_path / "cameras.json"
     cameras.write_text("[]")
     forbid_live(monkeypatch)
@@ -413,7 +419,10 @@ def test_recording_cli_defaults_service_to_viewer_origin_and_allows_override(
         return state
 
     def record(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        assert kwargs["results_provider"]() == state
+        if acknowledged:
+            assert kwargs["results_provider"]() == state
+        else:
+            assert kwargs["results_provider"] is None
         return {"views": []}
 
     monkeypatch.setattr(video, "BrowserRenderer", renderer)
@@ -427,7 +436,10 @@ def test_recording_cli_defaults_service_to_viewer_origin_and_allows_override(
     if service_url is not None:
         argv += ["--service-url", service_url]
     assert video.main(argv) == 0
-    assert requests == [(service_url or "https://viewer.invalid:8443", metadata["id"])]
+    assert requests == (
+        [(service_url or "https://viewer.invalid:8443", metadata["id"])]
+        if acknowledged else []
+    )
     assert inventory(recorded_run) == before
 
 
@@ -874,6 +886,91 @@ def test_thumbnail_request_uses_reader_identity_without_manifest_identity_fields
     assert inventory(recorded_run) == before
 
 
+def test_unacknowledged_run_exports_keep_indexed_inputs_and_honest_provenance(
+    recorded_run: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected_cuts = video.cuts(recorded_run)
+    metadata = json.loads((recorded_run / "manifest.json").read_text())
+    (recorded_run / "committed-prefix.json").unlink()
+    forbid_live(monkeypatch)
+
+    def reader_forbidden(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("legacy export required a reader ACK")
+
+    monkeypatch.setattr(report, "open_run", reader_forbidden)
+    monkeypatch.setattr(video, "open_run", reader_forbidden)
+    before = inventory(recorded_run)
+    evidence = {
+        "reader_api_version": None,
+        "acknowledged": False,
+        "cut_index": expected_cuts[-1].index,
+        "redaction": "none",
+    }
+    assert video.cuts(recorded_run) == expected_cuts
+    selected, source_metadata, source_evidence = video.recording_source(recorded_run)
+    assert selected == expected_cuts
+    assert source_metadata == metadata
+    assert source_evidence == evidence
+    text = report.export_report(recorded_run, tmp_path / "report").read_text()
+    assert f"| source_evidence | `{report.cell(evidence)}` |" in text
+    assert f"| command `{COMMAND}`:" in text
+    manifest = video.record_views(
+        recorded_run, tmp_path / "video",
+        [{"id": "fixture", "actor": {}, "camera": {}, "asset_digest": "fixture",
+          "width": 16, "height": 16}],
+        renderer=SimpleNamespace(render=lambda *args: pytest.fail("rendered")),
+        fps=4, speed=Fraction(2), ffmpeg=None,
+    )
+    assert manifest["source_run"] == metadata
+    assert manifest["source_evidence"] == evidence
+    assert manifest["views"][0]["status"] == "failed"
+    assert "ffmpeg unavailable" in manifest["views"][0]["reason"]
+    assert manifest["views"][0]["source_cuts"][-1]["index"] == expected_cuts[-1].index
+    saved = json.loads((tmp_path / "video/manifest.json").read_text())
+    assert saved["source_evidence"] == evidence
+    assert inventory(recorded_run) == before
+
+
+@pytest.mark.parametrize("damage,reason", [
+    ("incomplete-index", "final cursor"),
+    ("index-gap", "gap"),
+    ("unfinished", "finished run"),
+])
+def test_unacknowledged_exports_retain_main_evidence_checks(
+    recorded_run: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    damage: str, reason: str,
+) -> None:
+    (recorded_run / "committed-prefix.json").unlink()
+    if damage == "unfinished":
+        manifest = recorded_run / "manifest.json"
+        metadata = json.loads(manifest.read_text())
+        metadata["status"] = "running"
+        manifest.write_text(json.dumps(metadata))
+    else:
+        index = recorded_run / "index.json"
+        entries = json.loads(index.read_text())
+        entries = entries[:-1] if damage == "incomplete-index" else entries[:3] + entries[4:]
+        index.write_text(json.dumps(entries))
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    with pytest.raises(ValueError, match=reason):
+        report.export_report(recorded_run, tmp_path / "report")
+    with pytest.raises(ValueError, match=reason):
+        video.record_views(
+            recorded_run, tmp_path / "video",
+            [{"id": "fixture", "actor": {}, "camera": {}, "asset_digest": "fixture",
+              "width": 16, "height": 16}],
+            renderer=SimpleNamespace(render=lambda *args: pytest.fail("rendered")),
+            fps=4, speed=Fraction(2), ffmpeg=None,
+        )
+    if damage != "unfinished":
+        with pytest.raises(ValueError, match=reason):
+            video.cuts(recorded_run)
+    assert not (tmp_path / "report").exists()
+    assert not (tmp_path / "video").exists()
+    assert inventory(recorded_run) == before
+
+
 def test_bare_directory_metrics_keep_legacy_shape_and_need_no_ack(
     recorded_run: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -889,13 +986,23 @@ def test_bare_directory_metrics_keep_legacy_shape_and_need_no_ack(
 
 @pytest.mark.parametrize("prefix", [{}, {"bytes": 0, "index": 0}])
 def test_invalid_published_ack_does_not_fall_back_to_visible_journal(
-    recorded_run: Path, monkeypatch: pytest.MonkeyPatch, prefix: dict[str, Any],
+    recorded_run: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    prefix: dict[str, Any],
 ) -> None:
     write_prefix(recorded_run, prefix)
     forbid_live(monkeypatch)
     before = inventory(recorded_run)
-    with pytest.raises(RunReadError):
-        metrics(recorded_run)
+    for consume in (
+        lambda: metrics(recorded_run),
+        lambda: report.export_report(recorded_run, tmp_path / "report"),
+        lambda: video.cuts(recorded_run),
+        lambda: video.recording_source(
+            recorded_run, timeout_s=0, results_provider=lambda: final_state(recorded_run),
+        ),
+    ):
+        with pytest.raises(RunReadError):
+            consume()
+    assert not (tmp_path / "report").exists()
     assert inventory(recorded_run) == before
 
 
