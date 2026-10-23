@@ -348,10 +348,29 @@ def execute(
                 return
 
     try:
+        from aeroagentsim.runs.projections import (
+            PROJECTION_PINS_FILENAME,
+            PROJECTION_PINS_FORMAT,
+            projection_definitions,
+        )
+
+        # Only a new execution owns this pin point. Never backfill a pre-existing
+        # journal or replace evidence recorded by an earlier host invocation.
+        pin_projection = not (directory / "journal.jsonl").exists() and not (
+            directory / PROJECTION_PINS_FILENAME
+        ).exists()
         session = RunSession(scenario, directory, prepared=True)
         # Share its incremental offsets. A second writer would rescan the large
         # header and entire WAL again when acknowledging Stop.
         storage = session.storage
+        if pin_projection:
+            from aeroagentsim.presentations import presentation_selection
+
+            selected, _ = presentation_selection(directory)
+            storage._atomic(PROJECTION_PINS_FILENAME, {
+                "format": PROJECTION_PINS_FORMAT,
+                "definitions": projection_definitions(directory, presentation_plugins=selected),
+            })
         session.start()
         publish_committed(force=True)
         if ingress is not None:

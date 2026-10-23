@@ -54,6 +54,7 @@ and these arrays:
 | `chainInstances?` | Behaviour extension (below). |
 | `kpis` | Cumulative measured KPI map `{name: {value, unit, label}}` at this committed cut. |
 | `events` | Business narratives `{at_ns, category, severity, text, entities: [ids], position?: [e,n,u]}` generated from committed event emissions. |
+| `projection_provenance?` | Separately versioned definition pins, current identities and the reader source cut for this commit (below). |
 
 Lossless numbers: integers or floats at or above 2⁵³ in magnitude travel as
 `{"$integer": "..."}` / `{"$number": "..."}` tags (optionally wrapped in
@@ -93,6 +94,50 @@ creation so later assignment/completion events use the same category.
 Template placeholders must name real payload fields; malformed declared
 business events are errors, not invented success messages. See
 [templates](../guides/templates.md) for an authoring example.
+
+## Optional projection provenance
+
+REST/SSE commit objects and the top-level `/v1/runs/{id}/kpis` response may carry
+`projection_provenance`, with `format: "aeroagentsim.projection-provenance/v1"`.
+Existing viewer-feed/v1 and KPI/v1 fields, numerical definitions, nulls and finality
+semantics are unchanged. KPI series rows and the viewer header are unchanged.
+
+The field contains `source_cut`, `pinned_definitions`, `current_definitions` and
+`mode`. The source uses the [public reader's identities](run-reader.md): service
+and kernel run IDs, epoch, local journal identity, recorded configuration/registry
+digests, inclusive `cut_index` and `cut_bytes`. Each commit identifies its own cut;
+the KPI response identifies its final projected prefix, not a later live ACK.
+Index-only runs without a reader ACK omit this optional response field rather
+than invent a cut.
+
+| `mode` | Meaning |
+| --- | --- |
+| `original` | A complete run-time projection pin exists and matches the identities used for this projection. |
+| `recomputed-current-code` | A run-time pin exists, but the projected definitions differ. Both recorded and current identities remain visible. |
+| `legacy-unpinned` | No complete projection pin was recorded. `pinned_definitions` is `null`; current definitions are not evidence of historical meaning. |
+
+New service worker executions write `projection-pins.json` before starting the
+session, after its authored artifacts exist. It records viewer-feed/v1 and KPI/v1
+identities, a content digest of host projection/interpreter code, metric reducer
+descriptors/revisions and contribution identities, authored input digests, and the
+presentation snapshot digest (when present) plus provider digest. HTTP launch
+already records `presentation.snapshot.json`; its recorded provider selection is
+preserved. Older runs, including those with only presentation pins, are not
+backfilled. Headless `RunSession`/`Simulation` paths do not acquire projection pins
+through this service-only writer.
+
+A matching pin proves matching **recorded identities**, not an archived historical
+executable, authentication, all transitive dependency versions, run success, or
+byte-identical retained results. Reducer implementations still rely on honest
+revision/distribution changes. Cache invalidation alone never proves `original`.
+Missing measurements stay `null`; recorded links are not causal labels.
+
+The read-only `projection_provenance(directory)` diagnostic can report changed
+presentation provider identities without projecting any numbers. This does **not**
+bypass presentation snapshot admission: service feeds still reject missing or
+changed pinned providers rather than silently substituting newer DATA. Its
+`recomputed-current-code` mode describes a definition mismatch, not proof that a
+recomputation succeeded. See the [DTO reference](run-reader.md#projectionprovenance).
 
 ## Behaviour extensions
 

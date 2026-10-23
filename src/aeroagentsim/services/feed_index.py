@@ -14,14 +14,20 @@ import threading
 import zlib
 from collections import OrderedDict
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 from aerokernel.registry import MemoryRegistry
 
-from ..presentation_api import PresentationPlugin, presentation_plugin_digest
+from ..presentation_api import PresentationPlugin
 from ..presentations import presentation_selection
+from ..runs import open_run
+from ..runs.projections import (
+    PROJECTION_PINS_FILENAME,
+    _provenance_for_cut,
+    projection_definitions,
+)
 from .kpis import KPIProjector
 from .narratives import NarrativeProjector
 from .projector import project, projection_record
@@ -79,20 +85,17 @@ def _signature(
         for name in ("feed_index", "projector", "subjects", "kpis", "narratives")
     )
     files.extend((Path(metrics_api.__file__), Path(run_reader.__file__)))
-    # Every eligible provider is retained for schema-prefix dispatch, including
-    # external providers whose first matching message arrives after this cut.
-    # Revisions, entry-point identity and descriptors replace pack source paths.
-    metric_plugins = metrics_api.discover_metric_plugins()
-    result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(metric_plugins)]]
-    # Fingerprint provider DATA/revisions without initializing a throwaway
-    # projector or its normalizer state on every page. Hash authored inputs too:
-    # stats miss equal-length declaration/label edits with restored mtimes.
-    plugins, snapshot = presentation_selection(path, plugins)
-    result.append(["narratives", snapshot["digest"] if snapshot is not None
-                   else presentation_plugin_digest(plugins)])
-    result.append(["authored", [
-        [str(file), hashlib.sha256(file.read_bytes()).hexdigest()] for file in authored
-    ]])
+    # Share the definition identity with run pins and the read-only diagnostic.
+    # This includes every eligible metric provider (even before its first input),
+    # the pinned presentation snapshot/provider digest and authored content hashes.
+    # Selection still rejects changed/missing pinned presentation dependencies.
+    plugins, _ = presentation_selection(path, plugins)
+    result: list[Any] = [FORMAT, ["definitions", projection_definitions(
+        path, presentation_plugins=plugins,
+    )]]
+    pins = path / PROJECTION_PINS_FILENAME
+    result.append(["projection-pins", hashlib.sha256(pins.read_bytes()).hexdigest()
+                   if pins.exists() else None])
     for file in files:
         stat = file.stat()
         result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])
@@ -333,6 +336,53 @@ def _update_batch(path: Path, requested_target: int) -> bool:
         return cursor >= requested_target
 
 
+def _provenances(
+    path: Path, signature: list[Any], indices: list[int],
+) -> dict[int, dict[str, Any]]:
+    """Attach reader identities to actual projected cuts, not the latest ACK.
+
+    Definitions come from the published checkpoint, never a later discovery that
+    could mislabel cached numbers. Only offsets are refreshed, in memory. Legacy
+    index-only service runs retain their payloads without inventing a reader cut.
+    """
+    if not indices or committed_prefix(path) is None:
+        return {}
+    definitions = next(item[1] for item in signature if item[0] == "definitions")
+    storage = RunStorage(path)
+    storage.refresh_committed()
+    with open_run(path) as run:
+        entry = storage.entries[indices[0]]
+        provenance = _provenance_for_cut(
+            path, run.header, entry["index"], entry["offset"] + entry["length"], definitions,
+        )
+    payload = asdict(provenance)
+    payload["mode"] = provenance.mode.value
+    result = {}
+    for index in indices:
+        entry = storage.entries[index]
+        if entry["index"] != index:
+            raise ValueError("Projection provenance: offset index differs from projected cut")
+        result[index] = {
+            **payload,
+            "source_cut": {
+                **payload["source_cut"], "cut_index": index,
+                "cut_bytes": entry["offset"] + entry["length"],
+            },
+        }
+    return result
+
+
+def _with_provenance(
+    path: Path, records: list[dict[str, Any]], signature: list[Any],
+) -> list[dict[str, Any]]:
+    provenances = _provenances(path, signature, [record["commitIndex"] for record in records])
+    return [
+        {**record, "projection_provenance": provenances[record["commitIndex"]]}
+        if record["commitIndex"] in provenances else record
+        for record in records
+    ]
+
+
 def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, Any]]:
     """Emit a ready committed fragment before computing subsequent live cuts."""
     path = path.resolve()
@@ -354,7 +404,8 @@ def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, A
                 database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
                 if tables == {"cuts", "checkpoint"} else None
             )
-            if row is not None and _decode(row[0])["signature"] == _signature(path.resolve()):
+            checkpoint = _decode(row[0]) if row is not None else None
+            if checkpoint is not None and checkpoint["signature"] == _signature(path.resolve()):
                 records = [
                     _decode(item[0])
                     for item in database.execute(
@@ -363,7 +414,7 @@ def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, A
                     )
                 ]
                 if records:
-                    return records
+                    return _with_provenance(path, records, checkpoint["signature"])
     return page(path, start, limit)
 
 
@@ -372,13 +423,16 @@ def page(path: Path, start: int = 1, limit: int = 256) -> list[dict[str, Any]]:
     path = path.resolve()
     update(path, through_index=max(1, start) + limit)
     with closing(_connect(path)) as database, database:
-        return [
+        database.execute("BEGIN")
+        records = [
             _decode(row[0])
             for row in database.execute(
                 "SELECT payload FROM cuts WHERE idx>=? ORDER BY idx LIMIT ?",
                 (max(1, start), limit),
             )
         ]
+        row = database.execute("SELECT signature FROM projection_progress WHERE id=1").fetchone()
+        return _with_provenance(path, records, json.loads(row[0])) if row is not None else records
 
 
 def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
@@ -400,5 +454,8 @@ def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
             if include_series
             else []
         )
+        index = checkpoint["next"] - 1
+        provenance = _provenances(path, checkpoint["signature"], [index]).get(index)
         return {"contract": "aeroagentsim.kpi/v1", "final": final, "series": series,
-                **_results_state(path, RunStorage(path).metadata(), checkpoint)}
+                **_results_state(path, RunStorage(path).metadata(), checkpoint),
+                **({"projection_provenance": provenance} if provenance is not None else {})}
