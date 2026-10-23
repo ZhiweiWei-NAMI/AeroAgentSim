@@ -59,6 +59,9 @@ distribution evidence:
 | `plugin_api.discover_scenario_plugins()` | `Duplicate aeroagentsim.scenarios entry point name: 'external'` |
 | `metrics_api.discover_metric_plugins()` | `Duplicate aeroagentsim.metrics entry point name: 'external'` |
 | `platform.plugins.EngineCatalog()` | `Duplicate aeroagentsim.engines entry point names` |
+| `algorithms.load_algorithm()` | `duplicate aeroagentsim.algorithms entry point names` |
+| `services.algorithm_catalog` | `Duplicate aeroagentsim.algorithms entry point names` |
+| `assistant_api.discover_assistant_plugins()` | `Duplicate aeroagentsim.assistant_operations entry point name: 'external'` |
 
 The rich `DuplicateEntryPointError` is retained as `__cause__`, including its
 immutable conflict records. The metrics fingerprint metadata path preserves the
@@ -78,9 +81,9 @@ installed-only engine declarations are linked below the table.
 | Scenarios | `aeroagentsim.scenarios` | `ScenarioPlugin`, version **1** | `air-taxi`, `city-day`, `crop-spraying`, `flood-rescue`, `food-delivery`, `medical-delivery`, `parcel-delivery`, `powerline-inspection`, `security-patrol`, `traffic-accident`; hook-only `lowalt`, `traffic`, `rescue` | Shared discovery; whole-provider replacement; template/hook ID collisions rejected during composition. |
 | Metrics | `aeroagentsim.metrics` | `MetricPlugin`, version **1** | `inspection`, `logistics`, `lowalt`, `tasks`, `traffic_accident` | Shared discovery; whole-provider replacement; reducer metric IDs must be disjoint. |
 | Engines | `aeroagentsim.engines` | Unversioned callable `build(EngineBuild)` | `agent-assignment`, `behaviour`, `decision`, `environment`, `ingress-consumer`, `inspection`, `kinematic`, `langgraph`, `logistics`, `lowalt_airspace`, `lowalt_city_capture`, `lowalt_energy`, `lowalt_incident_capture`, `lowalt_tasks`, `predicate`, `records`, `telemetry`, `threshold`, `traffic_camera_capture`, `traffic_capture_bridge`, `traffic_decision_failures`, `traffic_decisions`, `workflow` | Shared enumeration/duplicate checks and lazy loading; installed factory replaces builtin; callability checked, no factory invocation until build. No descriptor-name or API-version requirement is invented. |
-| Algorithms | `aeroagentsim.algorithms` | Unversioned slot protocols | Allocation: `nearest`, `auction`, `hungarian`, `llm`; path planning: `straight`, `corridor_astar`, `coverage`, `survey`, `patrol`; conflict resolution: `altitude_layers`, `hold_and_go`; charging: `threshold_return` | Runtime migration deferred: qualified `<slot>.<name>` entry wins over unqualified installed name, then `module:Class` or builtin; constructors receive configuration. Duplicate installed names fail. |
+| Algorithms | `aeroagentsim.algorithms` | Unversioned slot protocols | Allocation: `nearest`, `auction`, `hungarian`, `llm`; path planning: `straight`, `corridor_astar`, `coverage`, `survey`, `patrol`; conflict resolution: `altitude_layers`, `hold_and_go`; charging: `threshold_return` | Shared enumeration, duplicate checks and pre-load name validation; legacy name syntax retained at runtime. Runtime keeps qualified `<slot>.<name>` → unqualified installed name → `module:Class`/builtin precedence and loads only the selected factory with its configuration. The service catalog requires nonempty slot-qualified IDs, validates every declaration before loading any provider, and keeps protocol classification and whole-provider metadata replacement. |
 | Consumption models | `aeroagentsim.models` | Unversioned `ConsumptionModel` protocol | `linear`, `wind` | Runtime migration deferred: installed factory replaces an explicitly selected name; duplicates are rejected only for the selected name. A legacy scenario without explicit `consumption_model` retains builtin linear behavior. |
-| [Assistant operations (**shipped**)](assistant-operations.md) | `aeroagentsim.assistant_operations` | `AssistantOperationPlugin`, version **1** | `lowalt`, `traffic` | Strict names; descriptor instances or zero-argument factories; whole-provider replacement; full operation-contract revalidation and operation-ID collision checks. Discovery is still bespoke in this revision (migration to the shared helper is in progress). |
+| [Assistant operations (**shipped**)](assistant-operations.md) | `aeroagentsim.assistant_operations` | `AssistantOperationPlugin`, version **1** | `lowalt`, `traffic` | Strict names; descriptor instances or zero-argument factories; whole-provider replacement; full operation-contract revalidation and operation-ID collision checks. Shared discovery; legacy boundary errors retained. |
 | [Presentations (**shipped**)](presentation-plugins.md) | `aeroagentsim.presentations` | `PresentationPlugin`, version **1** | `lowalt`, `traffic_accident` | Shared discovery; duplicate-first, all names admitted before any load; whole-provider replacement; explicit selections never load unselected factories; contributed IDs must be disjoint. Finite data only, no browser renderers. |
 | [Preparers (**shipped**)](preparation-plugins.md) | `aeroagentsim.preparers` | `PreparerPlugin`, version **1** | `explicit`, `lowalt-legacy` | Shared discovery; duplicate and malformed names fail before any load; whole-provider replacement with no fallback to the builtin; used only by `aeroagentsim.scenario/v2` documents with an explicit selector. |
 | Registry overlays (**planned**) | Proposed `aeroagentsim.registry_overlays` | Not shipped | No discoverable providers | Existing inline descriptors/snapshots do not establish an overlay plugin admission API. |
@@ -193,13 +196,13 @@ contract, rather than making the whole response metadata-only:
 
 ## Deliberate follow-ups
 
-- **Algorithms and algorithm catalog:** preserve qualified/unqualified lookup,
-  direct `module:Class` loading, protocol-method classification and configured
-  construction before migrating. The [service catalog](../../src/aeroagentsim/services/algorithm_catalog.py)
-  currently imports installed factories for metadata, unlike the metadata-only
-  algorithm rows in plugin inventory. The [consumer catalog](../../src/aeroagentsim/algorithms/consumers.py)
-  verifies specific engine factory identities without loading them; an override
-  must not inherit a builtin's consumption claim. These sites remain unchanged.
+- **Algorithm catalog metadata:** runtime algorithm loading and the
+  [service catalog](../../src/aeroagentsim/services/algorithm_catalog.py) now use
+  shared discovery, but the catalog still imports installed factories for
+  metadata, unlike the metadata-only algorithm rows in plugin inventory. The
+  [consumer catalog](../../src/aeroagentsim/algorithms/consumers.py) verifies
+  specific engine factory identities without loading them; an override must not
+  inherit a builtin's consumption claim.
 - **Models:** preserve selected-name-only duplicate rejection and the implicit
   legacy-linear exemption. Applying group-wide runtime admission there would
   change behavior, so only their inventory enumeration is shared in this PR.
