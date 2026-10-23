@@ -777,6 +777,13 @@ def test_unacknowledged_report_deduplicates_original_ids_across_records(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     directory, _ = diagnostic_run(tmp_path / "diagnostic")
+    # The indexed fallback projects subjects, which needs the schema declared in
+    # the pinned registry as it would be in any admitted run.
+    (directory / "runtime.registry.json").write_bytes(canonical_json(MemoryRegistry((), messages=(
+        MessageDescriptor("fixture.inspection", schema={
+            "type": "record", "members": {}, "required": [], "extra": True,
+        }),
+    )).to_data()))
     # Rebuild the service index after this diagnostic rewrites its journal.
     (directory / "index.json").unlink()
     RunStorage(directory).index()
