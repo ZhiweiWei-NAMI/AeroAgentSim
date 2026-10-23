@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import json
 import re
+from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from copy import deepcopy
+from dataclasses import dataclass, field
 from pathlib import Path
+from threading import RLock
 from typing import Any
 
 from .presentation_api import validate_header_hints
@@ -50,10 +53,43 @@ def presentation_label(label: str, language: str, data: Mapping[str, Any]) -> st
     return label
 
 
-def read_presentation_snapshot(directory: Path) -> dict[str, Any] | None:
-    """Read family metadata only; legacy directories remain explicitly unpinned."""
-    from .presentation_api import validate_presentation_snapshot
+@dataclass
+class _PinnedSnapshot:
+    snapshot: Mapping[str, Any]
+    # Keep explicit availability sets separate: changed providers must never hit
+    # by dataclass equality, which deliberately excludes observed source metadata.
+    selections: OrderedDict[tuple[int, ...], tuple[tuple[Any, ...], tuple[Any, ...]]] = field(
+        default_factory=OrderedDict,
+    )
+    discovered: tuple[Any, ...] | None = None
 
+
+_SNAPSHOT_LOCK = RLock()
+_SNAPSHOT_CACHE_SIZE = 128
+_SNAPSHOT_GENERATION = -1
+_SNAPSHOTS: OrderedDict[tuple[Any, ...], _PinnedSnapshot] = OrderedDict()
+
+
+def clear_presentation_snapshot_cache() -> None:
+    """Forget the bounded read cache; discovery resets also invalidate it lazily."""
+    with _SNAPSHOT_LOCK:
+        _SNAPSHOTS.clear()
+
+
+def _file_identity(path: Path) -> tuple[int, ...]:
+    stat = path.stat()
+    return stat.st_size, stat.st_mtime_ns, stat.st_dev, stat.st_ino, stat.st_ctime_ns
+
+
+def _pinned_snapshot(directory: Path) -> _PinnedSnapshot | None:
+    """Called under the snapshot lock; stat and manifest checks are never cached."""
+    from .presentation_api import freeze_presentation_snapshot, presentation_plugin_cache_generation
+
+    global _SNAPSHOT_GENERATION
+    generation = presentation_plugin_cache_generation()
+    if generation != _SNAPSHOT_GENERATION:
+        _SNAPSHOTS.clear()
+        _SNAPSHOT_GENERATION = generation
     manifest = directory / "manifest.json"
     metadata = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {}
     expected = metadata.get("presentation_snapshot_digest")
@@ -61,34 +97,70 @@ def read_presentation_snapshot(directory: Path) -> dict[str, Any] | None:
         type(expected) is not str or re.fullmatch(r"sha256:[0-9a-f]{64}", expected) is None
     ):
         raise ValueError("pinned presentation: malformed manifest snapshot digest")
-    path = directory / "presentation.snapshot.json"
-    if not path.exists():
+    path = (directory / "presentation.snapshot.json").resolve()
+    try:
+        identity = _file_identity(path)
+    except FileNotFoundError:
         if expected is not None:
-            raise ValueError("pinned presentation unavailable: recorded snapshot is missing")
+            raise ValueError("pinned presentation unavailable: recorded snapshot is missing") from None
         return None
-    snapshot = json.loads(path.read_text(encoding="utf-8"))
-    validate_presentation_snapshot(snapshot)
+    # The manifest's stored digest participates in cache admission as well as
+    # path/size/mtime. Inode/ctime also catch replacement or restored mtimes.
+    key = (path, *identity, expected)
+    cached = _SNAPSHOTS.get(key)
+    if cached is not None:
+        _SNAPSHOTS.move_to_end(key)
+        return cached
+    snapshot = freeze_presentation_snapshot(json.loads(path.read_text(encoding="utf-8")))
     if expected is not None and snapshot["digest"] != expected:
         raise ValueError("pinned presentation: snapshot digest differs from run manifest")
-    return snapshot
+    if _file_identity(path) != identity:
+        raise ValueError("pinned presentation: snapshot changed while being read")
+    cached = _PinnedSnapshot(snapshot)
+    _SNAPSHOTS[key] = cached
+    while len(_SNAPSHOTS) > _SNAPSHOT_CACHE_SIZE:
+        _SNAPSHOTS.popitem(last=False)
+    return cached
+
+
+def read_presentation_snapshot(directory: Path) -> Mapping[str, Any] | None:
+    """Share validated immutable metadata; legacy directories remain unpinned."""
+    with _SNAPSHOT_LOCK:
+        cached = _pinned_snapshot(directory)
+        return cached.snapshot if cached is not None else None
 
 
 def presentation_selection(
     directory: Path, plugins: Iterable[Any] | None = None,
-) -> tuple[tuple[Any, ...], dict[str, Any] | None]:
-    """Use exactly the run's recorded family selection when one was pinned."""
+) -> tuple[tuple[Any, ...], Mapping[str, Any] | None]:
+    """Verify a pinned file/availability identity once, including concurrent fills."""
     from .presentation_api import (
         discover_presentation_plugins, validate_plugins, verify_presentation_snapshot,
     )
 
-    snapshot = read_presentation_snapshot(directory)
-    names = tuple(provider["name"] for provider in snapshot["providers"]) if snapshot is not None else None
-    selected = discover_presentation_plugins(names=names) if plugins is None else tuple(plugins)
-    if snapshot is not None:
-        selected = verify_presentation_snapshot(snapshot, selected)
-    else:
-        validate_plugins(selected)
-    return selected, snapshot
+    with _SNAPSHOT_LOCK:
+        cached = _pinned_snapshot(directory)
+        if cached is None:
+            selected = discover_presentation_plugins() if plugins is None else tuple(plugins)
+            validate_plugins(selected)
+            return selected, None
+        if plugins is None and cached.discovered is not None:
+            return cached.discovered, cached.snapshot
+        names = tuple(provider["name"] for provider in cached.snapshot["providers"])
+        available = discover_presentation_plugins(names=names) if plugins is None else tuple(plugins)
+        key = tuple(id(plugin) for plugin in available)
+        if key not in cached.selections:
+            selected = verify_presentation_snapshot(cached.snapshot, available)
+            # Retain strong references alongside IDs to prevent identity reuse.
+            cached.selections[key] = (available, selected)
+            cached.selections[tuple(id(plugin) for plugin in selected)] = (selected, selected)
+        cached.selections.move_to_end(key)
+        selected = cached.selections[key][1]
+        while len(cached.selections) > 4:
+            cached.selections.popitem(last=False)
+        if plugins is None:
+            cached.discovered = selected
+        return selected, cached.snapshot
 
 
 def _headers(plugins: Iterable[Any] | None) -> list[Mapping[str, Any]]:
@@ -263,5 +335,5 @@ def apply_header_presentations(
 
 __all__ = [
     "apply_header_presentations", "validate_header_hints", "presentation_label",
-    "read_presentation_snapshot", "presentation_selection",
+    "read_presentation_snapshot", "presentation_selection", "clear_presentation_snapshot_cache",
 ]

@@ -80,11 +80,9 @@ def create_app(
         ControlRegistry,
         Known,
         Unavailable,
-        admit_presentation_plugins,
         discover_presentation_plugins,
         presentation_snapshot,
         read_controls,
-        verify_presentation_snapshot,
     )
 
     templates = TemplateRegistry(templates_root)
@@ -320,11 +318,15 @@ def create_app(
             }
         def pin_presentation() -> dict[str, Any]:
             presentation_plugins = discover_presentation_plugins()
-            admit_presentation_plugins(presentation_plugins, scenario.registry, document=scenario.document)
             source_template = template or workspace_metadata.get("template")
             pinned_controls = next((item["knobs"] for item in templates.list()
                                     if item["id"] == source_template["id"]), []) if source_template else []
-            return presentation_snapshot(presentation_plugins, controls=tuple(pinned_controls))
+            # Snapshot construction admits run-specific bindings once, before
+            # writing anything or starting the worker; malformed DATA fails closed.
+            return presentation_snapshot(
+                presentation_plugins, controls=tuple(pinned_controls),
+                registry=scenario.registry, document=scenario.document,
+            )
 
         try:
             # Admission may load providers and compile schemas. Keep it off the
@@ -367,7 +369,7 @@ def create_app(
         from .feed_index import kpi_result as project_run
         from .feed_index import results_state
         from .storage import summary_configuration
-        from aeroagentsim.presentations import read_presentation_snapshot
+        from aeroagentsim.presentations import presentation_selection, read_presentation_snapshot
 
         metadata = json.loads((path / "manifest.json").read_text())
         document = summary_configuration(path)
@@ -378,10 +380,8 @@ def create_app(
         presentation_unavailable: str | None = None
 
         def select_presentations() -> tuple[Any, ...]:
-            if display is None:
-                return discover_presentation_plugins()
-            names = tuple(provider["name"] for provider in display["providers"])
-            return verify_presentation_snapshot(display, discover_presentation_plugins(names=names))
+            selected, _ = presentation_selection(path)
+            return selected
 
         selected = ()
         # A non-template KPI projection already verifies its pinned selection.

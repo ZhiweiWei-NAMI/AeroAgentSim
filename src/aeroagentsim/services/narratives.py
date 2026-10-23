@@ -135,7 +135,9 @@ class NarrativeProjector:
         self._by_field: dict[str, list[int]] = {}
         self._overrides: set[str] = set()
         for plugin in self._plugins:
-            data = json_data(plugin.data)
+            # Provider DATA is recursively frozen at admission. Share recipes and
+            # vocabulary; only this projector's top-level tables are mutable.
+            data = plugin.data
             self._declarations.update(data.get("narratives", {}))
             self._vocabulary.update(data.get("labels", {}))
             self._numbered.update(data.get("numbered_labels", {}))
@@ -152,7 +154,7 @@ class NarrativeProjector:
                     self._by_schema[schema] = index
                 for field in normalizer.fact_fields:
                     self._by_field.setdefault(field, []).append(index)
-        self._provider_declarations = deepcopy(self._declarations)
+        self._provider_declarations = dict(self._declarations)
         if declarations is not None:
             self._override(declarations)
         self._labels = dict(labels or {})
@@ -174,10 +176,10 @@ class NarrativeProjector:
             base = self._provider_declarations.get(schema, {})
             legacy_keys = {"template", "template_zh", "category", "severity", "entities", "position", "hidden"}
             declared = json_data(declaration)
-            if declared == {key: value for key, value in base.items() if key in legacy_keys}:
+            if freeze_data(declared) == {key: value for key, value in base.items() if key in legacy_keys}:
                 # Old run materializers copied pack declarations into the pinned
                 # scenario. Identical DATA is not an override of its own recipe.
-                self._declarations[schema] = {**deepcopy(base), **declared}
+                self._declarations[schema] = {**base, **declared}
                 self._overrides.discard(schema)
             else:
                 metadata = {key: base[key] for key in ("selectors", "category_field", "category_map") if key in base}
@@ -372,8 +374,8 @@ class NarrativeProjector:
         declaration = self._declarations.get(message.schema_id)
         if declaration is None or declaration.get("hidden"):
             return None  # Uninterpreted events remain available in the raw feed.
-        payload = thaw(message.payload)
-        if not isinstance(payload, dict):
+        payload = message.payload
+        if not isinstance(payload, Mapping):
             raise ValueError(f"narratives.{message.schema_id}: payload mapping required")
         index = self._by_schema.get(message.schema_id)
         state = None
@@ -513,7 +515,7 @@ class NarrativeProjector:
             return "未知" if language == "zh" else "unknown"
         return _plain(value)
 
-    def _position(self, payload: dict[str, Any], declaration: dict[str, Any], entities: list[str]) -> tuple[float, ...] | None:
+    def _position(self, payload: Mapping[str, Any], declaration: Mapping[str, Any], entities: list[str]) -> tuple[float, ...] | None:
         field = declaration.get("position")
         value = self._bound(payload, declaration, field) if field is not None else _MISSING
         if value is not _MISSING:

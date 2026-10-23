@@ -11,7 +11,8 @@ import hashlib
 import json
 import math
 import re
-from collections.abc import Iterable, Mapping
+from collections import OrderedDict
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from importlib import import_module
@@ -59,6 +60,31 @@ def freeze_data(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return tuple(freeze_data(child) for child in value)
     return value
+
+
+@dataclass(frozen=True, eq=False)
+class _ValidatedSnapshot(Mapping[str, Any]):
+    """An owned immutable snapshot whose validation cannot become stale."""
+
+    _data: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        validate_presentation_snapshot(self._data)
+        object.__setattr__(self, "_data", freeze_data(self._data))
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+
+def freeze_presentation_snapshot(snapshot: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Validate once and own frozen DATA for sharing on read-only paths."""
+    return snapshot if isinstance(snapshot, _ValidatedSnapshot) else _ValidatedSnapshot(snapshot)
 
 
 def presentation_digest(value: Any) -> str:
@@ -647,10 +673,8 @@ def admit_presentation_plugins(
                            if schema not in normalized_ids},
             "enums": plugin.data.get("enums", {}),
         }, registry)
-        for normalizer in plugin.normalizers:
-            schema_registry = _normalized_registry(normalizer.output_schemas)
-            validate_references(plugin.data, schema_registry, schemas=normalizer.output_schemas,
-                                selected=set(normalizer.input_schemas))
+        # Normalized output schemas and their DATA references were admitted by
+        # PresentationPlugin construction. Only run-specific bindings belong here.
         fields = {item.id: item for item in registry.fields}
         types = {item.id for item in registry.types}
         for lighting in plugin.data.get("header", {}).get("lighting", ()):
@@ -691,19 +715,28 @@ BUILTINS = MappingProxyType({
 # Serialize cold cache fills too: functools caches alone can compute a miss
 # more than once when the server's request and projection threads race.
 _PRESENTATION_DISCOVERY_LOCK = RLock()
+_PRESENTATION_CACHE_GENERATION = 0
+
+
+def presentation_plugin_cache_generation() -> int:
+    """Let readers invalidate derived caches without a contract-to-runtime import."""
+    return _PRESENTATION_CACHE_GENERATION
 
 
 def clear_presentation_plugin_cache() -> None:
-    """Forget process-local presentation discovery and resolved providers.
+    """Forget discovery/fingerprints and invalidate cached pinned selections.
 
     Installed entry points are assumed fixed for the process lifetime. Tests
     replacing entry points or BUILTINS must clear before using the replacement
     and again at teardown. Existing plugin tuples/projectors remain unchanged;
     this is not a live plugin reload or a reset of projection state.
     """
+    global _PRESENTATION_CACHE_GENERATION
     with _PRESENTATION_DISCOVERY_LOCK:
         _presentation_provider.cache_clear()
         _presentation_discovery.cache_clear()
+        _PRESENTATION_DIGESTS.clear()
+        _PRESENTATION_CACHE_GENERATION += 1
 
 
 @lru_cache(maxsize=1)
@@ -803,9 +836,13 @@ def validate_plugins(plugins: tuple[PresentationPlugin, ...]) -> None:
 
 def presentation_snapshot(
     plugins: tuple[PresentationPlugin, ...], *, controls: tuple[Mapping[str, Any], ...] | None = None,
+    registry: Any = None, document: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Detached family selection/data, not a cross-family or executable run lock."""
-    validate_plugins(plugins)
+    """Detached family selection/data, optionally admitting run-specific bindings."""
+    if registry is None:
+        validate_plugins(plugins)
+    else:
+        admit_presentation_plugins(plugins, registry, document=document)
     providers = []
     for plugin in plugins:
         providers.append({
@@ -823,7 +860,29 @@ def presentation_snapshot(
     return {**result, "digest": presentation_digest(result)}
 
 
+# Legacy unpinned directories have no stored digest. Retain their fingerprint
+# by provider *identity* (source is excluded from dataclass equality), bounded
+# and holding strong references so object IDs cannot be recycled under a hit.
+_PRESENTATION_DIGESTS: OrderedDict[
+    tuple[int, ...], tuple[tuple[PresentationPlugin, ...], str]
+] = OrderedDict()
+
+
+def presentation_plugin_digest(plugins: tuple[PresentationPlugin, ...]) -> str:
+    """Reuse immutable provider fingerprints instead of serializing each page."""
+    key = tuple(id(plugin) for plugin in plugins)
+    with _PRESENTATION_DISCOVERY_LOCK:
+        if key not in _PRESENTATION_DIGESTS:
+            _PRESENTATION_DIGESTS[key] = (plugins, presentation_snapshot(plugins)["digest"])
+        _PRESENTATION_DIGESTS.move_to_end(key)
+        while len(_PRESENTATION_DIGESTS) > 128:
+            _PRESENTATION_DIGESTS.popitem(last=False)
+        return _PRESENTATION_DIGESTS[key][1]
+
+
 def validate_presentation_snapshot(snapshot: Any) -> None:
+    if isinstance(snapshot, _ValidatedSnapshot):
+        return  # Only owned, recursively frozen, already-admitted DATA can skip.
     if (not isinstance(snapshot, Mapping) or snapshot.get("format") != PRESENTATION_SNAPSHOT_FORMAT
             or set(snapshot) - {"format", "providers", "controls", "digest"}
             or not isinstance(snapshot.get("providers"), (list, tuple))):
@@ -899,7 +958,7 @@ def verify_presentation_snapshot(
     Installation changes cannot activate an extra provider for a pinned run. An
     unavailable dependency is diagnosed; raw committed records are not rewritten.
     """
-    validate_presentation_snapshot(snapshot)
+    snapshot = freeze_presentation_snapshot(snapshot)
     if any(not isinstance(plugin, PresentationPlugin) for plugin in available):
         raise TypeError("Expected PresentationPlugin")
     by_name = {plugin.name: plugin for plugin in available}
@@ -910,7 +969,7 @@ def verify_presentation_snapshot(
     if missing:
         raise ValueError(f"pinned presentation unavailable: missing providers {sorted(missing)}")
     selected = tuple(by_name[name] for name in names)
-    if presentation_snapshot(selected)["providers"] != json_data(snapshot["providers"]):
+    if freeze_data(presentation_snapshot(selected)["providers"]) != snapshot["providers"]:
         raise ValueError("pinned presentation unavailable: provider source/revision/DATA changed; matching contributions required")
     return selected
 
@@ -918,8 +977,9 @@ def verify_presentation_snapshot(
 __all__ = [
     "PRESENTATION_API_VERSION", "PRESENTATION_ENTRY_POINT_GROUP", "PRESENTATION_FORMAT",
     "PRESENTATION_SNAPSHOT_FORMAT", "HEADER_RESOURCE_KEYS", "PresentationPlugin", "NarrativeNormalizer",
-    "discover_presentation_plugins", "clear_presentation_plugin_cache",
+    "discover_presentation_plugins", "clear_presentation_plugin_cache", "presentation_plugin_cache_generation",
     "validate_presentation", "validate_header_hints", "admit_presentation_plugins", "resolve_poses", "presentation_snapshot",
+    "freeze_presentation_snapshot", "presentation_plugin_digest",
     "validate_presentation_snapshot", "verify_presentation_snapshot",
     "ControlReader", "ControlRegistry", "Known", "Unavailable", "known", "read_controls",
 ]

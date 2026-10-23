@@ -10,6 +10,7 @@ import ast
 import copy
 import hashlib
 import json
+import os
 from collections.abc import Iterator, Mapping
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
@@ -1224,7 +1225,12 @@ def test_feed_signature_fingerprints_provider_and_authored_data_without_a_projec
     directory = _pinned_projection(tmp_path)
     provider = PresentationPlugin("external", _data(labels={"Sensor": {"en": "Sensor", "zh": "传感器"}}))
     baseline = _signature(directory, plugins=(provider,))
-    assert _signature(directory, plugins=(provider,)) == baseline
+    with monkeypatch.context() as warm:
+        def forbidden_digest(*args: Any, **kwargs: Any) -> None:
+            raise AssertionError("unchanged legacy provider fingerprints must be cached too")
+
+        warm.setattr(presentation_api, "presentation_digest", forbidden_digest)
+        assert _signature(directory, plugins=(provider,)) == baseline
     assert _signature(directory, plugins=(replace(provider, revision="2"),)) != baseline
     changed = replace(provider, data=_data(labels={"Sensor": {"en": "Sensor", "zh": "新标签"}}))
     assert _signature(directory, plugins=(changed,)) != baseline
@@ -1238,6 +1244,20 @@ def test_feed_signature_fingerprints_provider_and_authored_data_without_a_projec
         "packages": [{"document": {"event_narratives": {"external.raw": _simple_recipe("reading")}}}],
     }), encoding="utf-8")
     assert _signature(directory, plugins=(provider,)) != authored
+
+
+def test_narrative_projectors_share_frozen_recipes_but_not_override_tables() -> None:
+    provider = PresentationPlugin("external", _data(narratives={EVENT: _simple_recipe("note")}))
+    first = NarrativeProjector(plugins=(provider,))
+    second = NarrativeProjector(plugins=(provider,))
+    recipe = provider.data["narratives"][EVENT]
+    assert first._declarations[EVENT] is recipe
+    assert second._declarations[EVENT] is recipe
+    first._override({EVENT: presentation_api.json_data(recipe)})
+    assert first._declarations[EVENT] is not recipe
+    assert first._declarations[EVENT]["_legacy_bindings"] is True
+    assert "_legacy_bindings" not in recipe
+    assert second._declarations[EVENT] is recipe
 
 
 @pytest.mark.parametrize("change", ["revision", "labels"])
@@ -1404,6 +1424,27 @@ def test_discovery_attaches_frozen_observed_source_without_mutating_provider(
     assert snapshot["providers"][0]["source"]["distribution"] == ["external-pack", "1.0"]
 
 
+def test_launch_snapshot_admits_run_bindings_without_recompiling_normalized_schemas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = PresentationPlugin("external", _data(poses=[_pose()]), normalizers=(_EmptyNormalizer(),))
+    registry = _registry()
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("normalized schema admission belongs to provider construction")
+
+    monkeypatch.setattr(presentation_api, "_normalized_registry", forbidden)
+    snapshot = presentation_api.presentation_snapshot((provider,), registry=registry, document={})
+    assert snapshot["providers"][0]["name"] == "external"
+    missing_field = PresentationPlugin("missing", _data(poses=[_pose(positionField="external.missing")]))
+    with pytest.raises(ValueError, match="unknown type or field"):
+        presentation_api.presentation_snapshot((missing_field,), registry=registry, document={})
+    wgs84_pose = {key: value for key, value in _pose(frame="wgs84").items() if key != "orientationField"}
+    wgs84 = PresentationPlugin("wgs84", _data(poses=[wgs84_pose]))
+    with pytest.raises(ValueError, match="explicit origin required"):
+        presentation_api.presentation_snapshot((wgs84,), registry=_registry(frame="wgs84"), document={})
+
+
 def test_presentation_snapshot_has_independent_version_and_detached_control_declarations() -> None:
     provider = PresentationPlugin("external", _data(), control_readers={"external.read": _read_effective})
     controls = ({"id": "actual", "pointer": "/parameters/effective", "default": 99},)
@@ -1503,9 +1544,10 @@ def test_from_directory_uses_pinned_selection_and_does_not_activate_extra_provid
     pinned = next(plugin for plugin in available if plugin.name == "external")
     directory = _pinned_projection(tmp_path)
     snapshot = _write_presentation_pin(directory, (pinned,))
-    assert read_presentation_snapshot(directory) == snapshot
+    assert presentation_api.json_data(read_presentation_snapshot(directory)) == snapshot
     selected, read_snapshot = presentation_selection(directory, plugins=available if explicit_available else None)
-    assert [plugin.name for plugin in selected] == ["external"] and read_snapshot == snapshot
+    assert [plugin.name for plugin in selected] == ["external"]
+    assert presentation_api.json_data(read_snapshot) == snapshot
     projector = NarrativeProjector.from_directory(directory, plugins=available if explicit_available else None)
     baseline = NarrativeProjector.from_directory(directory, plugins=(pinned,))
     assert projector.contract_digest == baseline.contract_digest
@@ -1542,6 +1584,187 @@ def test_from_directory_rejects_changed_pinned_provider_instead_of_using_current
     _write_presentation_pin(directory, (provider,))
     with pytest.raises(ValueError, match="changed|unavailable"):
         NarrativeProjector.from_directory(directory, plugins=(replace(provider, revision="2"),))
+
+
+def test_pinned_snapshot_reads_share_immutable_validation_and_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.presentations import presentation_selection, read_presentation_snapshot
+
+    provider = PresentationPlugin("external", _data(narratives={EVENT: _simple_recipe("note")}))
+    snapshot = _write_presentation_pin(tmp_path, (provider,))
+    calls = {"validate": 0, "verify": 0}
+    original_validate = presentation_api.validate_presentation_snapshot
+    original_verify = presentation_api.verify_presentation_snapshot
+
+    def validate(*args: Any, **kwargs: Any) -> Any:
+        calls["validate"] += 1
+        return original_validate(*args, **kwargs)
+
+    def verify(*args: Any, **kwargs: Any) -> Any:
+        calls["verify"] += 1
+        return original_verify(*args, **kwargs)
+
+    monkeypatch.setattr(presentation_api, "validate_presentation_snapshot", validate)
+    monkeypatch.setattr(presentation_api, "verify_presentation_snapshot", verify)
+    frozen = read_presentation_snapshot(tmp_path)
+    assert presentation_api.json_data(frozen) == snapshot
+    assert calls == {"validate": 1, "verify": 0}
+    with pytest.raises(TypeError):
+        frozen["digest"] = "changed"
+    with pytest.raises(TypeError):
+        frozen["providers"][0]["data"]["narratives"][EVENT]["template"] = "changed"
+    with pytest.raises(TypeError):
+        frozen["providers"][0] = {}
+    for _ in range(3):
+        selected, cached = presentation_selection(tmp_path, (provider,))
+        assert selected == (provider,) and cached is frozen
+        assert read_presentation_snapshot(tmp_path) is frozen
+    assert calls == {"validate": 1, "verify": 1}
+
+
+def test_snapshot_identity_change_reverifies_even_when_bytes_are_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.presentations import presentation_selection
+
+    provider = PresentationPlugin("external", _data())
+    _write_presentation_pin(tmp_path, (provider,))
+    calls = []
+    original = presentation_api.verify_presentation_snapshot
+
+    def verify(*args: Any, **kwargs: Any) -> Any:
+        calls.append(args[0]["digest"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(presentation_api, "verify_presentation_snapshot", verify)
+    _, first = presentation_selection(tmp_path, (provider,))
+    path = tmp_path / "presentation.snapshot.json"
+    stat = path.stat()
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    _, second = presentation_selection(tmp_path, (provider,))
+    assert second is not first
+    assert calls == [first["digest"], first["digest"]]
+    presentation_selection(tmp_path, (provider,))
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("change", ["data", "restored_mtime", "manifest", "missing", "provider"])
+def test_warm_snapshot_cache_detects_tampering_and_changed_files(
+    tmp_path: Path, change: str,
+) -> None:
+    from aeroagentsim.presentations import presentation_selection, read_presentation_snapshot
+
+    provider = PresentationPlugin("external", _data(labels={"Sensor": {"en": "Sensor", "zh": "传感器"}}))
+    snapshot = _write_presentation_pin(tmp_path, (provider,))
+    path = tmp_path / "presentation.snapshot.json"
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"presentation_snapshot_digest": snapshot["digest"]}), encoding="utf-8")
+    presentation_selection(tmp_path, (provider,))
+    stat = path.stat()
+    if change == "manifest":
+        manifest.write_text(json.dumps({"presentation_snapshot_digest": "sha256:" + "0" * 64}), encoding="utf-8")
+        reason = "digest differs from run manifest"
+    elif change == "missing":
+        path.unlink()
+        reason = "recorded snapshot is missing"
+    else:
+        if change in {"data", "restored_mtime"}:
+            snapshot["providers"][0]["data"]["labels"]["Sensor"]["en"] = "Broken"
+            reason = "snapshot digest mismatch"
+        else:
+            snapshot["providers"][0]["revision"] = "2"
+            snapshot["digest"] = presentation_api.presentation_digest({
+                key: value for key, value in snapshot.items() if key != "digest"
+            })
+            manifest.write_text(json.dumps({"presentation_snapshot_digest": snapshot["digest"]}), encoding="utf-8")
+            reason = "source/revision/DATA changed"
+        path.write_text(json.dumps(snapshot), encoding="utf-8")
+        assert path.stat().st_size == stat.st_size  # Same-size writes cannot reuse the cache.
+        mtime = stat.st_mtime_ns if change == "restored_mtime" else stat.st_mtime_ns + 1_000_000_000
+        os.utime(path, ns=(stat.st_atime_ns, mtime))
+    for _ in range(2):  # A failed fill must not turn into a successful cache hit.
+        with pytest.raises(ValueError, match=reason):
+            presentation_selection(tmp_path, (provider,))
+        if change != "provider":
+            with pytest.raises(ValueError, match=reason):
+                read_presentation_snapshot(tmp_path)
+
+
+def test_warm_snapshot_cache_does_not_hide_explicit_provider_source_drift(tmp_path: Path) -> None:
+    from aeroagentsim.presentations import presentation_selection
+
+    provider = PresentationPlugin("external", _data(), source={
+        "kind": "installed", "entry_point": "external:plugin", "distribution": ["external", "1"],
+    })
+    _write_presentation_pin(tmp_path, (provider,))
+    presentation_selection(tmp_path, (provider,))
+    changed = replace(provider, source={**provider.source, "distribution": ["external", "2"]})
+    assert changed == provider  # Source is deliberately excluded from dataclass equality.
+    with pytest.raises(ValueError, match="source/revision/DATA changed"):
+        presentation_selection(tmp_path, (changed,))
+
+
+def test_discovery_reset_invalidates_a_warm_pinned_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.presentations import presentation_selection
+
+    provider = PresentationPlugin("external", _data())
+    _external_provider(monkeypatch, provider)
+    _write_presentation_pin(tmp_path, discover_presentation_plugins())
+    presentation_selection(tmp_path)
+    _external_provider(monkeypatch, replace(provider, revision="2"))
+    with pytest.raises(ValueError, match="source/revision/DATA changed"):
+        presentation_selection(tmp_path)
+
+
+def test_concurrent_pinned_reads_verify_the_file_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from aeroagentsim.presentations import presentation_selection
+
+    provider = PresentationPlugin("external", _data())
+    _write_presentation_pin(tmp_path, (provider,))
+    calls = []
+    original = presentation_api.verify_presentation_snapshot
+
+    def verify(*args: Any, **kwargs: Any) -> Any:
+        calls.append(args[0]["digest"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(presentation_api, "verify_presentation_snapshot", verify)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda _: presentation_selection(tmp_path, (provider,)), range(8)))
+    assert len(calls) == 1
+    assert all(result[1] is results[0][1] for result in results)
+
+
+def test_pinned_snapshot_cache_is_bounded_and_evicted_files_are_reverified(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import aeroagentsim.presentations as presentations
+
+    provider = PresentationPlugin("external", _data())
+    monkeypatch.setattr(presentations, "_SNAPSHOT_CACHE_SIZE", 2)
+    calls = []
+    original = presentation_api.verify_presentation_snapshot
+
+    def verify(*args: Any, **kwargs: Any) -> Any:
+        calls.append(args[0]["digest"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(presentation_api, "verify_presentation_snapshot", verify)
+    paths = [tmp_path / str(index) for index in range(3)]
+    for path in paths:
+        path.mkdir()
+        _write_presentation_pin(path, (provider,))
+        presentations.presentation_selection(path, (provider,))
+    assert len(presentations._SNAPSHOTS) == 2 and len(calls) == 3
+    presentations.presentation_selection(paths[0], (provider,))
+    assert len(presentations._SNAPSHOTS) == 2 and len(calls) == 4
 
 
 def test_malformed_snapshot_file_is_not_treated_as_an_unpinned_legacy_directory(tmp_path: Path) -> None:

@@ -19,7 +19,7 @@ from typing import Any
 
 from aerokernel.registry import MemoryRegistry
 
-from ..presentation_api import PresentationPlugin, presentation_snapshot
+from ..presentation_api import PresentationPlugin, presentation_plugin_digest
 from ..presentations import presentation_selection
 from .kpis import KPIProjector
 from .narratives import NarrativeProjector
@@ -85,9 +85,9 @@ def _signature(
     # Fingerprint provider DATA/revisions without initializing a throwaway
     # projector or its normalizer state on every page. The file stats below
     # already invalidate authored scenario/IR declarations and entity labels.
-    if plugins is None:
-        plugins, _ = presentation_selection(path)
-    result.append(["narratives", presentation_snapshot(plugins)["digest"]])
+    plugins, snapshot = presentation_selection(path, plugins)
+    result.append(["narratives", snapshot["digest"] if snapshot is not None
+                   else presentation_plugin_digest(plugins)])
     for file in files:
         stat = file.stat()
         result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])

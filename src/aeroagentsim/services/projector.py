@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -47,7 +48,7 @@ def lossless(value: Any) -> Any:
         return {"$integer": str(value)}
     if type(value) is float and abs(value) >= 2**53:
         return {"$number": repr(value)}
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         encoded = {key: lossless(child) for key, child in value.items()}
         if len(value) == 1 and set(value) & {"$integer", "$number", "$record"}:
             return {"$record": encoded}
@@ -191,7 +192,7 @@ def project(
             message = decode_record(item["message"])
             if message.kind in {"command", "event"}:
                 route = routes.get(message.id)
-                refs = _message_subjects(thaw(message.payload))
+                refs = _message_subjects(message.payload)
                 if subjects is not None:
                     refs.extend(subjects.subjects(message))
                 projected = {
@@ -200,7 +201,7 @@ def project(
                     "schemaId": message.schema_id,
                     "source": message.source,
                     "at": instant(message.at),
-                    "payload": lossless(thaw(message.payload)),
+                    "payload": lossless(message.payload),
                     "subjects": [entity(ref) for ref in dict.fromkeys(refs)],
                 }
                 if "proposal" in item:
@@ -221,7 +222,7 @@ def project(
                     decode_record(item["proposal"]), Emit
                 ):
                     extension = _behaviour_record(
-                        message.schema_id, thaw(message.payload)
+                        message.schema_id, message.payload
                     )
                     if extension is not None:
                         array, payload = extension
@@ -318,7 +319,7 @@ def _behaviour_record(schema: str, payload: Any) -> tuple[str, dict[str, Any]] |
         return None
     result = lossless(payload)
     result["roles"] = {
-        role: entity(EntityRef.from_data(ref["$ref"]))
+        role: entity(EntityRef.from_data(dict(ref["$ref"])))
         for role, ref in payload["roles"].items()
     }
     return array, result
@@ -327,13 +328,14 @@ def _behaviour_record(schema: str, payload: Any) -> tuple[str, dict[str, Any]] |
 def _message_subjects(payload: Any) -> list[EntityRef]:
     """Only explicit typed refs establish entity links; scalar names do not."""
     result: list[EntityRef] = []
-    if isinstance(payload, dict):
+    if isinstance(payload, Mapping):
         if set(payload) == {"$ref"}:
-            result.append(EntityRef.from_data(payload["$ref"]))
+            ref = payload["$ref"]
+            result.append(EntityRef.from_data(dict(ref) if isinstance(ref, Mapping) else ref))
         else:
             for child in payload.values():
                 result.extend(_message_subjects(child))
-    elif isinstance(payload, list):
+    elif isinstance(payload, (list, tuple)):
         for child in payload:
             result.extend(_message_subjects(child))
     return result
