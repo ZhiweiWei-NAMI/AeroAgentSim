@@ -6,14 +6,14 @@ import argparse
 import json
 import shutil
 import subprocess
-from collections import Counter
+from collections import Counter, defaultdict
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from aeroagentsim.observations.artifacts import ArtifactStore
-from aeroagentsim.services.projector import project
-from aeroagentsim.services.storage import RunStorage
-from aeroagentsim.services.subjects import projection_context
+from aeroagentsim.runs import RunReadError, open_run
+from aeroagentsim.services.projector import lossless, project
 
 
 def cell(value: Any) -> str:
@@ -33,25 +33,58 @@ def export_report(
     run, output = run.resolve(), output.resolve()
     if output == run or output.is_relative_to(run):
         raise ValueError("report output must be outside the immutable source run")
-    storage = RunStorage(run)
-    manifest = storage.metadata()
-    if manifest["status"] not in {"completed", "stopped", "faulted", "interrupted"}:
-        raise ValueError(
-            "report requires a finished run with an immutable recorded prefix"
-        )
-    subjects = projection_context(run, 1)
-    commits: list[dict[str, Any]] = []
-    cursor = 1
-    while batch := storage.records(cursor, 4096):
-        for offset, record in enumerate(batch):
-            if record["index"] != cursor + offset:
-                raise ValueError("report journal has a gap or unordered indexed prefix")
-            commits.append(project(record, subjects=subjects))
-        cursor = batch[-1]["index"] + 1
-    if not commits:
-        raise ValueError("run has no committed journal records to report")
-    if cursor != manifest["final_cursor"]:
-        raise ValueError("run index does not cover the manifest final cursor")
+    with open_run(run) as source:
+        snapshot = source.snapshot()
+        # Reader v1 has no service status/final cursor or full-manifest capability.
+        manifest = json.loads((run / "manifest.json").read_text())
+        if manifest["status"] not in {"completed", "stopped", "faulted", "interrupted"}:
+            raise ValueError(
+                "report requires a finished run with an immutable recorded prefix"
+            )
+        cursor = manifest["final_cursor"]
+        if type(cursor) is not int or cursor != snapshot.cut_index + 1:
+            raise ValueError("run ACK does not cover the manifest final cursor")
+        originals: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for message in snapshot.iter_messages():
+            if message.kind in {"command", "event"}:
+                originals[message.cursor[0]].append(
+                    {
+                        "id": message.message_id,
+                        "kind": message.kind,
+                        "schemaId": message.schema_id,
+                        "payload": lossless(message.payload),
+                        "source_cursor": list(message.cursor),
+                    }
+                )
+        commits = []
+        for record in snapshot.iter_records(start=1):
+            # Reader v1 has no fact/receipt projection. Retain the existing
+            # formatter, but never let its deliveries or console aliases supply
+            # messages: only the public reader selects original identities.
+            commit = project(
+                {
+                    **record,
+                    "items": [
+                        {
+                            key: value
+                            for key, value in item.items()
+                            if key != "message" or not isinstance(value, dict)
+                        }
+                        for item in record["items"]
+                    ],
+                }
+            )
+            commit["messages"] = originals[record["index"]]
+            commits.append(commit)
+        if not commits:
+            raise ValueError("run has no committed journal records to report")
+        evidence = {
+            "reader_api_version": snapshot.api_version,
+            "cut_index": snapshot.cut_index,
+            "cut_bytes": snapshot.cut_bytes,
+            "header": asdict(snapshot.header),
+            "redaction": "none",
+        }
     output.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Traffic accident run report",
@@ -65,7 +98,8 @@ def export_report(
         "| --- | --- |",
     ]
     lines.extend(
-        f"| {key} | `{cell(value)}` |" for key, value in sorted(manifest.items())
+        f"| {key} | `{cell(value)}` |"
+        for key, value in sorted({**manifest, "source_evidence": evidence}.items())
     )
     lines.extend(
         [
@@ -183,6 +217,7 @@ def export_report(
             "",
         ]
     )
+    # Reader v1 has no stored-artifact metadata/blob capability.
     store = ArtifactStore(run)
     artifacts = store.list()
     if not artifacts:
@@ -291,6 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         ValueError,
         KeyError,
         OSError,
+        RunReadError,
         RuntimeError,
         subprocess.SubprocessError,
     ) as exc:

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+from collections.abc import Iterable
+from dataclasses import asdict
 from itertools import pairwise
 from pathlib import Path
 from typing import Any, cast
@@ -12,8 +15,7 @@ from aerokernel import Kernel, replay
 from aerokernel.codec import decode_record
 from aerokernel.values import thaw
 
-from aeroagentsim.runs import iter_record_messages
-from aeroagentsim.services.projector import project
+from aeroagentsim.runs import RecordedMessage, RunReplaced, iter_record_messages, open_run
 
 from .geometry import Polygon, area, clip, contains, union_area
 
@@ -24,25 +26,38 @@ def _ratio(numerator: float, denominator: float) -> float | None:
 
 
 def compute(kernel: Kernel) -> dict[str, Any]:
-    """Consume committed records using the journal's own scenario/configuration."""
-    configuration = thaw(kernel.configuration)
+    """Consume committed in-memory records through the public message normalizer."""
+    records = list(kernel.records)
+    header = getattr(kernel, "header", {})
+    manifest = header.get("manifest", {})
+    partitions = frozenset(row["fields"]["id"] for row in header.get("partitions", []))
+    messages = (
+        message
+        for record in records
+        for message in iter_record_messages(
+            record, partitions=partitions,
+            ingress_source=manifest.get("ingress_source"),
+            control_source=manifest.get("control_source"),
+        )
+    )
+    return _compute(thaw(kernel.configuration), records, messages)
+
+
+def _compute(
+    configuration: Any,
+    records: list[dict[str, Any]],
+    messages: Iterable[RecordedMessage],
+) -> dict[str, Any]:
     if not isinstance(configuration, dict) or "scenario" not in configuration:
         raise ValueError("metrics require a scenario pinned in the journal header")
     config = cast(dict[str, Any], configuration)
     engines = config["scenario"]["engines"]
-    records = kernel.records
     end = max((decode_record(record["instant"]).ns for record in records), default=0)
-    # Only the historical logistics/inspection sections use viewer rows. Reducers
-    # must never receive their presentation-tagged payloads or console aliases.
-    commits = (
-        [project(record) for record in records]
-        if any(engine["plugin"] in {"logistics", "inspection"} for engine in engines.values())
-        else []
-    )
-    # Each committed message is counted once, independent of topic fan-out.
-    events = {
-        m["id"]: m for c in commits for m in c["messages"] if m["kind"] == "event"
-    }
+    # Identity, not payload equality or delivery count, selects the population.
+    originals: dict[str, RecordedMessage] = {}
+    for message in messages:
+        originals.setdefault(message.message_id, message)
+    events = [message for message in originals.values() if message.kind == "event"]
     result: dict[str, Any] = {
         "run_id": config["scenario"]["id"],
         "duration_s": end / 1e9,
@@ -52,14 +67,16 @@ def compute(kernel: Kernel) -> dict[str, Any]:
         if engine["plugin"] == "logistics":
             rows = [
                 e
-                for e in events.values()
-                if e["source"] == engine_id and e["schemaId"] == c["event_schema"]
+                for e in events
+                if e.source == engine_id and e.schema_id == c["event_schema"]
             ]
             released, delivered, accepted, rejected = set(), {}, set(), set()
             active: dict[str, int] = {}
             busy_ns = 0
             for event in rows:
-                p, at = event["payload"], int(event["at"]["ns"])
+                p, at = event.payload, event.at_ns
+                if at is None:
+                    raise ValueError("logistics metrics require a recorded event time")
                 order, state = p["order"], p["state"]
                 if state == "queued":
                     released.add(order)
@@ -93,9 +110,9 @@ def compute(kernel: Kernel) -> dict[str, Any]:
             }
         elif engine["plugin"] == "inspection":
             rows = [
-                e["payload"]
-                for e in events.values()
-                if e["source"] == engine_id and e["schemaId"] == c["event_schema"]
+                e.payload
+                for e in events
+                if e.source == engine_id and e.schema_id == c["event_schema"]
             ]
             target_metrics: dict[str, Any] = {}
             for target in c["targets"]:
@@ -168,15 +185,7 @@ def compute(kernel: Kernel) -> dict[str, Any]:
             for plugin in discover_metric_plugins()
         )
         accumulator = MetricAccumulator(plugins)
-        header = getattr(kernel, "header", {})
-        manifest = header.get("manifest", {})
-        partitions = frozenset(row["fields"]["id"] for row in header.get("partitions", []))
-        for record in records:
-            accumulator.feed(iter_record_messages(
-                record, partitions=partitions,
-                ingress_source=manifest.get("ingress_source"),
-                control_source=manifest.get("control_source"),
-            ))
+        accumulator.feed(originals.values())
         values = accumulator.snapshot()
         for name in RESCUE_METRICS:
             if name in values:  # A whole-provider replacement may omit legacy IDs.
@@ -184,16 +193,62 @@ def compute(kernel: Kernel) -> dict[str, Any]:
     return result
 
 
-def metrics(run: Path | str) -> dict[str, Any]:
-    """Validate replay integrity, then derive KPIs for a directory or JSONL file."""
-    path = Path(run)
-    path = path / "journal.jsonl" if path.is_dir() else path
-    offline = replay(path)
+def _verified(data: bytes) -> Kernel:
+    # Reader v1 has no semantic replay-verification capability. Retain this
+    # engine-free check; an admitted ACK alone does not imply complete replay.
+    offline = replay(data)
     if offline.incomplete:
         raise ValueError(
             "metrics require a complete journal; replay reports incomplete data"
         )
-    return compute(offline)
+    return offline
+
+
+def metrics(run: Path | str) -> dict[str, Any]:
+    """Verify replay integrity and derive KPIs at one acknowledged source cut."""
+    path = Path(run)
+    if not path.is_dir():
+        # Reader v1 has no standalone-file admission. Preserve the historical
+        # JSONL entry point without presenting visible bytes as an ACK.
+        data = path.read_bytes()
+        offline = _verified(data)
+        return {
+            **compute(offline),
+            "source_evidence": {
+                "reader_api_version": None,
+                "cut_index": offline.records[-1]["index"],
+                "cut_bytes": len(data),
+                "provenance": offline.provenance,
+                "acknowledged": False,
+                "verification": "kernel-semantic-replay",
+                "redaction": "none",
+            },
+        }
+    with open_run(path) as source:
+        snapshot = source.snapshot()
+        # Reader v1 has no raw-byte stream for the retained semantic verifier.
+        # Bound that legacy access to the reader's exact ACK and source identity.
+        with (path / "journal.jsonl").open("rb") as stream:
+            info = os.fstat(stream.fileno())
+            if (info.st_dev, info.st_ino) != snapshot.header.journal_identity:
+                raise RunReplaced("Metrics source journal was replaced")
+            data = stream.read(snapshot.cut_bytes)
+        if len(data) != snapshot.cut_bytes:
+            raise RunReplaced("Metrics source journal was truncated")
+        _verified(data)
+        records = list(snapshot.iter_records())
+        result = _compute(
+            records[0]["configuration"], records, snapshot.iter_messages()
+        )
+        result["source_evidence"] = {
+            "reader_api_version": snapshot.api_version,
+            "cut_index": snapshot.cut_index,
+            "cut_bytes": snapshot.cut_bytes,
+            "header": asdict(snapshot.header),
+            "verification": "kernel-semantic-replay",
+            "redaction": "none",
+        }
+        return result
 
 
 def main() -> None:

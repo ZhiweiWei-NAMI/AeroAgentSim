@@ -20,11 +20,12 @@ import struct
 import subprocess
 import threading
 import uuid
+from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from aerokernel import Cut, EntityRef, Stamp
+from aerokernel import Cut, EntityRef, Instant, Stamp
 from aerokernel.codec import decode_record
 from aerokernel.time import cut_data
 
@@ -34,11 +35,11 @@ from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.observations.contracts import CaptureRequest
 from aeroagentsim.observations.renderer import BrowserRenderer, browser_executable_path
 from aeroagentsim.platform.simulation import RunSession
+from aeroagentsim.runs import RecordedMessage, open_run
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.artifacts import scope_capture_storage
 from aeroagentsim.services.node_deps import node_modules_root
-from aeroagentsim.services.projector import header, project
-from aeroagentsim.services.storage import RunStorage
+from aeroagentsim.services.projector import header, lossless, project
 from aeroagentsim.services.template_execution import execution_document
 
 WIDTH, HEIGHT, MAX_BYTES = 640, 360, 150_000
@@ -107,6 +108,7 @@ def run_template(registry: TemplateRegistry, identifier: str, root: Path) -> Pat
     path = root / f"thumbnail-{identifier}-{uuid.uuid4().hex[:10]}"
     scenario = scope_capture_storage(load_scenario(document, base=prepared.base), path)
     with RunSession(scenario, path) as session:
+        # Reader v1 has no run-authoring/status API; this is the writer path.
         session.storage._atomic(
             "manifest.json",
             {
@@ -121,6 +123,9 @@ def run_template(registry: TemplateRegistry, identifier: str, root: Path) -> Pat
         session.run()
     if session.storage.metadata()["status"] != "completed":
         raise RuntimeError(f"Template run failed: {session.storage.metadata()}")
+    # This owner publishes the actual kernel ACK for the newly created run;
+    # --run evidence readers never manufacture an ACK or repair a source run.
+    session.storage.publish_prefix(*session.simulation.kernel.acknowledged_prefix)
     return path
 
 
@@ -128,17 +133,17 @@ def source_cut(path: Path, seconds: float) -> Cut:
     if not math.isfinite(seconds) or seconds < 0:
         raise ValueError("--at-seconds: finite nonnegative time required")
     selected = None
-    start = 1
-    storage = RunStorage(path)
-    while records := storage.records(start, 512):
-        for record in records:
+    with open_run(path) as run:
+        snapshot = run.snapshot()
+        for record in snapshot.iter_records(start=1):
             instant = decode_record(record["instant"])
+            if not isinstance(instant, Instant):
+                raise TypeError("Run has an invalid journal instant")
             if instant.ns > round(seconds * 1e9):
                 if selected is None:
                     raise ValueError("No committed cut exists at the requested time")
                 return selected
             selected = Cut(record["index"], instant)
-        start = records[-1]["index"] + 1
     if selected is None:
         raise ValueError("Run has no committed simulation cuts")
     return selected
@@ -179,10 +184,13 @@ def capture_request(
         type(value) in (int, float) and math.isfinite(value) for value in position
     ):
         raise ValueError("Thumbnail subject has no finite committed pose")
-    metadata = RunStorage(path).metadata()
+    with open_run(path) as run:
+        identity = run.header
+    if identity.kernel_run_id is None or identity.epoch is None:
+        raise ValueError("Thumbnail requires a recorded kernel run ID and epoch")
     actor = EntityRef(
-        metadata["kernel_run_id"],
-        metadata["epoch"],
+        identity.kernel_run_id,
+        identity.epoch,
         subject["id"],
         subject["generation"],
         subject["typeId"],
@@ -225,21 +233,64 @@ def capture_request(
 
 def viewer_feed(path: Path, cut: Cut) -> dict[str, Any]:
     """The console's own WAL projection, ending at the exact requested cut."""
-    run_header = header(path)
-    if run_header.get("cityDetail") != "detailed" or not run_header.get("modelCatalog"):
-        raise ValueError(
-            "Thumbnails require the installed detailed Huangpu 1.1 model pack"
-        )
-    commits = []
-    start = 1
-    storage = RunStorage(path)
-    while start <= cut.index:
-        records = storage.records(start, min(512, cut.index - start + 1))
-        if not records:
+    with open_run(path) as run:
+        snapshot = run.snapshot()
+        if type(cut.index) is not int or not 1 <= cut.index <= snapshot.cut_index:
             raise ValueError(f"Journal ends before thumbnail cut {cut.index}")
-        commits.extend(project(record) for record in records)
-        start = records[-1]["index"] + 1
-    return {"header": run_header, "commits": commits}
+        records = list(snapshot.iter_records(start=1, limit=cut.index))
+        if decode_record(records[-1]["instant"]) != cut.instant:
+            raise ValueError("Thumbnail cut does not match the recorded instant")
+        # Reader v1 has no viewer presentation/scene/model-catalog header API.
+        run_header = header(path)
+        if run_header.get("cityDetail") != "detailed" or not run_header.get("modelCatalog"):
+            raise ValueError(
+                "Thumbnails require the installed detailed Huangpu 1.1 model pack"
+            )
+        if "end" in run_header:
+            last = next(snapshot.iter_records(start=snapshot.cut_index))
+            at = decode_record(last["instant"])
+            run_header["end"] = {"ns": str(at.ns), "microstep": at.microstep}
+        originals: dict[int, list[RecordedMessage]] = {}
+        for message in snapshot.iter_messages():
+            if message.cursor[0] <= cut.index and message.kind in {"command", "event"}:
+                originals.setdefault(message.cursor[0], []).append(message)
+        commits = []
+        for record in records:
+            # Reader v1 has no fact/receipt viewer projection; retain its format.
+            commit = project(record)
+            projected = {message["id"]: message for message in commit["messages"]}
+            commit["messages"] = [
+                {
+                    "id": message.message_id,
+                    "kind": message.kind,
+                    "schemaId": message.schema_id,
+                    "source": message.source,
+                    "at": None if message.at_ns is None else {
+                        "ns": str(message.at_ns), "microstep": message.microstep,
+                    },
+                    "payload": lossless(message.payload),
+                    "subjects": projected.get(message.message_id, {}).get("subjects", []),
+                    **(
+                        {"target" if message.kind == "command" else "topic": message.route}
+                        if message.route is not None else {}
+                    ),
+                    "source_cursor": list(message.cursor),
+                }
+                for message in originals.get(record["index"], [])
+            ]
+            commits.append(commit)
+        return {
+            "header": run_header,
+            "commits": commits,
+            "source_evidence": {
+                "reader_api_version": snapshot.api_version,
+                "cut_index": snapshot.cut_index,
+                "cut_bytes": snapshot.cut_bytes,
+                "header": asdict(snapshot.header),
+                "redaction": "none",
+                "exported_through_index": cut.index,
+            },
+        }
 
 
 def build_viewer(destination: Path) -> Path:
@@ -410,6 +461,14 @@ def main() -> None:
             run, args.at_seconds if args.at_seconds is not None else preset["seconds"]
         )
         feed = viewer_feed(run, cut)
+        destination = (
+            args.output_dir / f"{identifier}.png"
+            if args.output_dir
+            else args.templates_root / identifier / "thumbnail.png"
+        )
+        resolved = destination.resolve()
+        if resolved == run.resolve() or resolved.is_relative_to(run.resolve()):
+            raise ValueError("Thumbnail output must be outside the source run")
         png = bounded_png(
             capture_png(
                 capture_request(run, cut, preset, feed),
@@ -417,11 +476,6 @@ def main() -> None:
                 feed=feed,
                 bundle=bundle,
             )
-        )
-        destination = (
-            args.output_dir / f"{identifier}.png"
-            if args.output_dir
-            else args.templates_root / identifier / "thumbnail.png"
         )
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(png)
@@ -435,6 +489,7 @@ def main() -> None:
                     "path": str(destination),
                     "bytes": len(png),
                     "sha256": hashlib.sha256(png).hexdigest(),
+                    "source_evidence": feed["source_evidence"],
                 }
             ),
             flush=True,
