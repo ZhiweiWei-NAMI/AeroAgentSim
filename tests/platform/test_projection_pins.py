@@ -551,6 +551,191 @@ def test_reader_only_strict_json_admission_does_not_fail_the_feed(
     assert feed_index.stream_page(path, 1, 4096) == expected_cuts
 
 
+@pytest.mark.parametrize("field", ["id", "configuration_digest"])
+@pytest.mark.parametrize("evict", [False, True])
+def test_warm_manifest_identity_edits_refresh_provenance_without_replay(
+    launched: tuple[TestClient, Path], monkeypatch: pytest.MonkeyPatch,
+    field: str, evict: bool,
+) -> None:
+    _, path = launched
+    cuts = feed_index.page(path, 1, 4096)
+    before = feed_index.kpi_result(path)
+    manifest_path = path / "manifest.json"
+    original = manifest_path.read_bytes()
+    metadata = json.loads(original)
+    value = metadata[field]
+    replacement = ("x" if value[0] != "x" else "y") + value[1:]
+    # Same-length writes with restored mtimes must not reuse stale identities.
+    updated = original.replace(json.dumps(value).encode(), json.dumps(replacement).encode())
+    assert updated != original and len(updated) == len(original)
+    info = manifest_path.stat()
+    manifest_path.write_bytes(updated)
+    os.utime(manifest_path, ns=(info.st_atime_ns, info.st_mtime_ns))
+    expected = json.loads(json.dumps(asdict(projection_provenance(path))))
+    identity = "service_run_id" if field == "id" else field
+    assert expected["source_cut"][identity] == replacement
+    assert expected["source_cut"]["cut_index"] == cuts[-1]["commitIndex"]
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        stored_cuts = database.execute("SELECT * FROM cuts ORDER BY idx").fetchall()
+    if evict:
+        with feed_index._LOCK:
+            feed_index._PROJECTIONS.pop(path, None)
+            feed_index._MANIFESTS.pop(path, None)
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("A manifest identity edit replayed or re-identified projections")
+
+    monkeypatch.setattr(feed_index, "project", forbidden)
+    monkeypatch.setattr(feed_index, "projection_definitions", forbidden)
+    monkeypatch.setattr(RunStorage, "records", forbidden)
+    monkeypatch.setattr(RunStorage, "index", forbidden)
+    # Exercise the read-only SSE signature check before the updater refreshes it.
+    assert feed_index.stream_page(path, 1, 4096) == cuts
+    after = feed_index.kpi_result(path)
+    assert _without_provenance(after) == _without_provenance(before)
+    assert after["projection_provenance"] == expected
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        assert database.execute("SELECT * FROM cuts ORDER BY idx").fetchall() == stored_cuts
+        checkpoint = feed_index._decode(database.execute("SELECT data FROM checkpoint").fetchone()[0])
+    assert checkpoint["projection_provenance"] == expected
+    assert checkpoint["next"] == cuts[-1]["commitIndex"] + 1
+    # The refreshed identities must also survive a later working-set eviction.
+    with feed_index._LOCK:
+        feed_index._PROJECTIONS.pop(path, None)
+    assert feed_index.kpi_result(path)["projection_provenance"] == expected
+
+
+@pytest.mark.parametrize(("field", "invalid"), [
+    pytest.param("kernel_run_id", "disagrees-with-journal", id="kernel-identity"),
+    pytest.param("kernel_run_id", None, id="null-kernel-identity"),
+    pytest.param("epoch", "disagrees-with-journal", id="epoch"),
+    pytest.param("epoch", None, id="null-epoch"),
+    pytest.param("foreign_metadata", float("nan"), id="strict-json"),
+])
+@pytest.mark.parametrize("evict", [False, True])
+def test_warm_manifest_admission_changes_refresh_and_repair_refs_without_replay(
+    launched: tuple[TestClient, Path], monkeypatch: pytest.MonkeyPatch,
+    field: str, invalid: Any, evict: bool,
+) -> None:
+    _, path = launched
+    cuts = feed_index.page(path, 1, 4096)
+    before = feed_index.kpi_result(path)
+    manifest_path = path / "manifest.json"
+    metadata = json.loads(manifest_path.read_text())
+    ack = (path / "committed-prefix.json").read_bytes()
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("An admission-only edit replayed or re-identified projections")
+
+    monkeypatch.setattr(feed_index, "project", forbidden)
+    monkeypatch.setattr(feed_index, "projection_definitions", forbidden)
+    monkeypatch.setattr(RunStorage, "records", forbidden)
+    monkeypatch.setattr(RunStorage, "index", forbidden)
+    for changed, supported in (({**metadata, field: invalid}, False), (metadata, True)):
+        manifest_path.write_text(json.dumps(changed))
+        assert (path / "committed-prefix.json").read_bytes() == ack
+        if supported:
+            full = projection_provenance(path)
+            assert json.loads(json.dumps(asdict(full))) == before["projection_provenance"]
+        else:
+            with pytest.raises((RunReadError, KernelError)):
+                with open_run(path):
+                    pass
+        if evict:
+            with feed_index._LOCK:
+                feed_index._PROJECTIONS.pop(path, None)
+                feed_index._MANIFESTS.pop(path, None)
+        expected_cuts = cuts if supported else [_without_provenance(cut) for cut in cuts]
+        assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+        result = feed_index.kpi_result(path)
+        assert _without_provenance(result) == _without_provenance(before)
+        if supported:
+            assert result["projection_provenance"] == before["projection_provenance"]
+        else:
+            assert "projection_provenance" not in result
+        with sqlite3.connect(path / feed_index.FILENAME) as database:
+            checkpoint_bytes = database.execute("SELECT data FROM checkpoint").fetchone()[0]
+            checkpoint = feed_index._decode(checkpoint_bytes)
+            rows = database.execute("SELECT payload, cut_bytes FROM cuts ORDER BY idx").fetchall()
+        assert [feed_index._decode(payload) for payload, _ in rows] == expected_cuts
+        assert all((cut_bytes is not None) == supported for _, cut_bytes in rows)
+        assert checkpoint["projection_provenance"] == (
+            before["projection_provenance"] if supported else None
+        )
+        assert checkpoint["next"] == cuts[-1]["commitIndex"] + 1
+        original_decode = feed_index._decode
+
+        def decode_cut(value: bytes) -> Any:
+            assert value != checkpoint_bytes, "A warm page decoded the checkpoint"
+            return original_decode(value)
+
+        with monkeypatch.context() as warm:
+            warm.setattr(feed_index, "_new_provenance", forbidden)
+            warm.setattr(feed_index, "_decode", decode_cut)
+            assert feed_index.page(path, 1, 4096) == expected_cuts
+            assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+
+
+def test_legacy_index_migration_rechecks_schema_after_another_connection_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with sqlite3.connect(tmp_path / feed_index.FILENAME) as database:
+        database.execute(
+            "CREATE TABLE cuts (idx INTEGER PRIMARY KEY, at_ns TEXT NOT NULL, "
+            "payload BLOB NOT NULL, kpis TEXT NOT NULL)"
+        )
+        database.execute("INSERT INTO cuts VALUES (1, '0', ?, '{}')", (b"retained",))
+    original_connect = sqlite3.connect
+    statements: list[str] = []
+    competitors: list[sqlite3.Connection] = []
+    connections = 0
+
+    class InterleavedConnection(sqlite3.Connection):
+        def execute(self, sql: str, *args: Any, **kwargs: Any) -> Any:
+            statements.append(sql)
+            cursor = super().execute(sql, *args, **kwargs)
+            if sql == "PRAGMA table_info(cuts)" and not competitors:
+                # Both connections observe the four-column schema. Finish the
+                # competing migration before returning our now-stale first read.
+                stale = cursor.fetchall()
+                assert "cut_bytes" not in {row[1] for row in stale}
+                competitors.append(feed_index._connect(tmp_path))
+                return iter(stale)
+            return cursor
+
+    def connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        nonlocal connections
+        connections += 1
+        if connections == 1:
+            kwargs["factory"] = InterleavedConnection
+        return original_connect(*args, **kwargs)
+
+    monkeypatch.setattr(feed_index.sqlite3, "connect", connect)
+    migrated = None
+    try:
+        migrated = feed_index._connect(tmp_path)
+        assert connections == 2
+        assert statements.count("PRAGMA table_info(cuts)") == 2
+        first = statements.index("PRAGMA table_info(cuts)")
+        second = statements.index("PRAGMA table_info(cuts)", first + 1)
+        assert first < statements.index("BEGIN IMMEDIATE") < second
+        assert "ALTER TABLE cuts ADD COLUMN cut_bytes INTEGER" not in statements
+        for connection in (migrated, *competitors):
+            assert not connection.in_transaction
+            assert "cut_bytes" in {row[1] for row in connection.execute("PRAGMA table_info(cuts)")}
+            assert connection.execute("SELECT * FROM cuts").fetchall() == [
+                (1, "0", b"retained", "{}", None),
+            ]
+            # Migration commits before the updater starts its own write transaction.
+            connection.execute("BEGIN IMMEDIATE")
+            connection.rollback()
+    finally:
+        if migrated is not None:
+            migrated.close()
+        for connection in competitors:
+            connection.close()
+
+
 def test_warm_live_pages_reuse_offsets_header_and_definition_content(
     tmp_path: Path, definitions: _Reducer, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -617,6 +802,13 @@ def test_warm_live_pages_reuse_offsets_header_and_definition_content(
             expected = cuts[start - 1:start + 2]
             assert feed_index.page(path, start, 3) == expected
             assert feed_index.stream_page(path, start, 3) == expected
+        # Ordinary status/foreign metadata rewrites do not re-admit the header,
+        # reconstruct storage, or rehash definitions despite changing file bytes.
+        storage._atomic("manifest.json", {
+            **storage.metadata(), "status": "running", "foreign_metadata": {"note": "finite"},
+        })
+        assert feed_index.page(path, 1, 3) == cuts[:3]
+        assert feed_index.stream_page(path, 1, 3) == cuts[:3]
         assert len(constructions) == len(scans) == len(admissions) == len(definition_reads) == 1
         assert feed_index.kpi_result(path)["projection_provenance"] == json.loads(json.dumps(asdict(full)))
         for cut in cuts:

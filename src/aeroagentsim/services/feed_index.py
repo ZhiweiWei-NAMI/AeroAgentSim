@@ -21,6 +21,7 @@ from typing import Any
 
 from aerokernel.errors import KernelError
 from aerokernel.registry import MemoryRegistry
+from aerokernel.values import parse_json
 
 from ..presentation_api import PresentationPlugin, presentation_plugin_digest
 from ..presentations import presentation_selection
@@ -64,6 +65,45 @@ _PROJECTIONS: OrderedDict[Path, _Projection] = OrderedDict()
 # Definition content is expensive (host sources and registry); validate the cheap
 # signature on every request, then compute these identities once per signature.
 _DEFINITIONS: OrderedDict[Path, tuple[list[Any], dict[str, Any]]] = OrderedDict()
+# Strict parsing is needed only when the small manifest's exact bytes change.
+_MANIFESTS: OrderedDict[Path, tuple[str, str]] = OrderedDict()
+
+
+def _manifest_signature(path: Path) -> str | None:
+    try:
+        with (path / "manifest.json").open("rb") as stream:
+            raw = stream.read(8 * 1024 * 1024 + 1)
+    except FileNotFoundError:
+        return None
+    digest = hashlib.sha256(raw).hexdigest()
+    with _LOCK:
+        cached = _MANIFESTS.get(path)
+        if cached is None or cached[0] != digest:
+            try:
+                metadata = parse_json(raw)
+                if not isinstance(metadata, dict):
+                    raise ValueError("Manifest must be an object")
+                # Include field presence: an absent kernel identity is allowed,
+                # whereas an explicit null must agree with the journal header.
+                identity = [[key, metadata[key]] for key in (
+                    "id", "kernel_run_id", "epoch", "configuration_digest",
+                    "journal_codec", "created_at",
+                ) if key in metadata]
+                fingerprint = hashlib.sha256(json.dumps(
+                    identity, ensure_ascii=False, separators=(",", ":"), allow_nan=False,
+                ).encode("utf-8")).hexdigest()
+            except (KernelError, ValueError, TypeError, RecursionError):
+                fingerprint = "reader-rejected"
+            _MANIFESTS[path] = (digest, fingerprint)
+        _MANIFESTS.move_to_end(path)
+        while len(_MANIFESTS) > 4:
+            _MANIFESTS.popitem(last=False)
+        return _MANIFESTS[path][1]
+
+
+def _projection_signature(signature: list[Any]) -> list[Any]:
+    """Manifest admission/identity changes never invalidate reducer progress."""
+    return [item for item in signature if item[0] != "provenance-manifest"]
 
 
 def _retain(path: Path, projection: _Projection) -> None:
@@ -137,7 +177,10 @@ def _signature(
         _DEFINITIONS.move_to_end(path)
         while len(_DEFINITIONS) > 4:
             _DEFINITIONS.popitem(last=False)
-    return [*result, ["definitions", definitions]]
+    # Keep reader admission separate from definition/reducer invalidation. A
+    # status-only rewrite hashes/validates the manifest but retains this identity.
+    return [*result, ["definitions", definitions],
+            ["provenance-manifest", _manifest_signature(path)]]
 
 
 def _connect(path: Path) -> sqlite3.Connection:
@@ -150,7 +193,13 @@ def _connect(path: Path) -> sqlite3.Connection:
     )
     # Older rebuildable indexes predate the internal ACK byte-bound column.
     if "cut_bytes" not in {row[1] for row in connection.execute("PRAGMA table_info(cuts)")}:
-        connection.execute("ALTER TABLE cuts ADD COLUMN cut_bytes INTEGER")
+        # The first check keeps migrated readers cheap. Another process may have
+        # migrated since it ran, so acquire the writer lock BEFORE checking again.
+        with connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if "cut_bytes" not in {row[1] for row in connection.execute("PRAGMA table_info(cuts)")}:
+                connection.execute("ALTER TABLE cuts ADD COLUMN cut_bytes INTEGER")
+        # Commit the migration before the updater opens its own write transaction.
     connection.execute(
         "CREATE TABLE IF NOT EXISTS checkpoint "
         "(id INTEGER PRIMARY KEY CHECK(id=1), data BLOB NOT NULL)"
@@ -259,7 +308,8 @@ def _update_batch(path: Path, requested_target: int) -> bool:
         # on every SSE poll makes long runs progressively slower.
         storage = (
             cached.storage
-            if cached is not None and cached.signature == signature
+            if cached is not None
+            and _projection_signature(cached.signature) == _projection_signature(signature)
             and committed_prefix(path) is not None
             else RunStorage(path)
         )
@@ -287,9 +337,12 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             else {}
         )
         valid = (
-            bool(state) and state["signature"] == signature and state["next"] <= target
+            bool(state)
+            and _projection_signature(state["signature"]) == _projection_signature(signature)
+            and state["next"] <= target
         )
-        if valid and state["next"] >= min(target, requested_target):
+        admission_changed = valid and state["signature"] != signature
+        if valid and not admission_changed and state["next"] >= min(target, requested_target):
             progress = (state["next"], signature_text)
             if row[1:] != progress:
                 database.execute("INSERT OR REPLACE INTO projection_progress VALUES (1, ?, ?)", progress)
@@ -336,21 +389,38 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             cursor = 1
             database.execute("DELETE FROM cuts")
             database.execute("DELETE FROM checkpoint")
-        provenance = (
+        previous_provenance = (
             cached.provenance if valid and cached is not None
             else state.get("projection_provenance") if valid
+            else None
+        )
+        provenance = (
+            previous_provenance if valid and not admission_changed
             else _new_provenance(path, signature, storage)
         )
         # Hash full definitions only on admission, not for each cut or warm page.
         definition_digests = (
             cached.definition_digests if valid and cached is not None
             else state.get("projection_definition_digests") if valid
-            else {
-                "pinned_digest": _definitions_digest(provenance["pinned_definitions"]),
-                "current_digest": _definitions_digest(provenance["current_definitions"]),
-            } if provenance is not None
             else None
         )
+        if provenance is not None and definition_digests is None:
+            definition_digests = {
+                "pinned_digest": _definitions_digest(provenance["pinned_definitions"]),
+                "current_digest": _definitions_digest(provenance["current_definitions"]),
+            }
+        if admission_changed:
+            if provenance is not None:
+                # Admission starts at the header; keep the DTO at the existing
+                # projected cut even when there is no new tail to consume.
+                entry = storage.entries[cursor - 1]
+                provenance["source_cut"].update(
+                    cut_index=entry["index"], cut_bytes=entry["offset"] + entry["length"],
+                )
+            if (previous_provenance is None) != (provenance is None):
+                # Compact refs contain no manifest identities. Only an admission
+                # transition needs a one-off rewrite, never reducer/WAL replay.
+                _refresh_cut_provenance(database, storage, provenance, definition_digests)
         target = min(target, requested_target, cursor + 64)
         while cursor < target:
             records = storage.records(cursor, min(256, target - cursor))
@@ -455,6 +525,32 @@ def _new_provenance(
     payload = asdict(provenance)
     payload["mode"] = provenance.mode.value
     return payload
+
+
+def _refresh_cut_provenance(
+    database: sqlite3.Connection, storage: RunStorage,
+    provenance: dict[str, Any] | None, definition_digests: dict[str, str | None] | None,
+) -> None:
+    """Repair optional refs once on admission changes, in the checkpoint transaction."""
+    for idx, payload in database.execute("SELECT idx, payload FROM cuts ORDER BY idx"):
+        cut = _decode(payload)
+        cut_bytes = None
+        if provenance is None:
+            cut.pop("projection_provenance", None)
+        else:
+            entry = storage.entries[idx]
+            if entry["index"] != idx:
+                raise ValueError("Projection provenance: offset index differs from projected cut")
+            cut_bytes = entry["offset"] + entry["length"]
+            cut["projection_provenance"] = {
+                "format": provenance["format"],
+                "mode": provenance["mode"],
+                "cut_index": idx,
+                "definitions": definition_digests,
+            }
+        database.execute(
+            "UPDATE cuts SET payload=?, cut_bytes=? WHERE idx=?", (_encode(cut), cut_bytes, idx),
+        )
 
 
 def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, Any]]:
