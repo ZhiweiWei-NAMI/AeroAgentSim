@@ -91,6 +91,15 @@ function apiWith(request: unknown): WorkbenchApi {
   return { templates: vi.fn().mockResolvedValue([template]), request } as unknown as WorkbenchApi;
 }
 
+// The axis controls render after the template's knobs load; wait for them
+// rather than racing the first render.
+async function varyFleetSize(values: string) {
+  const vary = await screen.findByRole('checkbox', { name: 'Vary Number of drones' });
+  await waitFor(() => expect(vary).toBeEnabled());
+  fireEvent.click(vary);
+  fireEvent.change(await screen.findByTestId('experiment-values-fleet_size'), { target: { value: values } });
+}
+
 describe('ExperimentPanel', () => {
   it('previews typed axes and seeds, confirms once and posts the plan once', async () => {
     const request = vi.fn(async (path: string, init?: { method?: string }) => {
@@ -103,8 +112,7 @@ describe('ExperimentPanel', () => {
     await waitFor(() => expect(screen.getByTestId('experiment-template')).toHaveValue('parcel-delivery'));
     expect(screen.getByRole('checkbox', { name: 'Vary Seed' })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Vary Number of drones' }));
-    fireEvent.change(screen.getByTestId('experiment-values-fleet_size'), { target: { value: '4, 8' } });
+    await varyFleetSize('4, 8');
     fireEvent.click(screen.getByRole('checkbox', { name: 'Vary Task allocation algorithm' }));
     expect(screen.getByTestId('experiment-preview')).toHaveTextContent('12');
     expect(screen.getByTestId('experiment-preview')).toHaveTextContent('4 configurations × 3 seeds');
@@ -130,8 +138,7 @@ describe('ExperimentPanel', () => {
     const request = vi.fn();
     render(<ExperimentPanel api={apiWith(request)} onExperimentId={vi.fn()} onOpen={vi.fn()} onCompare={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId('experiment-template')).toHaveValue('parcel-delivery'));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Vary Number of drones' }));
-    fireEvent.change(screen.getByTestId('experiment-values-fleet_size'), { target: { value: '1,2,3,4,5,6,7,8,9,10' } });
+    await varyFleetSize('1,2,3,4,5,6,7,8,9,10');
     expect(screen.getByTestId('experiment-preview')).toHaveTextContent('30');
     expect(screen.getByTestId('experiment-preview')).toHaveTextContent(/browser limit/i);
     expect(screen.getByText(/browser limit is 24/)).toBeInTheDocument();
