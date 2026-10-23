@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator, KeysView, Mapping
+from contextlib import closing
 from copy import deepcopy
 from pathlib import Path
 from types import MappingProxyType
@@ -19,6 +20,8 @@ from aeroagentsim.metrics_api import (
     MetricAccumulator,
     MetricDescriptor,
     MetricPlugin,
+    MetricValue,
+    Reducer,
     discover_metric_plugins,
 )
 # Historical re-export only; definitions and arithmetic remain pack-owned.
@@ -84,6 +87,55 @@ class _MetricCatalogue(Mapping[str, tuple[str, str]]):
 METRICS = _MetricCatalogue()
 
 
+class _SnapshotReducer:
+    """Memoize a pure reducer read until its next matching, non-deduplicated input.
+
+    In particular, idle commits and other reducers' evidence must not repeatedly
+    sort an unchanged latency population. Arithmetic and sample order stay owned
+    by the selected reducer, including installed replacements.
+    """
+
+    def __init__(self, reducer: Reducer) -> None:
+        self._reducer = reducer
+        self._state: Any = None
+        self._values: Mapping[str, MetricValue] | None = None
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._reducer, name)
+
+    def invalidate(self) -> None:
+        self._state, self._values = None, None
+
+    def consume(self, state: Any, message: RecordedMessage) -> None:
+        # Invalidate before consumption: diagnostic reads after a failed reducer
+        # must not return the previous successful state as if nothing changed.
+        self.invalidate()
+        return self._reducer.consume(state, message)
+
+    def snapshot(self, state: Any) -> Mapping[str, MetricValue]:
+        if self._values is None or self._state is not state:
+            self._values = self._reducer.snapshot(state)
+            self._state = state
+        return self._values
+
+
+class _ProjectionMetrics(MetricAccumulator):
+    def __init__(self, plugins: tuple[MetricPlugin, ...] | None) -> None:
+        super().__init__(plugins)
+        # Wrap only this accumulator's dispatch targets AFTER it records the
+        # original contribution/reducer identities. Public plugins, checkpoints,
+        # validation, deduplication and provenance keep their existing meanings.
+        self._reducers = [_SnapshotReducer(reducer) for reducer in self._reducers]
+
+    def restore_cursor(self, cursor: dict[str, Any]) -> None:
+        # A plugin may restore into a reused state object. Identity alone cannot
+        # prove its cached values still describe the restored checkpoint.
+        for reducer in self._reducers:
+            if isinstance(reducer, _SnapshotReducer):
+                reducer.invalidate()
+        super().restore_cursor(cursor)
+
+
 class KPIProjector:
     def __init__(
         self, registry: MemoryRegistry, presentation: list[dict[str, Any]] | None = None,
@@ -96,7 +148,7 @@ class KPIProjector:
         self._presentation = [{"typeId": kind, "positionField": field}
                               for kind, field in self.position_bindings.items()]
         self._types: dict[str, list[str]] = {}
-        self._metrics = MetricAccumulator(plugins)
+        self._metrics = _ProjectionMetrics(plugins)
         self.descriptors = MappingProxyType(_ordered_descriptors(self._metrics.plugins))
         self._message_context = deepcopy(message_context)
 
@@ -235,11 +287,57 @@ class KPIProjector:
         }
 
 
-def project_run(path: Path, *, include_series: bool = True) -> dict[str, Any]:
-    """Read committed KPIs through the same persistent index used by the feed."""
-    from .feed_index import kpi_result
+def project_run(
+    path: Path, *, include_series: bool = True,
+    series_from: int | None = None, series_limit: int | None = None,
+) -> dict[str, Any]:
+    """Read committed KPIs, optionally bounding series by inclusive journal index.
 
-    return kpi_result(path, include_series=include_series)
+    Omitted paging arguments retain the complete historical response. Paging
+    bounds only series rows, not the final snapshot or its finality/provenance.
+    """
+    from .feed_index import _connect, _decode, _results_state, kpi_result, update
+    from .storage import RunStorage
+
+    if series_from is not None and (type(series_from) is not int or series_from < 0):
+        raise ValueError("KPI series_from must be a nonnegative integer")
+    if series_limit is not None and (
+        type(series_limit) is not int or not 1 <= series_limit <= 4096
+    ):
+        raise ValueError("KPI series_limit must be an integer between 1 and 4096")
+    if not include_series or (series_from is None and series_limit is None):
+        return kpi_result(path, include_series=include_series)
+
+    update(path)
+    # Keep the checkpoint and the SQL-bounded series in ONE SQLite snapshot,
+    # just like kpi_result. Slicing its unpaged response would still decode the
+    # entire series; reading its summary separately could mix concurrent cuts.
+    with closing(_connect(path)) as database, database:
+        database.execute("BEGIN")
+        row = database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
+        if row is None:
+            raise ValueError("Viewer index: checkpoint missing after update")
+        checkpoint = _decode(row[0])
+        start = max(1, series_from if series_from is not None else 1)
+        # Skip future ranges before binding: Python indices can exceed SQLite's
+        # signed integer range, but still mean an empty suffix, not an error.
+        series = (
+            [
+                {"commitIndex": index, "at_ns": at_ns, "kpis": json.loads(kpis)}
+                for index, at_ns, kpis in database.execute(
+                    "SELECT idx, at_ns, kpis FROM cuts WHERE idx>=? ORDER BY idx LIMIT ?",
+                    (start, series_limit if series_limit is not None else -1),
+                )
+            ]
+            if start < checkpoint["next"] else []
+        )
+        provenance = checkpoint.get("projection_provenance")
+        return {
+            "contract": "aeroagentsim.kpi/v1", "final": checkpoint["final"],
+            "series": series,
+            **_results_state(path, RunStorage(path).metadata(), checkpoint),
+            **({"projection_provenance": provenance} if provenance is not None else {}),
+        }
 
 
 def metrics(run: Path | str) -> dict[str, Any]:

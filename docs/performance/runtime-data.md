@@ -1,11 +1,11 @@
-# Kernel runtime-data growth: measurement first
+# Runtime-data and projection growth: measurement first
 
 **No performance budget has been set. No budget will be set until measurements
 are recorded and reviewed.** This change supplies measurement tooling and structural
 tests, not benchmark results, latency claims, allocation limits, or speedup targets.
 The benchmark and tests were not executed as part of this generate-only change.
 
-## Run the benchmark
+## Run the kernel benchmark
 
 Requires Python 3.10+ and only the standard library. From the repository root,
 select the checked-out kernel explicitly; an editable installation is unnecessary:
@@ -132,6 +132,118 @@ serial and restored after each phase; this is not a concurrent profiling API.
 The routing outcome also records retained record, fact-version and coordinator
 trace lengths, without changing coordinator behavior.
 
+## Projection cost benchmark
+
+With Python 3.10+ and the platform/server dependencies already available, run
+from the repository root:
+
+```sh
+PYTHONPATH=src:aerokernel PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=0 \
+  python tools/bench/projection_costs.py \
+  --sizes 1000 10000 50000 --run-counts 1 10 50
+```
+
+These are synthetic workload parameters, **not measured results or budgets**.
+The integrator runs this script; it was not executed for this generate-only
+change. Use `--help` for options. `--work-dir` selects an existing parent for
+fresh temporary run directories, which are removed afterward. Record the storage
+medium, free memory, host load and container quotas separately. Redirect stdout
+to a new result file outside the source tree; retain individual samples rather
+than reporting only an average. For before/after comparisons, keep the benchmark
+file and parameters identical and record both source identities.
+
+The script executes a public `Kernel` with a fixed-step `SimpleEngine`, declared
+message schemas and deterministic created/completed task emissions. It uses the
+service fixtures' pinned scenario/registry, offset index and acknowledged-prefix
+patterns, not manually fabricated journal records. `--sizes` targets committed
+records excluding the header; close can add a stop record. Output reports actual
+record and completion counts separately. Synthetic reported latency values test
+projection arithmetic, not a physically simulated task-duration model. Runs are
+marked stopped after yielding a committed prefix, not falsely completed at their
+requested simulation limit.
+
+| Operation | Measurement boundary |
+| --- | --- |
+| `warm_feed_index.page` | A warmed, tail-positioned page with `--page-limit` cuts, including normal source/definition checks and SQLite reads; no new projection work is deliberately introduced. |
+| `kpi_snapshot_after_restore` | First exact snapshot from the final persisted KPI cursor, after checkpoint loading/restoration outside timing. |
+| `kpi_snapshot_warm` | Repeated snapshots of that same completion population, with no new observations. |
+| `checkpoint_write` | One newly exposed, already acknowledged journal record through `feed_index.update(max_batches=1)`, including projection, cursor serialization/compression and transactional SQLite publication. Prefix-sidecar publication is outside timing. |
+| `run_listing` | The actual `/v1/runs` route function, separately with `include_kpis=false` and `true`, after warming; excludes HTTP transport/response encoding. `--run-counts` varies directory count independently, each with `--listing-records` as its setup target. |
+
+Each operation reports `operation_counts` separately from `wall_s`. Wall time
+includes counter overhead, not wrapper installation, run construction, initial
+projection/cache warming, post-operation checks or JSON report encoding. The
+checkpoint probe reveals successive retained ACK coordinates near the end of a
+finished synthetic WAL; it does not forge uncommitted records or measure a
+concurrent kernel writer. `--repeat` controls its successive writes and repeated
+read samples. `--durability` applies to kernel WAL setup; checkpoint writes use
+the service's existing SQLite policy. This probe does not collect memory/RSS.
+
+Counters wrap actual storage construction/record/index calls, cached-index
+lookups/misses, KPI snapshot and metric-cursor calls, and projection encoding
+calls/output bytes (cuts plus checkpoint, not uncompressed input size).
+A row-detachment call counter is also
+reported when that hook exists in the measured checkout; it does not count the
+older constructor's inline copies. Module-local sort hooks count calls and input
+items separately for task latencies, message-ID dedup state and legacy
+checkpoint sets. SQLite counters count `execute` calls and checkpoint INSERTs,
+not rows scanned, sort comparisons, all allocations or filesystem syscalls.
+An unchanged call count can still hide growing work inside a call. There are no
+wall-time assertions. Ordinary workload failures retain partial samples with
+`completed: false`, a failure description and a nonzero process exit status;
+an incomplete operation has no invented outcome. Abrupt termination may leave
+no JSON report.
+
+`hardware_provenance` includes interpreter/build/executable, platform/machine,
+processor when known, logical CPU/affinity counts when available, hash seed,
+kernel provenance/durability, actual package paths/distribution versions,
+benchmark and package-source hashes, and discovered metric contribution
+identities. An optional `--revision` is explicitly an unverified caller label.
+Missing metadata is `null`. Source hashes identify content, not authenticity or
+an assurance that different environments reproduce timings. Each projection
+workload also reports its journal hash and recorded projection provenance when
+available. No projection measurements are published here.
+
+### Verified projection paths and scoped changes
+
+R2 §F11's line references predate the metric-plugin extraction. Current source
+paths, rather than those stale ranges, establish the work being measured:
+
+- [`TaskReducer.snapshot`](../../src/aeroagentsim/packs/task_metrics.py) owns the
+  exact pooled/medical means and linearly interpolated p95 calculations, including
+  latency sorting. The service's
+  [`KPIProjector`](../../src/aeroagentsim/services/kpis.py) now caches each pure
+  reducer snapshot until that reducer receives matching, non-deduplicated evidence.
+  Idle reads/commits and other reducers' evidence reuse the result. Installed
+  reducers retain their original identities and arithmetic; restore evaluates the
+  restored state again, even if its object identity is reused. This does not
+  promise constant-time snapshots when observations change, and does not reorder
+  mean summation or approximate quantiles.
+- [`RunStorage`](../../src/aeroagentsim/services/storage.py) shares an immutable
+  cached offset version instead of copying every row at construction. Accessed
+  mutable rows detach lazily per storage; append-only writer tails remain private.
+  Cold JSON decoding and full index publication still scale with index size.
+- [`MetricAccumulator.cursor`](../../src/aeroagentsim/metrics_api.py) still serializes
+  growing reducer/dedup state. The checkpoint probe measures that path without
+  changing its format or rollback/finality semantics.
+- [`kpi_result`](../../src/aeroagentsim/services/feed_index.py) retains its default
+  complete series. The service KPI facade adds SQL-bounded opt-in
+  [series paging](../reference/viewer-feed.md#kpis-and-business-narratives), retaining
+  a single SQLite snapshot for its series, final values and provenance. It does
+  not bound cold projection backfill or checkpoint decoding.
+- [`/v1/runs`](../../src/aeroagentsim/services/app.py) still sorts and returns the
+  complete run listing. Listing pagination and checkpoint/dedup redesign are not
+  included. Partition scans per dirty publication remain a kernel measurement
+  concern covered by the routing probe above, not optimized by this change.
+
+[`tests/platform/test_projection_costs.py`](../../tests/platform/test_projection_costs.py)
+checks exact numeric/canonical JSON equivalence with the original reducers,
+unchanged checkpoint identities, restore/dedup behavior, failed-reducer cache
+invalidation, paged/unpaged series and summary-only bytes, SQL bounds,
+sort/offset-detachment counts and failed-batch rollback of the complete checkpoint
+and cuts. The byte-stability checks in
+`tests/platform/test_pacing.py` remain unchanged. Neither suite was run here.
+
 ## Structural tests and optimization candidates
 
 `aerokernel/tests/kernel/test_action_growth.py` checks operations rather than wall
@@ -171,8 +283,8 @@ Static source inspection confirms the R2 §F11 / R2-J concerns in these paths:
   trace entries accumulate per wave for microstep diagnostics. Trace policy is
   outside this write set; the long-run outcome exposes its size only.
 
-No kernel optimization is included. Before setting budgets or changing storage,
-record a size sweep with these counters and memory/time fields, identify the
-limiting path, and review both provenance modes and the existing action, storage,
+No kernel optimization is included. Before setting kernel budgets or redesigning
+kernel storage, record a size sweep with these counters and memory/time fields,
+identify the limiting path, and review both provenance modes and the existing action, storage,
 rollback and replay suites. Source-derived growth risks are not measured latency
 regressions. No measurement results are recorded in this document yet.
