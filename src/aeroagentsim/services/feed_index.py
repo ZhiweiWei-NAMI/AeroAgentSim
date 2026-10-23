@@ -237,8 +237,13 @@ def _update_batch(path: Path, requested_target: int) -> bool:
     with _path_lock(path), closing(_connect(path)) as database, database:
         plugins, _ = presentation_selection(path)
         signature = _signature(path, plugins=plugins)
+        signature_text = json.dumps(signature, separators=(",", ":"))
         database.execute("BEGIN IMMEDIATE")
-        row = database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
+        row = database.execute(
+            "SELECT checkpoint.data, projection_progress.next, projection_progress.signature "
+            "FROM checkpoint LEFT JOIN projection_progress ON projection_progress.id=checkpoint.id "
+            "WHERE checkpoint.id=1"
+        ).fetchone()
         # Remove the working cursor before mutation. A projection/SQLite failure
         # cannot leave an advanced in-memory cursor attached to the old prefix.
         with _LOCK:
@@ -259,6 +264,16 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             tail = storage.entries[-1]
             if (path / "journal.jsonl").stat().st_size < tail["offset"] + tail["length"]:
                 raise ValueError("Viewer index: WAL is shorter than its retained prefix")
+        # Progress and checkpoint/cuts are published in one transaction. Check
+        # this uncompressed identity before inflating a checkpoint, including on
+        # reconnects or working-set eviction. Old indexes without progress fall
+        # through to checkpoint validation and repair below. Keep the byte check
+        # above: a retained mutable cursor must still match the durable checkpoint.
+        if (row is not None and row[2] == signature_text
+                and min(target, requested_target) <= row[1] <= target):
+            if cached is not None:
+                _retain(path, cached)
+            return True
         state: dict[str, Any] = (
             {"signature": cached.signature, "next": cached.next}
             if cached is not None
@@ -270,8 +285,8 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             bool(state) and state["signature"] == signature and state["next"] <= target
         )
         if valid and state["next"] >= min(target, requested_target):
-            progress = (state["next"], json.dumps(signature, separators=(",", ":")))
-            if database.execute("SELECT next, signature FROM projection_progress WHERE id=1").fetchone() != progress:
+            progress = (state["next"], signature_text)
+            if row[1:] != progress:
                 database.execute("INSERT OR REPLACE INTO projection_progress VALUES (1, ?, ?)", progress)
             if cached is not None:
                 _retain(path, cached)
@@ -379,7 +394,7 @@ def _update_batch(path: Path, requested_target: int) -> bool:
         # Status polls read this small coordinate instead of inflating the full
         # subject/KPI/narrative checkpoint. Publish it in the same transaction.
         database.execute("INSERT OR REPLACE INTO projection_progress VALUES (1, ?, ?)",
-                         (cursor, json.dumps(signature, separators=(",", ":"))))
+                         (cursor, signature_text))
         database.commit()
         _retain(
             path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives, storage, provenance)
@@ -426,18 +441,24 @@ def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, A
         # bounded batches: every live subscriber queues behind future work.
         # Validate the source signature and clip to the actual kernel ACK.
         with closing(sqlite3.connect(database_path.as_uri() + "?mode=ro", uri=True)) as database:
+            # Signature validation and the cut SELECT must share a snapshot: a
+            # concurrent rebuild may replace both between these two reads.
             database.execute("BEGIN")
             tables = {
                 item[0] for item in database.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('cuts','checkpoint')"
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name IN ('cuts','checkpoint','projection_progress')"
                 )
             }
             row = (
-                database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
-                if tables == {"cuts", "checkpoint"} else None
+                database.execute(
+                    "SELECT projection_progress.signature FROM projection_progress "
+                    "JOIN checkpoint ON checkpoint.id=projection_progress.id "
+                    "WHERE projection_progress.id=1"
+                ).fetchone()
+                if tables == {"cuts", "checkpoint", "projection_progress"} else None
             )
-            checkpoint = _decode(row[0]) if row is not None else None
-            if checkpoint is not None and checkpoint["signature"] == _signature(path.resolve()):
+            if row is not None and row[0] == json.dumps(_signature(path), separators=(",", ":")):
                 records = [
                     _decode(item[0])
                     for item in database.execute(
@@ -459,15 +480,14 @@ def page(path: Path, start: int = 1, limit: int = 256) -> list[dict[str, Any]]:
     path = path.resolve()
     update(path, through_index=max(1, start) + limit)
     with closing(_connect(path)) as database, database:
-        database.execute("BEGIN")
-        records = [
+        # A single SELECT already has a consistent SQLite snapshot.
+        return [
             _decode(row[0])
             for row in database.execute(
                 "SELECT payload FROM cuts WHERE idx>=? ORDER BY idx LIMIT ?",
                 (max(1, start), limit),
             )
         ]
-        return records
 
 
 def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
