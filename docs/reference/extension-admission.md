@@ -10,6 +10,8 @@ Admission does not grant kernel write authority or prove runtime readiness. See
 The implementation is [`extensions/discovery.py`](../../src/aeroagentsim/extensions/discovery.py).
 Scenario, metric and presentation discovery use it directly; the engine catalog
 uses its metadata enumeration and lazy resolution without constructing engines.
+Consumption models use a compatibility shim over the same helper, preserving
+selected-name-only duplicate rejection and the implicit builtin-linear default.
 
 1. **Enumerate once, before loading or admitting names.** Collect every installed
    declaration and duplicate conflict before validating the family's name syntax.
@@ -19,7 +21,9 @@ uses its metadata enumeration and lazy resolution without constructing engines.
    the provider and all declaring distributions, with available versions and
    entry-point values. Unknown metadata remains `None`. No builtin factory or
    installed entry is loaded before ambiguity is rejected. Metadata-only
-   enumeration retains malformed names and all conflicts for diagnosis.
+   enumeration retains malformed names and all conflicts for diagnosis. The
+   model compatibility shim is the exception to group-wide rejection: it rejects
+   ambiguity only for the selected name, retaining unrelated conflicts as diagnostics.
 2. **Sort the union.** Resolve the sorted union of builtin and installed names.
    One installed entry replaces the **whole** same-name builtin provider; do not
    call the shadowed builtin or merge back its hooks, templates or reducers. An
@@ -61,6 +65,7 @@ distribution evidence:
 | `platform.plugins.EngineCatalog()` | `Duplicate aeroagentsim.engines entry point names` |
 | `algorithms.load_algorithm()` | `duplicate aeroagentsim.algorithms entry point names` |
 | `services.algorithm_catalog` | `Duplicate aeroagentsim.algorithms entry point names` |
+| `models.ModelCatalog.build()` (selected name only) | `duplicate aeroagentsim.models entry point 'external'` |
 | `assistant_api.discover_assistant_plugins()` | `Duplicate aeroagentsim.assistant_operations entry point name: 'external'` |
 
 The rich `DuplicateEntryPointError` is retained as `__cause__`, including its
@@ -82,7 +87,7 @@ installed-only engine declarations are linked below the table.
 | Metrics | `aeroagentsim.metrics` | `MetricPlugin`, version **1** | `inspection`, `logistics`, `lowalt`, `tasks`, `traffic_accident` | Shared discovery; whole-provider replacement; reducer metric IDs must be disjoint. |
 | Engines | `aeroagentsim.engines` | Unversioned callable `build(EngineBuild)` | `agent-assignment`, `behaviour`, `decision`, `environment`, `ingress-consumer`, `inspection`, `kinematic`, `langgraph`, `logistics`, `lowalt_airspace`, `lowalt_city_capture`, `lowalt_energy`, `lowalt_incident_capture`, `lowalt_tasks`, `predicate`, `records`, `telemetry`, `threshold`, `traffic_camera_capture`, `traffic_capture_bridge`, `traffic_decision_failures`, `traffic_decisions`, `workflow` | Shared enumeration/duplicate checks and lazy loading; installed factory replaces builtin; callability checked, no factory invocation until build. No descriptor-name or API-version requirement is invented. |
 | Algorithms | `aeroagentsim.algorithms` | Unversioned slot protocols | Allocation: `nearest`, `auction`, `hungarian`, `llm`; path planning: `straight`, `corridor_astar`, `coverage`, `survey`, `patrol`; conflict resolution: `altitude_layers`, `hold_and_go`; charging: `threshold_return` | Shared enumeration, duplicate checks and pre-load name validation; legacy name syntax retained at runtime. Runtime keeps qualified `<slot>.<name>` → unqualified installed name → `module:Class`/builtin precedence and loads only the selected factory with its configuration. The service catalog requires nonempty slot-qualified IDs, validates every declaration before loading any provider, and keeps protocol classification and whole-provider metadata replacement. |
-| Consumption models | `aeroagentsim.models` | Unversioned `ConsumptionModel` protocol | `linear`, `wind` | Runtime migration deferred: installed factory replaces an explicitly selected name; duplicates are rejected only for the selected name. A legacy scenario without explicit `consumption_model` retains builtin linear behavior. |
+| Consumption models | `aeroagentsim.models` | Unversioned `ConsumptionModel` protocol | `linear`, `wind` | Shared enumeration, selected-name validation and lazy loading through a compatibility shim. Only a selected duplicate fails; unrelated duplicates remain in `ModelCatalog.conflicts`. An installed factory replaces the explicitly selected builtin, with no fallback on failure. Without explicit `consumption_model`, builtin `linear` is used without querying entry points. |
 | [Assistant operations (**shipped**)](assistant-operations.md) | `aeroagentsim.assistant_operations` | `AssistantOperationPlugin`, version **1** | `lowalt`, `traffic` | Strict names; descriptor instances or zero-argument factories; whole-provider replacement; full operation-contract revalidation and operation-ID collision checks. Shared discovery; legacy boundary errors retained. |
 | [Presentations (**shipped**)](presentation-plugins.md) | `aeroagentsim.presentations` | `PresentationPlugin`, version **1** | `lowalt`, `traffic_accident` | Shared discovery; duplicate-first, all names admitted before any load; whole-provider replacement; explicit selections never load unselected factories; contributed IDs must be disjoint. Finite data only, no browser renderers. |
 | [Preparers (**shipped**)](preparation-plugins.md) | `aeroagentsim.preparers` | `PreparerPlugin`, version **1** | `explicit`, `lowalt-legacy` | Shared discovery; duplicate and malformed names fail before any load; whole-provider replacement with no fallback to the builtin; used only by `aeroagentsim.scenario/v2` documents with an explicit selector. |
@@ -133,10 +138,23 @@ plugins = result.providers  # sorted tuple; same descriptor instances
 
 `entries=` permits existing family adapters to supply their metadata query
 results. `builtin_loader=` adapts legacy module-path catalogs without eagerly
-importing all engines. `resolve(name)` explicitly loads one provider and always
-rejects group-wide duplicates first. It does not construct an engine: that
+importing all engines. `resolve(name)` explicitly loads one provider and rejects
+group-wide duplicates first by default. It does not construct an engine: that
 family's expected type is a callable, not an engine instance. New versioned
 families should use the strict default name syntax, not the legacy escape hatch.
+
+`resolve(name, selected_only=True)` is an opt-in compatibility option used by
+models: only conflicts for that name block resolution. All conflicts remain in
+`result.conflicts`; the option does not change `require_unique()`, eager discovery
+or subsequent default `resolve()` calls, and it does not skip name/type admission.
+The model shim uses `load=False`, validates the selected name as nonempty text
+(`name_pattern=None`, not the versioned-family regex), then loads only the selected
+factory. It invokes that factory with `ModelBuild` outside the helper, preserving
+native import, noncallable, factory and dependency-validation errors. Unknown
+selections keep `ValueError("unknown aeroagentsim.models plugin 'external'")`.
+`ModelCatalog.conflicts` exposes immutable conflict records from the latest build's
+enumeration, including tolerated duplicates; construction does not query metadata,
+and each build enumerates again. No descriptor name or API version is invented.
 
 [`Contribution`](../../src/aeroagentsim/extensions/records.py) is a frozen record:
 `(group, name, source, distribution, version, entry_point)`, with `source` equal to
@@ -154,9 +172,10 @@ inspected. Malformed names and all duplicate declarations remain in the evidence
 conflicts are immutable diagnostics, not a choice of winner. Runtime consumers
 call `require_unique()` to raise the typed duplicate error. Full discovery with
 `load=True` rejects duplicates first, then validates all names before loading any
-provider. Lazy `resolve(name)` also rejects group-wide duplicates and validates
-the selected name before loading. Provider types, versions, contributed IDs,
-resources and readiness remain **unverified** during metadata-only enumeration.
+provider. Lazy `resolve(name)` also rejects group-wide duplicates by default and
+validates the selected name before loading; models opt into the selected-only
+exception described above. Provider types, versions, contributed IDs, resources
+and readiness remain **unverified** during metadata-only enumeration.
 
 [`plugin_inventory()`](../../src/aeroagentsim/services/plugins.py),
 [`aeroagentsim plugins`](cli.md#aeroagentsim-plugins) and
@@ -203,15 +222,19 @@ contract, rather than making the whole response metadata-only:
   [consumer catalog](../../src/aeroagentsim/algorithms/consumers.py) verifies
   specific engine factory identities without loading them; an override must not
   inherit a builtin's consumption claim.
-- **Models:** preserve selected-name-only duplicate rejection and the implicit
-  legacy-linear exemption. Applying group-wide runtime admission there would
-  change behavior, so only their inventory enumeration is shared in this PR.
+- **Models — compatibility retained:** runtime discovery now shares enumeration,
+  selected-name validation and lazy loading, not just inventory enumeration.
+  Selected-name-only duplicate rejection and the implicit legacy-linear exemption
+  remain intentional. Group-wide rejection or changing that implicit default would
+  require separate compatibility work; unrelated duplicate diagnostics do not
+  select a winner or establish provider readiness.
 - **Packaging / engine descriptors:** redundant self-entry-point cleanup and any
   separately versioned engine descriptor require their own compatibility work.
   Existing callable engine names, local catalog registration and lazy builds stay
   supported; this PR does not introduce engine `api_version` checks.
-- **Assistant operations:** inventory wiring follows an actual landed public
-  family, not an assumed one. `assistant_api.py` is absent in this revision.
+- **Assistant operations inventory:** the family is shipped, but public inventory
+  still exposes only scenarios, engines, algorithms, models and metrics. Adding an
+  assistant section remains separate from its runtime admission.
 - **Run contribution lock — PLANNED, not implemented here:** explicitly select
   contributions and pin provider/family version, implementation/distribution
   revision, entry point, selected configuration/resource digests and effective

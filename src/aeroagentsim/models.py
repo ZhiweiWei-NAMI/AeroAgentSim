@@ -17,6 +17,12 @@ from aerokernel.sdk import EngineContext
 from aerokernel.state import Absent
 from aerokernel.values import thaw
 
+from aeroagentsim.extensions.discovery import (
+    DuplicateEntryPointError,
+    EntryPointConflict,
+    discover,
+)
+
 
 def finite(value: Any, name: str, *, minimum: float = 0.0) -> float:
     if type(value) not in (int, float) or not math.isfinite(value) or value < minimum:
@@ -173,22 +179,34 @@ class WindConsumption(LinearConsumption):
 
 
 class ModelCatalog:
-    """Resolve installed contribution factories without requiring engine subclasses."""
+    """Resolve factories with legacy selected-name-only duplicate rejection.
+
+    ``conflicts`` retains all immutable conflict diagnostics from the latest
+    build's enumeration, including tolerated duplicates of unselected names.
+    Construction does not query metadata; each build discovers the current set.
+    """
+
+    def __init__(self) -> None:
+        self.conflicts: tuple[EntryPointConflict, ...] = ()
 
     def build(self, plugin: str, build: ModelBuild) -> ConsumptionModel:
-        entries = entry_points(group="aeroagentsim.models")
-        selected = [e for e in entries if e.name == plugin]
-        if len(selected) > 1:
-            raise ValueError(f"duplicate aeroagentsim.models entry point {plugin!r}")
-        if selected:
-            factory = cast("ModelFactory", selected[0].load())
-            model = factory(build)
-        elif plugin == "linear":
-            model = LinearConsumption(build)
-        elif plugin == "wind":
-            model = WindConsumption(build)
-        else:
+        discovery = discover(
+            "aeroagentsim.models", {"linear": LinearConsumption, "wind": WindConsumption},
+            entries=entry_points(group="aeroagentsim.models"), load=False,
+            expected_type=object, factory_label=None, name_pattern=None,
+        )
+        self.conflicts = discovery.conflicts
+        if plugin not in discovery.names:
             raise ValueError(f"unknown aeroagentsim.models plugin {plugin!r}")
+        try:
+            factory = cast("ModelFactory", discovery.resolve(plugin, selected_only=True))
+        except DuplicateEntryPointError as exc:
+            raise ValueError(
+                f"duplicate aeroagentsim.models entry point {plugin!r}"
+            ) from exc
+        # Keep configured factory invocation and its native errors at this boundary;
+        # models have no descriptor type/version or zero-argument factory contract.
+        model = factory(build)
         for field in model.dependencies:
             build.registry.field(field)
         return model

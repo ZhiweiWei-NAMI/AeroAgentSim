@@ -79,9 +79,19 @@ class DiscoveryResult(Generic[T]):
         if self.conflicts:
             raise DuplicateEntryPointError(self.conflicts[0])
 
-    def resolve(self, name: str) -> T:
-        """Load/admit one provider, rejecting ambiguity across the entire group."""
-        self.require_unique()
+    def resolve(self, name: str, *, selected_only: bool = False) -> T:
+        """Load/admit one provider, rejecting group-wide ambiguity by default.
+
+        ``selected_only=True`` is a legacy compatibility opt-in: reject only
+        conflicts for this name, retaining all others as diagnostics. It does
+        not relax name/type admission or the group-wide ``require_unique()``.
+        """
+        if selected_only:
+            for conflict in self.conflicts:
+                if conflict.name == name:
+                    raise DuplicateEntryPointError(conflict)
+        else:
+            self.require_unique()
         if name not in self.names:
             raise KeyError(name)
         return self._resolve(name)
@@ -167,10 +177,11 @@ def discover(
 
     ``load=False`` never calls entry.load(), builtin loaders or factories. It
     retains malformed names and conflicts as immutable diagnostics; runtime
-    callers must reject conflicts with ``require_unique()`` (also enforced by
-    ``resolve``). Names are admitted only after duplicate collection, before
-    loading providers. Inventory can describe invalid/ambiguous installations
-    without picking a winner.
+    callers reject conflicts with ``require_unique()`` (also enforced by
+    ``resolve`` unless its legacy ``selected_only=True`` option is used).
+    Eager loading always rejects group-wide conflicts. Names are admitted only
+    after duplicate collection, before loading providers. Inventory can describe
+    invalid/ambiguous installations without picking a winner.
     """
     if api_version is not None and type(api_version) is not int:
         raise TypeError("discovery api_version: expected an integer or None")
