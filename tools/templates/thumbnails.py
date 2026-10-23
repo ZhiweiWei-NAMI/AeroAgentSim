@@ -39,7 +39,7 @@ from aeroagentsim.runs import RecordedMessage, open_run
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.artifacts import scope_capture_storage
 from aeroagentsim.services.node_deps import node_modules_root
-from aeroagentsim.services.projector import header, lossless, project
+from aeroagentsim.services.projector import entity, header, lossless, project
 from aeroagentsim.services.template_execution import execution_document
 
 WIDTH, HEIGHT, MAX_BYTES = 640, 360, 150_000
@@ -231,6 +231,27 @@ def capture_request(
     )
 
 
+def explicit_subjects(payload: Any) -> list[dict[str, Any]]:
+    """Extract typed references from this message, including command admissions."""
+    refs: dict[EntityRef, None] = {}
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            if set(value) == {"$ref"}:
+                refs[EntityRef.from_data(value["$ref"])] = None
+            else:
+                for child in value.values():
+                    visit(child)
+        elif isinstance(value, (list, tuple)):
+            for child in value:
+                visit(child)
+
+    visit(payload)
+    # Reader v1 has no lifecycle-derived subject resolution. Explicit refs do
+    # not need that enrichment or a later publication's projected message row.
+    return [entity(ref) for ref in refs]
+
+
 def viewer_feed(path: Path, cut: Cut) -> dict[str, Any]:
     """The console's own WAL projection, ending at the exact requested cut."""
     with open_run(path) as run:
@@ -258,7 +279,6 @@ def viewer_feed(path: Path, cut: Cut) -> dict[str, Any]:
         for record in records:
             # Reader v1 has no fact/receipt viewer projection; retain its format.
             commit = project(record)
-            projected = {message["id"]: message for message in commit["messages"]}
             commit["messages"] = [
                 {
                     "id": message.message_id,
@@ -269,7 +289,7 @@ def viewer_feed(path: Path, cut: Cut) -> dict[str, Any]:
                         "ns": str(message.at_ns), "microstep": message.microstep,
                     },
                     "payload": lossless(message.payload),
-                    "subjects": projected.get(message.message_id, {}).get("subjects", []),
+                    "subjects": explicit_subjects(message.payload),
                     **(
                         {"target" if message.kind == "command" else "topic": message.route}
                         if message.route is not None else {}

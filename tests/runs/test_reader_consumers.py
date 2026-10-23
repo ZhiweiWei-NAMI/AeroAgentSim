@@ -1,9 +1,10 @@
 """Data-only exports at public reader cuts; no live model, camera or browser.
 
-The genuine telemetry fixtures reuse the run-reader builders. The diagnostic
-message fixture deliberately tests decoding/formatting, not semantic replay or
-scientific measurements. Unsupported viewer metadata/finality are supplied as
-small DTOs; no HTTP server or projection-cache writer is started.
+The genuine telemetry fixtures reuse the run-reader builders. Pack goldens use
+kernel-recorded authored events with hand-derived origin/main metric values,
+not a claim about live pack physics. The diagnostic message fixtures test only
+decoding/formatting, not semantic replay or scientific measurements. Unsupported
+viewer metadata/finality use small DTOs; no HTTP server or cache writer starts.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import json
 import socket
 import sqlite3
 import subprocess
-from contextlib import closing
+from io import BytesIO
 from dataclasses import asdict, replace
 from fractions import Fraction
 from pathlib import Path
@@ -21,7 +22,12 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from aerokernel import Cut, Emit, EntityRef, Instant, Message, Stamp, replay
+from aerokernel import (
+    BindingManifest, CommandRequest, Cut, Emit, EntityRef, Instant, Journal,
+    Kernel, MemoryRegistry, Message, MessageDescriptor, Partition, Stamp,
+    StateView, replay,
+)
+from aerokernel.sdk import SimpleEngine
 from aerokernel.codec import decode_record, encode
 from aerokernel.values import canonical_json, freeze
 
@@ -36,6 +42,7 @@ from aeroagentsim.services.projector import project
 from tests.observations.test_capture import png
 from tests.runs.test_reader import (
     COMMAND,
+    FORMATS,
     inventory,
     recorded_records,
     telemetry_document,
@@ -75,6 +82,8 @@ def forbid_live(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(BrowserRenderer, "render", forbidden)
     monkeypatch.setattr(socket, "create_connection", forbidden)
     monkeypatch.setattr(subprocess, "run", forbidden)
+    monkeypatch.setattr(sqlite3, "connect", forbidden)
+    monkeypatch.setattr(video, "urlopen", forbidden)
     monkeypatch.setattr(thumbnails, "capture_png", forbidden)
     monkeypatch.setattr(thumbnails, "build_viewer", forbidden)
     # Reader v1 does not supply scene/model metadata. The data-path tests do not
@@ -97,7 +106,7 @@ def final_state(directory: Path) -> dict[str, Any]:
 def test_data_exports_match_one_reader_cut_and_leave_no_cache(
     recorded_run: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    expected = compute(replay(recorded_run / "journal.jsonl"))
+    expected = {"run_id": "realtime-ingress", "duration_s": 0.1}
     with open_run(recorded_run) as source:
         snapshot = source.snapshot()
         raw = list(snapshot.iter_records(start=1))
@@ -233,11 +242,12 @@ def test_final_capture_requires_finality_and_all_matching_cursors(
         final,
     ])
     waits = []
-    monkeypatch.setattr(video, "results_state", lambda *args: next(states))
     monkeypatch.setattr(video, "Event", lambda: SimpleNamespace(wait=waits.append))
     forbid_live(monkeypatch)
     before = inventory(recorded_run)
-    selected, metadata, evidence = video.recording_source(recorded_run)
+    selected, metadata, evidence = video.recording_source(
+        recorded_run, results_provider=lambda: next(states),
+    )
     assert len(waits) == 3
     assert selected[-1].index + 1 == metadata["final_cursor"] == final["results_cursor"]
     assert evidence["cut_index"] == final["final_commit_index"]
@@ -259,10 +269,11 @@ def test_final_capture_waits_for_lagging_ack_not_just_a_final_projection(
         waits.append(delay)
         write_prefix(recorded_run, prefix)
 
-    monkeypatch.setattr(video, "results_state", lambda *args: state)
     monkeypatch.setattr(video, "Event", lambda: SimpleNamespace(wait=publish_from_owner))
     forbid_live(monkeypatch)
-    selected, _, evidence = video.recording_source(recorded_run)
+    selected, _, evidence = video.recording_source(
+        recorded_run, results_provider=lambda: state,
+    )
     assert len(waits) == 1
     assert selected[-1].index == evidence["cut_index"] == prefix["index"]
     assert evidence["cut_bytes"] == prefix["bytes"]
@@ -273,8 +284,8 @@ def test_absent_projection_finality_times_out_without_render_or_cache_creation(
 ) -> None:
     forbid_live(monkeypatch)
     before = inventory(recorded_run)
-    # Use the real read-only results-state path with no SQLite cache. A terminal
-    # manifest/ACK alone must not trigger a capture or a cache rebuild.
+    # Public finality may lag a terminal manifest/ACK. Never fall back to a
+    # private cache read or assume the service has finished after a delay.
     with pytest.raises(TimeoutError, match="results_final"):
         video.record_views(
             recorded_run, tmp_path / "video",
@@ -282,34 +293,64 @@ def test_absent_projection_finality_times_out_without_render_or_cache_creation(
               "width": 16, "height": 16}],
             renderer=SimpleNamespace(render=lambda *args: pytest.fail("rendered")),
             fps=4, speed=Fraction(1), ffmpeg=None, results_timeout_s=0,
+            results_provider=lambda: {
+                "results_final": False, "results_cursor": None,
+                "final_commit_index": final_state(recorded_run)["final_commit_index"],
+            },
         )
     assert not (tmp_path / "video").exists()
     assert inventory(recorded_run) == before
 
 
-def test_finality_reads_an_existing_wal_cache_without_touching_source_sidecars(
+def test_finality_uses_public_dto_even_with_unreadable_local_cache(
+    recorded_run: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = final_state(recorded_run)
+    # Deliberately opaque bytes: neither the consumer nor its reader may inspect
+    # SQLite, regardless of whether a viewer happened to leave a local cache.
+    (recorded_run / "viewer-index.sqlite3").write_bytes(b"not a SQLite database")
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    _, _, evidence = video.recording_source(
+        recorded_run, timeout_s=0, results_provider=lambda: state,
+    )
+    assert evidence["projection"] == state
+    assert inventory(recorded_run) == before
+
+
+def test_offline_finality_gap_is_explicit_without_private_cache_fallback(
+    recorded_run: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    with pytest.raises(ValueError, match="reader v1 lacks offline projection finality"):
+        video.recording_source(recorded_run, timeout_s=0)
+    assert inventory(recorded_run) == before
+
+
+def test_public_finality_adapter_reads_only_service_dto(
     recorded_run: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     state = final_state(recorded_run)
     forbid_live(monkeypatch)
-    # An explicitly authored progress fixture, not a simulated KPI measurement.
-    # Keep WAL open so this exercises WAL reading, not just a checkpointed DB.
-    with closing(sqlite3.connect(recorded_run / video.FILENAME)) as database:
-        assert database.execute("PRAGMA journal_mode=WAL").fetchone() == ("wal",)
-        database.execute(
-            "CREATE TABLE projection_progress "
-            "(id INTEGER PRIMARY KEY, next INTEGER NOT NULL, signature TEXT NOT NULL)"
-        )
-        database.execute(
-            "INSERT INTO projection_progress VALUES (1, ?, ?)",
-            (state["results_cursor"], json.dumps(video._signature(recorded_run))),
-        )
-        database.commit()
-        assert (recorded_run / (video.FILENAME + "-wal")).stat().st_size > 0
-        before = inventory(recorded_run)
-        _, _, evidence = video.recording_source(recorded_run, timeout_s=0)
-        assert evidence["projection"] == state
-        assert inventory(recorded_run) == before
+    requests = []
+
+    def response(url: str, *, timeout: float) -> BytesIO:
+        requests.append((url, timeout))
+        return BytesIO(json.dumps({
+            "id": "fixture/run", **state, "unrelated": "not provenance",
+        }).encode())
+
+    monkeypatch.setattr(video, "urlopen", response)
+    before = inventory(recorded_run)
+    assert video.public_results("http://service.invalid/", "fixture/run") == state
+    assert requests == [(
+        "http://service.invalid/v1/runs/fixture%2Frun?include_kpis=false", 20.0,
+    )]
+    assert inventory(recorded_run) == before
+    monkeypatch.setattr(video, "urlopen", lambda *args, **kwargs: BytesIO(b'{"id":"other"}'))
+    with pytest.raises(ValueError, match="another service run"):
+        video.public_results("http://service.invalid", "fixture/run")
 
 
 def test_recording_manifest_keeps_existing_keys_and_adds_reader_provenance(
@@ -317,7 +358,6 @@ def test_recording_manifest_keeps_existing_keys_and_adds_reader_provenance(
 ) -> None:
     state = final_state(recorded_run)
     metadata = json.loads((recorded_run / "manifest.json").read_text())
-    monkeypatch.setattr(video, "results_state", lambda *args: state)
     forbid_live(monkeypatch)
     before = inventory(recorded_run)
     manifest = video.record_views(
@@ -326,6 +366,7 @@ def test_recording_manifest_keeps_existing_keys_and_adds_reader_provenance(
           "width": 16, "height": 16}],
         renderer=SimpleNamespace(render=lambda *args: pytest.fail("rendered")),
         fps=4, speed=Fraction(2), ffmpeg=None, results_timeout_s=0,
+        results_provider=lambda: state,
     )
     assert manifest["contract"] == "aeroagentsim.replay-recordings/v1"
     assert manifest["source_run"] == metadata
@@ -337,6 +378,233 @@ def test_recording_manifest_keeps_existing_keys_and_adds_reader_provenance(
     assert manifest["views"][0]["source_cuts"][-1]["index"] == state["final_commit_index"]
     assert json.loads((tmp_path / "video/manifest.json").read_text())["source_run"] == metadata
     assert inventory(recorded_run) == before
+
+
+class RecordedEvents(SimpleEngine):
+    """Fixture writer only: publish authored envelopes, not pack/model outputs."""
+
+    def __init__(self, source: str, rows: list[tuple[int, str, dict[str, Any]]]) -> None:
+        schemas = tuple(sorted({schema for _, schema, _ in rows}))
+        super().__init__(Partition(
+            source, source, emits=schemas, message_targets=("fixture.events",),
+        ))
+        self.rows = copy.deepcopy(rows)
+        self.wakeup_ns = rows[0][0]
+
+    def integrate(self, view: StateView) -> tuple[object, ...]:
+        operations = []
+        while self.rows and self.rows[0][0] == view.instant.ns:
+            _, schema, payload = self.rows.pop(0)
+            operations.append(Emit("event", schema, "fixture.events", view.instant, payload))
+        self.wakeup_ns = self.rows[0][0] if self.rows else None
+        return tuple(operations)
+
+
+def write_event_run(
+    directory: Path, configuration: dict[str, Any],
+    schedules: dict[str, list[tuple[int, str, dict[str, Any]]]],
+    *, provenance: str, codec: str,
+) -> Path:
+    """Genuine, replay-valid WAL/ACK with two actual same-ID fan-out deliveries."""
+    directory.mkdir()
+    schemas = sorted({schema for rows in schedules.values() for _, schema, _ in rows})
+    registry = MemoryRegistry((), messages=tuple(
+        MessageDescriptor(schema, schema={
+            "type": "record", "members": {}, "required": [], "extra": True,
+        })
+        for schema in schemas
+    ))
+    engines = tuple(RecordedEvents(source, rows) for source, rows in schedules.items()) + tuple(
+        SimpleEngine(Partition(name, name, subscribes=("fixture.events",)))
+        for name in ("observer-a", "observer-b")
+    )
+    kernel = Kernel(
+        configuration=configuration, provenance=provenance,
+        journal=Journal(directory / "journal.jsonl", codec=codec),
+    )
+    try:
+        kernel.bind(registry, BindingManifest("pack-golden", "fixture-epoch"), engines)
+        kernel.start()
+        kernel.run_until(20_000_000_000)
+    finally:
+        kernel.close()
+    byte_count, index = kernel.acknowledged_prefix
+    write_prefix(directory, {"bytes": byte_count, "index": index})
+    (directory / "manifest.json").write_text(json.dumps({
+        "id": directory.name, "status": "completed", "final_cursor": index + 1,
+    }))
+    return directory
+
+
+# Read from origin/main (2e3f485c), packs/metrics.py::compute:
+# ID-keyed viewer events keep first-ID insertion order (fan-out replaces the
+# value, not its position); released/accepted/rejected are order sets. Delivery
+# times are delivery minus release; only delivered parcels contribute energy.
+# Busy intervals here are A:2..6, B:3..10, C:4..8 (failed), D:5..9 (canceled),
+# E:12..20 (still active): 27s / (20s * 3 carriers) = .45. One on-time delivery
+# out of six releases, durations 6s and 9s, energies 30J and 70J.
+# Inspection counts six distinct message IDs, including two equal payloads and
+# one invalid sample. Union area is 6 of 8; area and hit waypoint acquire at
+# 1,4,10 seconds (gaps 3,6); the missed waypoint has no visits. Invalid/outside
+# footprints add no coverage. These literals are NOT generated by compute().
+LEGACY_PACK_GOLDEN = {
+    "run_id": "legacy-pack-golden",
+    "duration_s": 20.0,
+    "logistics": {
+        "pack": "logistics", "released": 6, "delivered": 2,
+        "accepted": 1, "rejected": 1, "on_time_rate": 0.16666666666666666,
+        "mean_delivery_time_s": 7.5, "energy_per_parcel_j": 50.0,
+        "utilization": 0.45,
+    },
+    "inspection": {
+        "pack": "inspection", "observations": 6, "invalid_observations": 1,
+        "coverage_pct": 58.333333333333336,
+        "targets": {
+            "area": {
+                "coverage_pct": 75.0, "acquisitions": 3,
+                "revisit_times_s": [3.0, 6.0], "mean_revisit_s": 4.5,
+                "max_revisit_s": 6.0,
+            },
+            "hit": {
+                "coverage_pct": 100.0, "acquisitions": 3,
+                "revisit_times_s": [3.0, 6.0], "mean_revisit_s": 4.5,
+                "max_revisit_s": 6.0,
+            },
+            "miss": {
+                "coverage_pct": 0.0, "acquisitions": 0,
+                "revisit_times_s": [], "mean_revisit_s": None,
+                "max_revisit_s": None,
+            },
+        },
+    },
+}
+
+
+def legacy_pack_run(directory: Path, provenance: str, codec: str) -> Path:
+    second = 1_000_000_000
+    logistics = [
+        (second, "fixture.logistics", {"order": order, "state": "queued"})
+        for order in ("A", "B", "C", "D", "E", "F")
+    ]
+    logistics += [
+        (2 * second, "fixture.logistics", {"order": "A", "state": "pickup"}),
+        (3 * second, "fixture.logistics", {"order": "B", "state": "pickup"}),
+        (4 * second, "fixture.logistics", {"order": "C", "state": "pickup"}),
+        (5 * second, "fixture.logistics", {"order": "D", "state": "pickup"}),
+        (6 * second, "fixture.logistics", {
+            "order": "A", "state": "delivered", "release_ns": 0,
+            "deadline_ns": 7 * second, "energy_used_j": 30.0,
+        }),
+        (7 * second, "fixture.logistics", {"order": "A", "state": "accepted"}),
+        (8 * second, "fixture.logistics", {"order": "C", "state": "failed"}),
+        (9 * second, "fixture.logistics", {"order": "D", "state": "canceled"}),
+        (10 * second, "fixture.logistics", {
+            "order": "B", "state": "delivered", "release_ns": second,
+            "deadline_ns": 9 * second, "energy_used_j": 70.0,
+        }),
+        (11 * second, "fixture.logistics", {"order": "B", "state": "rejected"}),
+        (12 * second, "fixture.logistics", {"order": "E", "state": "pickup"}),
+    ]
+    left = [[0, 0], [2, 0], [2, 2], [0, 2]]
+    inspection = [
+        (at * second, "fixture.inspection", {
+            "acquired_ns": at * second,
+            "sample": {"valid": valid, "footprint": footprint},
+        })
+        for at, valid, footprint in [
+            (1, True, left),
+            (1, True, left),  # Equal payload, distinct emitted identity.
+            (4, True, [[1, 0], [3, 0], [3, 2], [1, 2]]),
+            (6, False, [[0, 0], [4, 0], [4, 2], [0, 2]]),
+            (10, True, left),
+            (12, True, [[5, 0], [6, 0], [6, 1], [5, 1]]),
+        ]
+    ]
+    return write_event_run(directory, {"scenario": {
+        "id": "legacy-pack-golden", "engines": {
+            "logistics": {"plugin": "logistics", "config": {
+                "event_schema": "fixture.logistics", "fleet": ["one", "two", "three"],
+            }},
+            "inspection": {"plugin": "inspection", "config": {
+                "event_schema": "fixture.inspection", "targets": [
+                    {"id": "area", "kind": "rectangle", "bounds": [0, 0, 4, 2]},
+                    {"id": "hit", "kind": "waypoint", "point": [1.5, 1]},
+                    {"id": "miss", "kind": "waypoint", "point": [3.5, 1]},
+                ],
+            }},
+        },
+    }}, {"logistics": logistics, "inspection": inspection}, provenance=provenance, codec=codec)
+
+
+@pytest.mark.parametrize("provenance,codec", FORMATS)
+def test_pack_metrics_match_independent_legacy_golden(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, provenance: str, codec: str,
+) -> None:
+    directory = legacy_pack_run(tmp_path / "packs", provenance, codec)
+    raw = recorded_records(directory)
+    emissions = [
+        item["message"] for record in raw for item in record.get("items", [])
+        if item.get("kind") == "operation" and "message" in item
+    ]
+    deliveries = [
+        item["message"] for record in raw for item in record.get("items", [])
+        if item.get("kind") == "delivery"
+    ]
+    assert len(emissions) == 23
+    for message in emissions:
+        assert sum(copy["fields"]["id"] == message["fields"]["id"] for copy in deliveries) == 2
+    with open_run(directory) as run:
+        observations = list(run.snapshot().iter_messages(schema_prefix="fixture.inspection"))
+    assert len(observations) == 6
+    assert observations[0].payload == observations[1].payload
+    assert observations[0].message_id != observations[1].message_id
+    forbid_live(monkeypatch)
+    before = inventory(directory)
+    assert compute(replay(directory / "journal.jsonl")) == LEGACY_PACK_GOLDEN
+    result = metrics(directory)
+    assert {key: value for key, value in result.items() if key != "source_evidence"} == LEGACY_PACK_GOLDEN
+    assert result["source_evidence"]["verification"] == "kernel-semantic-replay"
+    assert inventory(directory) == before
+    # Ordinary immutable pack envelopes have the SAME first-ID population as
+    # origin/main. Delivery-only diagnostics/console aliases are intentionally
+    # excluded by the new reader, and tested separately, not called equivalence.
+
+
+@pytest.mark.parametrize("provenance,codec", FORMATS)
+def test_default_graph_decisions_present_original_model_call_without_alias_emissions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, provenance: str, codec: str,
+) -> None:
+    data = {
+        "identity": {"node": "planner", "call_index": 0},
+        "request": {"messages": [{"role": "user", "content": "recorded prompt"}]},
+        "response": {"content": "recorded decision"},
+        "usage": {"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
+    }
+    directory = write_event_run(
+        tmp_path / "graph", {"scenario": {"id": "graph-fixture", "engines": {}}},
+        {"planner": [(1_000_000_000, "aas.langgraph.record", {
+            "phase": "model_call", "data_json": json.dumps(data),
+        })]}, provenance=provenance, codec=codec,
+    )
+    forbid_live(monkeypatch)
+    before = inventory(directory)
+    for use_cli in (False, True):
+        output = tmp_path / ("cli-report" if use_cli else "report")
+        if use_cli:
+            assert report.main(["--run", str(directory), "--output", str(output)]) == 0
+            text = (output / "report.md").read_text()
+        else:
+            text = report.export_report(directory, output).read_text()
+        timeline, decisions = text.split("## Decisions and model records", 1)
+        assert timeline.count("| event `aas.langgraph.record`:") == 1
+        assert "aas.agent.record" not in text and "/console/" not in text
+        assert '"model_call": 1' in decisions
+        assert "one per original message" in decisions
+        assert "### Cut " in decisions and ": aas.langgraph.record" in decisions
+        assert "Recorded phase data:" in decisions
+        assert json.dumps(data, indent=2, ensure_ascii=False) in decisions
+        assert "model call totals are unavailable" not in decisions
+    assert inventory(directory) == before
 
 
 def diagnostic_run(directory: Path) -> tuple[Path, list[dict[str, Any]]]:
@@ -408,6 +676,55 @@ def test_equal_payload_emissions_survive_and_delivery_or_publication_copies_do_n
     assert result["inspection"]["targets"]["point"]["mean_revisit_s"] is None
     assert result["logistics"]["mean_delivery_time_s"] is None
     assert result["logistics"]["utilization"] is None
+    assert inventory(directory) == before
+
+
+def test_thumbnail_admission_keeps_its_own_explicit_typed_subjects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    directory, previous = diagnostic_run(tmp_path / "admission")
+    # A diagnostic reader/formatter fixture, not a semantic replay claim. Its
+    # admission has all refs already; publication must not enrich its timing.
+    subject = EntityRef("realtime-ingress", "fixture", "sensor-1", 7, "Fixture")
+    large = replace(subject, id="large-generation", generation=9_007_199_254_740_993)
+    payload = {
+        "nested": [{"actor": {"$ref": subject.to_data()}}, {"$ref": large.to_data()}],
+        "again": {"$ref": subject.to_data()}, "scalar_name": "not-a-subject",
+    }
+    message = Message(
+        "admitted-command", "command", "fixture.command", "ingress", "stream:sensor",
+        0, Instant(20), Instant(20), freeze(payload), (),
+    )
+    records = [previous[0], {
+        "index": 1, "type": "transaction", "instant": encode(Instant(10)),
+        "items": [{
+            "kind": "reservation", "message_id": message.id,
+            "request": encode(CommandRequest("fixture.command", "sensor", Instant(20), payload)),
+            "source": "stream:sensor", "sequence": 0,
+        }],
+    }, {
+        "index": 2, "type": "transaction", "instant": encode(Instant(20)),
+        "items": [{"kind": "ingress_publish", "message": message.to_data()}],
+    }]
+    data = b"".join(canonical_json(record) for record in records)
+    (directory / "journal.jsonl").write_bytes(data)
+    write_prefix(directory, {"bytes": len(data), "index": 2})
+    assert project(records[1])["messages"] == []
+    forbid_live(monkeypatch)
+    before = inventory(directory)
+    expected_subjects = [
+        {"id": "sensor-1", "generation": 7},
+        {"id": "large-generation", "generation": "9007199254740993"},
+    ]
+    for cut in (Cut(1, Instant(10)), Cut(2, Instant(20))):
+        feed = thumbnails.viewer_feed(directory, cut)
+        messages = [message for commit in feed["commits"] for message in commit["messages"]]
+        assert len(messages) == 1
+        assert messages[0]["id"] == "admitted-command"
+        assert messages[0]["source_cursor"] == [1, 0]
+        assert messages[0]["subjects"] == expected_subjects
+        assert messages[0]["at"] == {"ns": "20", "microstep": 0}
+    assert feed["commits"][-1]["messages"] == []
     assert inventory(directory) == before
 
 
@@ -500,7 +817,7 @@ def test_thumbnail_request_uses_reader_identity_without_manifest_identity_fields
 def test_standalone_metrics_remain_explicitly_unacknowledged(
     recorded_run: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    expected = compute(replay(recorded_run / "journal.jsonl"))
+    expected = {"run_id": "realtime-ingress", "duration_s": 0.1}
     forbid_live(monkeypatch)
     before = inventory(recorded_run)
     result = metrics(recorded_run / "journal.jsonl")

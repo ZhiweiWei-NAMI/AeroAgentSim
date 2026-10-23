@@ -5,17 +5,18 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import sqlite3
 import subprocess
 import tempfile
 from bisect import bisect_right
-from contextlib import closing
+from collections.abc import Callable
 from dataclasses import asdict
 from fractions import Fraction
 from pathlib import Path
 from threading import Event
 from time import monotonic
 from typing import Any
+from urllib.parse import quote
+from urllib.request import urlopen
 
 from aerokernel import Cut, EntityRef, Instant, Stamp
 from aerokernel.codec import decode_record
@@ -26,8 +27,6 @@ from aeroagentsim.observations.png import validate_png
 from aeroagentsim.observations.renderer import BrowserRenderer, Renderer
 from aeroagentsim.runs import RunReadError, Snapshot, open_run
 from aeroagentsim.scenario.loader import contract, text
-# Reader v1 has no projection-finality API; retain service checkpoint semantics.
-from aeroagentsim.services.feed_index import FILENAME, _results_state, _signature
 
 
 def _metadata(directory: Path) -> dict[str, Any]:
@@ -73,73 +72,32 @@ def cuts(directory: Path) -> list[Cut]:
         return _cuts(snapshot)
 
 
-def results_state(directory: Path, metadata: dict[str, Any]) -> dict[str, Any]:
-    """Inspect the service cache without letting SQLite touch the source run."""
-    directory = directory.resolve()
-    files = [directory / FILENAME, directory / (FILENAME + "-wal")]
-
-    def versions() -> list[tuple[int, ...] | None]:
-        result: list[tuple[int, ...] | None] = []
-        for path in files:
-            try:
-                info = path.stat()
-            except FileNotFoundError:
-                result.append(None)
-            else:
-                result.append(
-                    (info.st_dev, info.st_ino, info.st_size,
-                     info.st_mtime_ns, info.st_ctime_ns)
-                )
-        return result
-
-    before = versions()
-    if before[0] is None:
-        return _results_state(directory, metadata, None)
-    temporary_root = Path(tempfile.gettempdir()).resolve()
-    if temporary_root == directory or temporary_root.is_relative_to(directory):
-        raise ValueError("projection scratch storage must be outside the source run")
-    # Even SQLite mode=ro may create/update WAL/SHM sidecars. Copy the database
-    # and optional WAL outside the run; never open its original with SQLite.
-    with tempfile.TemporaryDirectory(
-        dir=temporary_root, prefix="aas-results-"
-    ) as temporary:
-        try:
-            for path, version in zip(files, before):
-                if version is not None:
-                    shutil.copyfile(path, Path(temporary) / path.name)
-        except FileNotFoundError:
-            return _results_state(directory, metadata, None)
-        if versions() != before:
-            return _results_state(directory, metadata, None)
-        database_path = Path(temporary) / FILENAME
-        with closing(
-            sqlite3.connect(database_path.as_uri() + "?mode=ro", uri=True)
-        ) as database:
-            exists = database.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='projection_progress'"
-            ).fetchone()
-            row = (
-                database.execute(
-                    "SELECT next, signature FROM projection_progress WHERE id=1"
-                ).fetchone()
-                if exists else None
-            )
-        checkpoint = (
-            {"next": row[0]}
-            if row is not None and json.loads(row[1]) == _signature(directory)
-            else None
-        )
-        if versions() != before:
-            checkpoint = None
-        return _results_state(directory, metadata, checkpoint)
+def public_results(service_url: str, run_id: str) -> dict[str, Any]:
+    """Read the existing service finality DTO, never its local cache layout."""
+    url = f"{service_url.rstrip('/')}/v1/runs/{quote(run_id, safe='')}?include_kpis=false"
+    with urlopen(url, timeout=20.0) as response:
+        result = json.load(response)
+    if result["id"] != run_id:
+        raise ValueError("finality response belongs to another service run")
+    return {
+        key: result[key]
+        for key in ("results_final", "results_cursor", "final_commit_index")
+    }
 
 
 def recording_source(
-    directory: Path, *, timeout_s: float = 20.0
+    directory: Path, *, timeout_s: float = 20.0,
+    results_provider: Callable[[], dict[str, Any]] | None = None,
 ) -> tuple[list[Cut], dict[str, Any], dict[str, Any]]:
     """Wait for projection finality AND an ACK at exactly the same final cursor."""
     if not 0 <= timeout_s < float("inf"):
         raise ValueError("results timeout must be finite and nonnegative")
+    # Reader v1 has no offline projection-finality capability. Require the
+    # service's public DTO/provider instead of interpreting private cache files.
+    if results_provider is None:
+        raise ValueError(
+            "reader v1 lacks offline projection finality; supply a public results provider"
+        )
     deadline, wake = monotonic() + timeout_s, Event()
     with open_run(directory) as run:
         while True:
@@ -150,9 +108,7 @@ def recording_source(
             }:
                 raise ValueError("recorder requires a finished run")
             cursor = _final_cursor(metadata)
-            # Reader v1 has no projection-finality capability. This service read
-            # is read-only: never warm/rebuild its SQLite cache in the source run.
-            state = results_state(directory, metadata)
+            state = results_provider()
             if (
                 state["results_final"] is True
                 and type(state["results_cursor"]) is int
@@ -203,6 +159,7 @@ def record_views(
     ffmpeg: str | None,
     encoder: str = "libx264",
     results_timeout_s: float = 20.0,
+    results_provider: Callable[[], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     run, output = run.resolve(), output.resolve()
     if output == run or output.is_relative_to(run):
@@ -219,7 +176,9 @@ def record_views(
         ids.append(text(spec["id"], "recording.view.id"))
     if len(set(ids)) != len(ids):
         raise ValueError("recording view IDs must be unique")
-    source, metadata, evidence = recording_source(run, timeout_s=results_timeout_s)
+    source, metadata, evidence = recording_source(
+        run, timeout_s=results_timeout_s, results_provider=results_provider,
+    )
     selected = schedule(source, fps, speed)
     output.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {
@@ -374,6 +333,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--cameras", required=True, type=Path)
     parser.add_argument("--viewer-url", required=True)
+    parser.add_argument(
+        "--service-url", required=True,
+        help="Service API base URL supplying public run projection finality",
+    )
     parser.add_argument("--node-modules", required=True, type=Path)
     parser.add_argument("--browser-executable", type=Path)
     parser.add_argument("--fps", type=int, default=15)
@@ -410,6 +373,7 @@ def main(argv: list[str] | None = None) -> int:
                 else shutil.which("ffmpeg"),
                 encoder=args.encoder,
                 results_timeout_s=args.results_timeout_s,
+                results_provider=lambda: public_results(args.service_url, service_run_id),
             )
         failed = [row for row in manifest["views"] if row["status"] == "failed"]
         for row in failed:
@@ -424,7 +388,6 @@ def main(argv: list[str] | None = None) -> int:
         OSError,
         RunReadError,
         RuntimeError,
-        sqlite3.Error,
     ) as exc:
         print(str(exc))
         return 1

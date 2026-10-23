@@ -16,6 +16,9 @@ from aeroagentsim.runs import RunReadError, open_run
 from aeroagentsim.services.projector import lossless, project
 
 
+DEFAULT_DECISION_SCHEMAS = ("aas.agent.record", "aas.langgraph.record")
+
+
 def cell(value: Any) -> str:
     return (
         json.dumps(value, ensure_ascii=False, sort_keys=True)
@@ -28,7 +31,7 @@ def export_report(
     run: Path,
     output: Path,
     *,
-    decision_schemas: tuple[str, ...] = ("aas.agent.record",),
+    decision_schemas: tuple[str, ...] = DEFAULT_DECISION_SCHEMAS,
 ) -> Path:
     run, output = run.resolve(), output.resolve()
     if output == run or output.is_relative_to(run):
@@ -147,8 +150,10 @@ def export_report(
     if not messages and not receipts:
         lines.append("No messages or receipts are recorded in this prefix.")
     lines.extend(["", "## Decisions and model records", ""])
-    # Schema selection is explicit; the timeline retains all messages, including
-    # contracts this exporter has not been configured to categorize.
+    # Graph records already carry phase/data_json, just like agent records.
+    # Present those originals directly: a model_call is one recorded phase, not
+    # the projector's derived prompt + response aliases or two extra emissions.
+    # Explicit schema overrides still select only the requested contracts.
     decisions = [
         message for message in messages if message["schemaId"] in decision_schemas
     ]
@@ -166,7 +171,7 @@ def export_report(
         if phases:
             lines.extend(
                 [
-                    "Recorded phase counts (response records are not inferred model attempts):",
+                    "Recorded phase counts (one per original message; response records are not inferred model attempts):",
                     "",
                     "```json",
                     json.dumps(dict(phases), sort_keys=True, indent=2),
@@ -288,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output,
             decision_schemas=tuple(args.decision_schema)
             if args.decision_schema is not None
-            else ("aas.agent.record",),
+            else DEFAULT_DECISION_SCHEMAS,
         )
         print(target)
         if args.docx or args.pdf:
