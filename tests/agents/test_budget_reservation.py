@@ -4,20 +4,34 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from collections.abc import Callable, Iterator
 from copy import deepcopy
 from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
-from aerokernel import BindingManifest, Instant, Kernel, MemoryRegistry, Partition
+from aerokernel import (
+    BindingManifest,
+    CommandRequest,
+    Instant,
+    Kernel,
+    MemoryRegistry,
+    Partition,
+)
 from aerokernel.engine import Engine
 from aerokernel.journal import replay
 from aerokernel.registry import MessageDescriptor
 from aerokernel.sdk import ContextEngine, EngineContext
+from langgraph.graph import END, START, StateGraph
 
 from aeroagentsim.agents.decision import RECORD_SCHEMA, Decision
-from aeroagentsim.agents.langgraph import record_descriptor
+from aeroagentsim.agents.langgraph import (
+    LangGraphDecision,
+    journal_decisions,
+    record_descriptor,
+    replay_graph,
+)
 from aeroagentsim.agents.langgraph_client import JournalClient, ScriptedProvider
 from aeroagentsim.agents.provider import OpenAIProvider, Provider, ProviderError
 from aeroagentsim.platform.plugins import EngineBuild
@@ -298,6 +312,150 @@ def test_pending_failure_never_reopens_a_provider_dispatch(
     assert client._reserved_tokens == (10 if cancel else 0)
 
 
+def test_queued_cancellation_is_journaled_and_successful_graph_replays(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = FakeProvider([completion(3)])
+    clients: list[JournalClient] = []
+
+    def factory(client: JournalClient, options: dict[str, Any]) -> Any:
+        clients.append(client)
+        graph = StateGraph(dict)
+
+        async def node(state: dict[str, Any]) -> dict[str, Any]:
+            release = asyncio.Event()
+            original = client._exchange
+
+            async def exchange(*args: Any, **kwargs: Any) -> dict[str, Any]:
+                await release.wait()
+                return await original(*args, **kwargs)
+
+            monkeypatch.setattr(client, "_exchange", exchange)
+            active = asyncio.create_task(client.complete("active", MESSAGES))
+            queued = None
+            try:
+                await asyncio.sleep(0)
+                queued = asyncio.create_task(
+                    client.complete("queued", MESSAGES, attempt=2)
+                )
+                await asyncio.sleep(0)
+                queued.cancel()
+                try:
+                    await queued
+                except asyncio.CancelledError:
+                    pass
+                except ProviderError as exc:
+                    if exc.code != "WALL_TIMEOUT":
+                        raise
+                if not active.done():
+                    assert client._admission.locked()
+                    assert client._reserved_tokens == 10
+                    assert client._spent_tokens == 0
+                    assert not provider.requests
+                release.set()
+                await active
+                return {"outputs": []}
+            finally:
+                release.set()
+                await asyncio.gather(
+                    active,
+                    *([] if queued is None else [queued]),
+                    return_exceptions=True,
+                )
+
+        graph.add_node("node", node)
+        graph.add_edge(START, "node")
+        graph.add_edge("node", END)
+        return graph
+
+    # Keep the factory importable for the actual conformance replay entry point.
+    monkeypatch.setattr(
+        sys.modules[__name__], "queued_cancellation_graph", factory, raising=False
+    )
+    descriptor = record_descriptor()
+    registry = MemoryRegistry(
+        (),
+        (),
+        (
+            MessageDescriptor(descriptor["id"], "event", descriptor["schema"]),
+            MessageDescriptor(
+                "example.trigger",
+                "command",
+                {"type": "record", "members": {}, "required": [], "extra": False},
+            ),
+        ),
+    )
+    manifest = BindingManifest(
+        "queued-cancellation",
+        "0",
+        bootstrap_commands=(
+            CommandRequest("example.trigger", "graph", Instant(1), {}),
+        ),
+    )
+    budget = {
+        "wall_timeout_s": 2,
+        "sim_deadline_ns": 10,
+        "max_calls": 4,
+        "max_tokens": 10,
+        "max_retries": 1,
+        "max_prompt_bytes": 10000,
+        "recursion_limit": 10,
+    }
+    config = {
+        "factory": __name__ + ":queued_cancellation_graph",
+        "options": {},
+        "triggers": [{"schema": "example.trigger", "target": "graph"}],
+        "grants": {
+            "fields": [],
+            "relations": [],
+            "events": [],
+            "commands": [],
+            "facts": [],
+        },
+        "budget": budget,
+        "provider": {"mode": "stub", "model": provider.model, "responses": {}},
+    }
+    build = EngineBuild("graph", config, registry, manifest, (), {})
+    engine = LangGraphDecision(build, provider)
+    build.partitions["graph"] = engine.partition
+    kernel = Kernel()
+    kernel.bind(registry, manifest, (cast(Engine, engine),))
+    try:
+        kernel.start()
+        kernel.run_until(2)
+        data = kernel.journal.bytes
+        rows = journal_decisions(data)["graph/1"]
+        assert rows[-1] == {"phase": "finished", "data": {"result": {"outputs": []}}}
+        live = clients[0]
+        assert [
+            row["data"] for row in rows if row["phase"] == "model_call"
+        ] == live.records
+        active, queued = live.records
+        assert active["failure_code"] is None
+        assert queued["identity"] == [1, "node", "queued", 2]
+        assert queued["attempt"] == 2
+        assert queued["failure_code"] == "WALL_TIMEOUT"
+        assert queued["error"]["code"] == "WALL_TIMEOUT"
+        assert queued["token_allowance"] == queued["request"]["max_tokens"] == 0
+        assert queued["request"]["messages"] == MESSAGES
+        assert "response" not in queued
+        assert live._reserved_tokens == 0
+        assert live._spent_tokens == 3
+        assert not live._pending
+        assert [request["max_tokens"] for request in provider.requests] == [10]
+        monkeypatch.setattr(
+            FakeProvider,
+            "complete",
+            lambda *args, **kwargs: pytest.fail("provider in conformance replay"),
+        )
+        assert replay_graph(data, "graph/1") == {"outputs": []}
+        assert clients[-1].records == live.records
+        assert not clients[-1]._pending
+        assert len(provider.requests) == 1
+    finally:
+        kernel.close()
+
+
 @pytest.mark.parametrize("code", ["CALL_BUDGET", "PROMPT_BUDGET", "WALL_TIMEOUT"])
 def test_graph_other_preflight_checks_still_prevent_dispatch(
     graph_budget: dict[str, Any], code: str
@@ -424,6 +582,31 @@ def test_replay_still_rejects_modified_request_members(
     client = JournalClient(
         None, FakeProvider.model, graph_budget, replay=legacy_graph_rows
     )
+    with pytest.raises(ProviderError, match="REPLAY_MISMATCH"):
+        asyncio.run(client.complete("first", MESSAGES))
+
+
+@pytest.mark.parametrize(
+    "field", ["messages", "tools", "model", "max_tokens", "identity"]
+)
+def test_queued_cancellation_replay_compares_the_whole_request(
+    graph_budget: dict[str, Any], legacy_graph_rows: list[dict[str, Any]], field: str
+) -> None:
+    row = legacy_graph_rows[0]
+    del row["response"]
+    row["token_allowance"] = row["request"]["max_tokens"] = 0
+    row["error"] = {"code": "WALL_TIMEOUT", "message": "graph invocation canceled"}
+    row["failure_code"] = "WALL_TIMEOUT"
+    if field == "identity":
+        row["identity"][1] = "different-node"
+    else:
+        row["request"][field] = {
+            "messages": [{"role": "user", "content": "Changed"}],
+            "tools": [{"type": "function"}],
+            "model": "different-model",
+            "max_tokens": 1,
+        }[field]
+    client = JournalClient(None, FakeProvider.model, graph_budget, replay=[row])
     with pytest.raises(ProviderError, match="REPLAY_MISMATCH"):
         asyncio.run(client.complete("first", MESSAGES))
 

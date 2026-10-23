@@ -127,6 +127,7 @@ class JournalClient:
         )
         self._deadline = time.monotonic() + budget["wall_timeout_s"]
         self._calls: dict[tuple[int, str, str, int], dict[str, Any]] = {}
+        self._pending: set[tuple[int, str, str, int]] = set()
         self._replay = (
             None
             if replay is None
@@ -194,22 +195,6 @@ class JournalClient:
         *,
         attempt: int = 0,
     ) -> dict[str, Any]:
-        if self._replay is not None:
-            return await self._complete(key, messages, tools, attempt=attempt)
-        # The per-call cap is also the aggregate cap: only one full remaining
-        # allowance fits at a time. Queue admissions until that call settles,
-        # then recheck every preflight bound against the original wall deadline.
-        async with self._admission:
-            return await self._complete(key, messages, tools, attempt=attempt)
-
-    async def _complete(
-        self,
-        key: str,
-        messages: list[dict[str, Any]],
-        tools: list[dict[str, Any]] | None,
-        *,
-        attempt: int,
-    ) -> dict[str, Any]:
         from langgraph.config import get_config
 
         metadata = get_config()["metadata"]
@@ -219,17 +204,53 @@ class JournalClient:
             key,
             attempt,
         )
-        if not isinstance(key, str) or not key or identity in self._calls:
+        if (
+            not isinstance(key, str)
+            or not key
+            or identity in self._calls
+            or identity in self._pending
+        ):
             raise ProviderError("CALL_ID", "unique nonempty key per node/step required")
+        # Retain identity before the cancellable wait, without reserving tokens.
+        self._pending.add(identity)
+        try:
+            if self._replay is not None:
+                return await self._complete(key, messages, tools, identity=identity)
+            # The per-call cap is also the aggregate cap: only one full remaining
+            # allowance fits at a time. Recheck bounds after the active call settles.
+            try:
+                await self._admission.acquire()
+            except asyncio.CancelledError:
+                # Journal the request and typed cancellation, but never dispatch,
+                # settle tokens, or release the active call's admission lock.
+                return await self._complete(
+                    key, messages, tools, identity=identity, cancelled=True
+                )
+            try:
+                return await self._complete(key, messages, tools, identity=identity)
+            finally:
+                self._admission.release()
+        finally:
+            self._pending.remove(identity)
+
+    async def _complete(
+        self,
+        key: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        *,
+        identity: tuple[int, str, str, int],
+        cancelled: bool = False,
+    ) -> dict[str, Any]:
         allowance = max(
             0, self.budget["max_tokens"] - self._spent_tokens - self._reserved_tokens
         )
         if self._replay is not None:
             if identity not in self._replay:
                 raise ProviderError("REPLAY_MISMATCH", f"request changed: {identity}")
-            # Admission timing is not reproduced by zero-I/O replay. New rows
-            # retain that input; legacy rows used the full per-call cap. Still
-            # compare the entire request, including max_tokens, below.
+            # Admission/cancellation timing is not reproduced by zero-I/O replay.
+            # New rows retain that input; legacy rows used the full per-call cap.
+            # Compare the entire request, including max_tokens, below.
             allowance = self._replay[identity].get(
                 "token_allowance", self.budget["max_tokens"]
             )
@@ -258,7 +279,7 @@ class JournalClient:
                 if request["tools"]
                 else "structured_json"
             ),
-            "attempt": attempt,
+            "attempt": identity[3],
             "failure_code": None,
         }
         self._calls[identity] = row
@@ -279,6 +300,8 @@ class JournalClient:
                 else max(0.0, remaining)
             )
             try:
+                if cancelled:
+                    raise asyncio.CancelledError
                 if len(self._calls) > self.budget["max_calls"]:
                     raise ProviderError("CALL_BUDGET", "graph call limit exceeded")
                 if (
