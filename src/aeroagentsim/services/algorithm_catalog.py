@@ -79,6 +79,12 @@ def discover_algorithm_catalog() -> dict[str, list[dict[str, Any]]]:
         discovery = _algorithm_discovery(installed)
     except DuplicateEntryPointError as exc:
         raise ValueError("Duplicate aeroagentsim.algorithms entry point names") from exc
+    # Empty slot-qualified IDs are catalog-only errors; runtime accepts these aliases.
+    # Validate the entire catalog before loading even an unrelated provider.
+    for name in discovery.names:
+        prefix, separator, suffix = name.partition(".")
+        if separator and prefix in BUILTINS and not suffix:
+            raise ValueError(f"Algorithm entry point {name!r} has no id")
     classified: dict[str, dict[str, tuple[str, Any]]] = {slot: {} for slot in BUILTINS}
     # Preserve inspection/error order; rows remain sorted within each slot.
     for entry in installed:

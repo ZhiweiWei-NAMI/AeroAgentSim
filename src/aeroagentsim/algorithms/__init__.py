@@ -46,7 +46,8 @@ def _algorithm_discovery(entries: Iterable[Any]) -> DiscoveryResult[Any]:
     """Admit legacy names without importing or invoking configured factories.
 
     Slot precedence and protocol checks belong to the callers, not descriptor
-    admission. In particular, catalog inspection must not construct algorithms.
+    admission. In particular, catalog inspection must not construct algorithms,
+    and its slot-qualified ID restriction must not reject legacy runtime aliases.
     """
     discovery = discover(
         "aeroagentsim.algorithms", {}, entries=entries, load=False,
@@ -55,9 +56,6 @@ def _algorithm_discovery(entries: Iterable[Any]) -> DiscoveryResult[Any]:
     discovery.require_unique()
     for name in discovery.names:
         validate_name(name, label="aeroagentsim.algorithms entry point", pattern=None)
-        prefix, separator, suffix = name.partition(".")
-        if separator and prefix in BUILTINS and not suffix:
-            raise ValueError(f"Algorithm entry point {name!r} has no id")
     return discovery
 
 

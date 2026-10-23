@@ -158,17 +158,61 @@ def test_invalid_names_are_rejected_before_loading_even_unrelated_providers(
     assert loads == []
 
 
-@pytest.mark.parametrize("site", ("algorithms", "algorithm_catalog"))
-def test_slot_qualified_algorithm_requires_an_id_before_loading(
-    monkeypatch: pytest.MonkeyPatch, site: str,
+@pytest.mark.parametrize("slot", algorithms.BUILTINS)
+def test_catalog_slot_qualified_algorithm_requires_an_id_before_loading(
+    monkeypatch: pytest.MonkeyPatch, slot: str,
 ) -> None:
-    _isolate_builtins(monkeypatch, site)
+    _isolate_builtins(monkeypatch, "algorithm_catalog")
     loads: list[Any] = []
-    _install(monkeypatch, site, _entry("aaa-installed", loads=loads),
-             _entry("allocation.", loads=loads))
+    name = f"{slot}."
+    _install(monkeypatch, "algorithm_catalog", _entry("aaa-installed", loads=loads),
+             _entry(name, loads=loads))
     with pytest.raises(ValueError) as error:
-        _invoke(site)
-    assert str(error.value) == "Algorithm entry point 'allocation.' has no id"
+        _invoke("algorithm_catalog")
+    assert str(error.value) == f"Algorithm entry point {name!r} has no id"
+    assert loads == []
+
+
+@pytest.mark.parametrize("prefix", algorithms.BUILTINS)
+def test_runtime_accepts_empty_suffix_entry_as_an_exact_unqualified_alias(
+    monkeypatch: pytest.MonkeyPatch, prefix: str,
+) -> None:
+    _isolate_builtins(monkeypatch, "algorithms")
+    loads: list[Any] = []
+    calls: list[int] = []
+    factory = _algorithm_factory(calls)
+    name = f"{prefix}."
+    _install(monkeypatch, "algorithms", _entry("aaa-installed", loads=loads),
+             _entry(name, factory, loads=loads))
+    assert isinstance(_invoke("algorithms", name), factory)
+    assert calls == [7]
+    assert loads == [name]
+
+
+@pytest.mark.parametrize(("name", "module", "identity"), [
+    ("nearest", ".builtins", "Nearest"),
+    ("external.Legacy:Algorithm", "external.Legacy", "Algorithm"),
+])
+def test_runtime_empty_suffix_alias_does_not_block_unrelated_fallbacks(
+    monkeypatch: pytest.MonkeyPatch, name: str, module: str, identity: str,
+) -> None:
+    loads: list[Any] = []
+    calls: list[int] = []
+    imports: list[tuple[str, str | None]] = []
+    factory = _algorithm_factory(calls)
+
+    def import_module(selected: str, package: str | None = None) -> Any:
+        imports.append((selected, package))
+        return SimpleNamespace(**{identity: factory})
+
+    monkeypatch.setattr(algorithms, "import_module", import_module)
+    _install(monkeypatch, "algorithms", _entry(
+        "allocation.", loads=loads, error=RuntimeError("unselected import"),
+    ))
+    assert isinstance(_invoke("algorithms", name), factory)
+    package = "aeroagentsim.algorithms" if name == "nearest" else None
+    assert imports == [(module, package)]
+    assert calls == [7]
     assert loads == []
 
 
