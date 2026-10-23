@@ -5,10 +5,8 @@ import type { OperationCopy } from './api';
 export function useOperationCopy(copy: OperationCopy | undefined): OperationCopy | undefined {
   const [settled, setSettled] = useState<{ source: OperationCopy; value: OperationCopy }>();
   useEffect(() => {
-    if (!copy?.pending) return;
-    let stopped = false;
-    void copy.pending.then(value => { if (!stopped) setSettled({ source: copy, value }); });
-    return () => { stopped = true; };
+    if (!copy?.subscribe) return;
+    return copy.subscribe(value => setSettled({ source: copy, value }));
   }, [copy]);
   return settled?.source === copy ? settled?.value : copy;
 }

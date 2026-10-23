@@ -84,6 +84,8 @@ export interface OperationCopy {
   descriptors?: OperationDescriptors; error?: string;
   /** A shared, non-rejecting display-only update; session and plan reads never await it. */
   pending?: Promise<OperationCopy>;
+  /** Removable listener for the shared update; subscribing after settlement delivers it immediately. */
+  subscribe?: (listener: (copy: OperationCopy) => void) => () => void;
 }
 /** Questions arrive as plain text or with suggested answers (assistant/tools.py QUESTIONS). */
 export type OpenQuestion = string | { question: string; options?: string[] };
@@ -167,11 +169,23 @@ export class AssistantApi {
   private operationCopy(sessionId: string): OperationCopy {
     const cached = this.copies.get(sessionId);
     if (cached) return cached;
+    const listeners = new Set<(copy: OperationCopy) => void>();
+    let settled: OperationCopy | undefined;
     const pending = this.operations(sessionId).then<OperationCopy, OperationCopy>(
       descriptors => ({ descriptors }),
       problem => ({ error: problem instanceof Error ? problem.message : String(problem) }),
-    ).then(copy => { this.copies.set(sessionId, copy); return copy; });
-    const copy = { pending };
+    ).then(copy => {
+      settled = copy;
+      this.copies.set(sessionId, copy);
+      listeners.forEach(listener => listener(copy));
+      listeners.clear();
+      return copy;
+    });
+    const copy: OperationCopy = { pending, subscribe(listener) {
+      if (settled) listener(settled);
+      else listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    } };
     this.copies.set(sessionId, copy);
     return copy;
   }

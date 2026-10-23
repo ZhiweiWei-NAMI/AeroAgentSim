@@ -1,8 +1,9 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
-import { AssistantApi, type Operation, type OperationDescriptors, type PlanVersion, type Session } from './api';
+import { AssistantApi, type Operation, type OperationCopy, type OperationDescriptors, type PlanVersion, type Session } from './api';
 import { useAssistantSession } from './useAssistant';
+import { useOperationCopy } from './useOperationCopy';
 import { operationName, PlanSummary } from './OperationSummary';
 import { PlanChanges } from './PlanChanges';
 import summarySource from './OperationSummary.tsx?raw';
@@ -181,6 +182,80 @@ it('starts event polling and allows sending and cancelling while copy never reso
   expect(pollSignals).toHaveLength(2);
   expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(1);
   expect(fetch.mock.calls.find(([url])=>url.endsWith('/operations'))![1]?.signal).toBeUndefined();
+});
+
+function trackCopyObservers(copy: OperationCopy) {
+  const subscribe=copy.subscribe!;
+  const active=new Set<(value: OperationCopy)=>void>();
+  const observers: Array<(value: OperationCopy)=>void>=[];
+  vi.spyOn(copy,'subscribe').mockImplementation(listener=>{
+    const observer=vi.fn(listener);
+    observers.push(observer);
+    active.add(observer);
+    const unsubscribe=subscribe(observer);
+    return ()=>{unsubscribe();active.delete(observer);};
+  });
+  return {active,observers};
+}
+
+it('releases observers on repeated unmounts without cancelling or duplicating a stalled copy request',async()=>{
+  let finish!:(text: string)=>void;
+  const body=new Promise<string>(resolve=>{finish=resolve;});
+  const fetch=vi.fn(async(url: string,options?: RequestInit)=>({ok:true,
+    text:()=>url.endsWith('/operations')?body:Promise.resolve(JSON.stringify(conversation()))}));
+  vi.stubGlobal('fetch',fetch);
+  const api=new AssistantApi('http://api'),copy=(await api.session('s1')).plan!.operationCopy!;
+  const {active,observers}=trackCopyObservers(copy),then=vi.spyOn(copy.pending!,'then');
+  for(let mount=0;mount<10;mount++) {
+    expect((await api.session('s1')).plan!.operationCopy).toBe(copy);
+    const view=renderHook(()=>useOperationCopy(copy));
+    expect(active.size).toBe(1);
+    view.unmount();
+    expect(active.size).toBe(0);
+  }
+  const mounted=renderHook(()=>useOperationCopy(copy));
+  expect(active.size).toBe(1);
+  expect(then).not.toHaveBeenCalled();
+  expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(1);
+  expect(fetch.mock.calls.find(([url])=>url.endsWith('/operations'))![1]?.signal).toBeUndefined();
+  await act(async()=>{finish(JSON.stringify(descriptors));await copy.pending;});
+  expect(mounted.result.current?.descriptors).toEqual(descriptors);
+  for(const observer of observers.slice(0,-1))expect(observer).not.toHaveBeenCalled();
+  expect(observers[observers.length-1]).toHaveBeenCalledTimes(1);
+  mounted.unmount();
+  expect(active.size).toBe(0);
+  // A plan can still hold the original pending wrapper after the cache has settled.
+  const late=renderHook(()=>useOperationCopy(copy));
+  expect(late.result.current?.descriptors).toEqual(descriptors);
+  late.unmount();
+  expect(active.size).toBe(0);
+  expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(1);
+});
+
+it('ignores the old pending source after switching subscriptions and resolving it late',async()=>{
+  const finishes: Array<(text: string)=>void>=[];
+  const fetch=vi.fn(async(url: string)=>({ok:true,text:()=>url.endsWith('/operations')
+    ?new Promise<string>(resolve=>{finishes.push(resolve);})
+    :Promise.resolve(JSON.stringify({...conversation(),id:url.endsWith('/s1')?'s1':'s2'}))}));
+  vi.stubGlobal('fetch',fetch);
+  const api=new AssistantApi('http://api');
+  const old=(await api.session('s1')).plan!.operationCopy!,current=(await api.session('s2')).plan!.operationCopy!;
+  const oldObservers=trackCopyObservers(old),currentObservers=trackCopyObservers(current);
+  const view=renderHook(({copy})=>useOperationCopy(copy),{initialProps:{copy:old}});
+  expect(oldObservers.active.size).toBe(1);
+  view.rerender({copy:current});
+  expect(oldObservers.active.size).toBe(0);
+  expect(currentObservers.active.size).toBe(1);
+  expect(view.result.current).toBe(current);
+  await act(async()=>{finishes[0](JSON.stringify(descriptors));await old.pending;});
+  expect(view.result.current).toBe(current);
+  expect(oldObservers.observers[0]).not.toHaveBeenCalled();
+  const latest: OperationDescriptors={api_version:1,families:[]};
+  await act(async()=>{finishes[1](JSON.stringify(latest));await current.pending;});
+  expect(view.result.current?.descriptors).toEqual(latest);
+  view.unmount();
+  expect(currentObservers.active.size).toBe(0);
+  expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(2);
 });
 
 it.each(['en-US','zh-CN'])('updates both mounted label views when pending copy arrives late in %s',async locale=>{
