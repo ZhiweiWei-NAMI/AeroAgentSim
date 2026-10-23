@@ -15,12 +15,12 @@ from pathlib import Path
 from threading import Event
 from time import monotonic
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from urllib.request import urlopen
 
 from aerokernel import Cut, EntityRef, Instant, Stamp
 from aerokernel.codec import decode_record
-from aerokernel.values import canonical_json
+from aerokernel.values import canonical_json, thaw
 
 from aeroagentsim.observations.contracts import CaptureRequest
 from aeroagentsim.observations.png import validate_png
@@ -208,7 +208,8 @@ def record_views(
 
     def save() -> None:
         temporary = output / "manifest.json.writing"
-        temporary.write_bytes(canonical_json(manifest))
+        # Reader header identities/engine versions are tuples, not wire arrays.
+        temporary.write_bytes(canonical_json(thaw(manifest)))
         temporary.replace(output / "manifest.json")
 
     save()
@@ -334,8 +335,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cameras", required=True, type=Path)
     parser.add_argument("--viewer-url", required=True)
     parser.add_argument(
-        "--service-url", required=True,
-        help="Service API base URL supplying public run projection finality",
+        "--service-url",
+        help="Service API base URL for finality (defaults to --viewer-url's origin)",
     )
     parser.add_argument("--node-modules", required=True, type=Path)
     parser.add_argument("--browser-executable", type=Path)
@@ -350,6 +351,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
+        service_url = args.service_url
+        if service_url is None:
+            viewer = urlsplit(args.viewer_url)
+            if viewer.scheme not in {"http", "https"} or not viewer.netloc:
+                raise ValueError("viewer URL must have an HTTP(S) origin")
+            service_url = viewer._replace(path="", query="", fragment="").geturl()
         with open_run(args.run) as source:
             service_run_id = source.header.service_run_id
         if service_run_id is None:
@@ -373,7 +380,7 @@ def main(argv: list[str] | None = None) -> int:
                 else shutil.which("ffmpeg"),
                 encoder=args.encoder,
                 results_timeout_s=args.results_timeout_s,
-                results_provider=lambda: public_results(args.service_url, service_run_id),
+                results_provider=lambda: public_results(service_url, service_run_id),
             )
         failed = [row for row in manifest["views"] if row["status"] == "failed"]
         for row in failed:

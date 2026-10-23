@@ -15,7 +15,9 @@ from aerokernel import Kernel, replay
 from aerokernel.codec import decode_record
 from aerokernel.values import thaw
 
-from aeroagentsim.runs import RecordedMessage, RunReplaced, iter_record_messages, open_run
+from aeroagentsim.runs import (
+    NoCommittedPrefix, RecordedMessage, RunReplaced, iter_record_messages, open_run,
+)
 
 from .geometry import Polygon, area, clip, contains, union_area
 
@@ -205,7 +207,7 @@ def _verified(data: bytes) -> Kernel:
 
 
 def metrics(run: Path | str) -> dict[str, Any]:
-    """Verify replay integrity and derive KPIs at one acknowledged source cut."""
+    """Verify an ACK-bounded run or a historical offline journal before KPIs."""
     path = Path(run)
     if not path.is_dir():
         # Reader v1 has no standalone-file admission. Preserve the historical
@@ -224,7 +226,18 @@ def metrics(run: Path | str) -> dict[str, Any]:
                 "redaction": "none",
             },
         }
-    with open_run(path) as source:
+    try:
+        source = open_run(path)
+    except NoCommittedPrefix:
+        ack = path / "committed-prefix.json"
+        if ack.exists() or ack.is_symlink():
+            # An invalid published ACK is not permission to consume visible tails.
+            raise
+        # Bare journals predate the service ACK contract. Keep main's semantic
+        # admission and exact report shape, including its incomplete-data error.
+        # compute() normalizes messages through the public iter_record_messages.
+        return compute(_verified((path / "journal.jsonl").read_bytes()))
+    with source:
         snapshot = source.snapshot()
         # Reader v1 has no raw-byte stream for the retained semantic verifier.
         # Bound that legacy access to the reader's exact ACK and source identity.

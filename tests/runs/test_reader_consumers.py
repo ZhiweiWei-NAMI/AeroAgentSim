@@ -14,9 +14,10 @@ import json
 import socket
 import sqlite3
 import subprocess
-from io import BytesIO
+from contextlib import nullcontext
 from dataclasses import asdict, replace
 from fractions import Fraction
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -205,8 +206,10 @@ def test_missing_evidence_raises_before_any_partial_export(
         lambda: video.cuts(recorded_run),
         lambda: thumbnails.source_cut(recorded_run, 0.0),
         lambda: thumbnails.viewer_feed(recorded_run, selected),
-        lambda: metrics(recorded_run),
     ]
+    if damage != "missing-ack":
+        # Pack metrics also admit bare offline journals; other exports need ACKs.
+        consumers.append(lambda: metrics(recorded_run))
     for consume in consumers:
         with pytest.raises(RunReadError):
             consume()
@@ -376,7 +379,55 @@ def test_recording_manifest_keeps_existing_keys_and_adds_reader_provenance(
     assert manifest["views"][0]["status"] == "failed"
     assert "ffmpeg unavailable" in manifest["views"][0]["reason"]
     assert manifest["views"][0]["source_cuts"][-1]["index"] == state["final_commit_index"]
-    assert json.loads((tmp_path / "video/manifest.json").read_text())["source_run"] == metadata
+    saved = json.loads((tmp_path / "video/manifest.json").read_text())
+    assert saved["source_run"] == metadata
+    assert saved["source_evidence"] == json.loads(json.dumps(manifest["source_evidence"]))
+    assert saved["source_evidence"]["header"]["journal_identity"] == list(
+        manifest["source_evidence"]["header"]["journal_identity"]
+    )
+    assert saved["source_evidence"]["header"]["engine_versions"]
+    assert inventory(recorded_run) == before
+
+
+@pytest.mark.parametrize("service_url", [None, "https://api.invalid:9443/base"])
+def test_recording_cli_defaults_service_to_viewer_origin_and_allows_override(
+    recorded_run: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    service_url: str | None,
+) -> None:
+    state = final_state(recorded_run)
+    metadata = json.loads((recorded_run / "manifest.json").read_text())
+    cameras = tmp_path / "cameras.json"
+    cameras.write_text("[]")
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    requests = []
+    viewer_url = "https://viewer.invalid:8443/viewer/index.html?mode=replay#camera"
+
+    def renderer(url: str, **kwargs: Any) -> Any:
+        assert url == viewer_url
+        assert kwargs["service_run_id"] == metadata["id"]
+        return nullcontext(SimpleNamespace())
+
+    def results(url: str, run_id: str) -> dict[str, Any]:
+        requests.append((url, run_id))
+        return state
+
+    def record(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        assert kwargs["results_provider"]() == state
+        return {"views": []}
+
+    monkeypatch.setattr(video, "BrowserRenderer", renderer)
+    monkeypatch.setattr(video, "public_results", results)
+    monkeypatch.setattr(video, "record_views", record)
+    argv = [
+        "--run", str(recorded_run), "--output", str(tmp_path / "video"),
+        "--cameras", str(cameras), "--viewer-url", viewer_url,
+        "--node-modules", str(tmp_path / "node_modules"), "--ffmpeg", "fixture-ffmpeg",
+    ]
+    if service_url is not None:
+        argv += ["--service-url", service_url]
+    assert video.main(argv) == 0
+    assert requests == [(service_url or "https://viewer.invalid:8443", metadata["id"])]
     assert inventory(recorded_run) == before
 
 
@@ -546,13 +597,22 @@ def test_pack_metrics_match_independent_legacy_golden(
         item["message"] for record in raw for item in record.get("items", [])
         if item.get("kind") == "operation" and "message" in item
     ]
+    # Kernel fan-out is recorded as dispatch items wrapping Delivery envelopes,
+    # not the synthetic kind="delivery" slots used by diagnostic fixtures below.
     deliveries = [
-        item["message"] for record in raw for item in record.get("items", [])
-        if item.get("kind") == "delivery"
+        decode_record(item["delivery"])
+        for record in raw for item in record.get("items", [])
+        if item.get("kind") == "dispatch"
     ]
     assert len(emissions) == 23
+    assert len(deliveries) == 46
     for message in emissions:
-        assert sum(copy["fields"]["id"] == message["fields"]["id"] for copy in deliveries) == 2
+        copies = [
+            delivery for delivery in deliveries
+            if delivery.message.id == message["fields"]["id"]
+        ]
+        assert len(copies) == 2
+        assert {delivery.recipient for delivery in copies} == {"observer-a", "observer-b"}
     with open_run(directory) as run:
         observations = list(run.snapshot().iter_messages(schema_prefix="fixture.inspection"))
     assert len(observations) == 6
@@ -811,6 +871,44 @@ def test_thumbnail_request_uses_reader_identity_without_manifest_identity_fields
     assert request.actor.epoch == identity["epoch"]
     assert request.source_cut == cut
     assert request.camera["overview"]["eye"] == [2.0, 5.0, 1.0]
+    assert inventory(recorded_run) == before
+
+
+def test_bare_directory_metrics_keep_legacy_shape_and_need_no_ack(
+    recorded_run: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (recorded_run / "committed-prefix.json").unlink()
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    # Same public kernel replay admission as origin/main, with no evidence field
+    # added to this historical shape (existing pack callers compare it exactly).
+    expected = {"run_id": "realtime-ingress", "duration_s": 0.1}
+    assert metrics(recorded_run) == expected
+    assert inventory(recorded_run) == before
+
+
+@pytest.mark.parametrize("prefix", [{}, {"bytes": 0, "index": 0}])
+def test_invalid_published_ack_does_not_fall_back_to_visible_journal(
+    recorded_run: Path, monkeypatch: pytest.MonkeyPatch, prefix: dict[str, Any],
+) -> None:
+    write_prefix(recorded_run, prefix)
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    with pytest.raises(RunReadError):
+        metrics(recorded_run)
+    assert inventory(recorded_run) == before
+
+
+def test_bare_directory_metrics_keep_incomplete_journal_error(
+    recorded_run: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (recorded_run / "committed-prefix.json").unlink()
+    journal = recorded_run / "journal.jsonl"
+    journal.write_bytes(journal.read_bytes()[:-5])
+    forbid_live(monkeypatch)
+    before = inventory(recorded_run)
+    with pytest.raises(ValueError, match="JOURNAL_TRUNCATED|complete journal"):
+        metrics(recorded_run)
     assert inventory(recorded_run) == before
 
 
