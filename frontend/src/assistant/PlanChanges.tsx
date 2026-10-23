@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { Diff, DiffItem, Operation, OperationDescriptors, PlanVersion } from './api';
 import { Icon } from './icons';
+import { useOperationCopy } from './useOperationCopy';
 import { bi, pick } from './present';
 import { effectiveOperations, OperationCopyNotice, operationName, operationParams, operationSummary, parameterName, parameterValue } from './OperationSummary';
 
@@ -43,6 +44,7 @@ export function DiffList({ diff, onHover, empty }: { diff?: Diff | null; onHover
 /** What this version does to the scene, what changed since the last version, and why — one entry per operation. */
 export function PlanChanges({ plan, onHover }: { plan: PlanVersion; onHover?: (id: string | undefined) => void }) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
+  const copy = useOperationCopy(plan.operationCopy);
   const [since, setSince] = useState<'previous' | 'base'>(plan.diff_previous ? 'previous' : 'base');
   const diff = since === 'previous' ? plan.diff_previous : plan.diff_base;
   return <div className="as-changes" data-testid="as-changes">
@@ -52,8 +54,8 @@ export function PlanChanges({ plan, onHover }: { plan: PlanVersion; onHover?: (i
     </div>
     <DiffList diff={diff} onHover={onHover} empty={since === 'previous' ? L('Nothing changed in the scene since the previous version.', '与上一版相比场景没有变化。') : L('This plan leaves the scene as it is.', '此方案不改变场景。')} />
     <h5 className="as-subhead">{L('How the plan is built', '方案如何构成')}<small>{L('Places, participants, tasks and settings in this plan','此方案中的地点、参与者、任务与设置')}</small></h5>
-    <OperationCopyNotice plan={plan}/>
-    <ol className="as-ops">{effectiveOperations(plan).map(op => <Op key={op.id} op={op} descriptors={plan.operationCopy?.descriptors} issue={plan.compile.errors.find(error => error.op_id === op.id)?.message} />)}</ol>
+    <OperationCopyNotice copy={copy}/>
+    <ol className="as-ops">{effectiveOperations(plan).map(op => <Op key={op.id} op={op} descriptors={copy?.descriptors} issue={plan.compile.errors.find(error => error.op_id === op.id)?.message} />)}</ol>
   </div>;
 }
 

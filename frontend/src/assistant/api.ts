@@ -80,7 +80,11 @@ export interface OperationDescriptors {
   api_version: 1; families: Array<{ name: string; operations: OperationDescriptor[] }>;
 }
 /** Client-only display metadata, never an authored recipe or an approval result. */
-export interface OperationCopy { descriptors?: OperationDescriptors; error?: string }
+export interface OperationCopy {
+  descriptors?: OperationDescriptors; error?: string;
+  /** A shared, non-rejecting display-only update; session and plan reads never await it. */
+  pending?: Promise<OperationCopy>;
+}
 /** Questions arrive as plain text or with suggested answers (assistant/tools.py QUESTIONS). */
 export type OpenQuestion = string | { question: string; options?: string[] };
 export const questionOf = (row: OpenQuestion) => typeof row === 'string' ? { question: row, options: [] as string[] } : { options: [] as string[], ...row };
@@ -144,6 +148,7 @@ export interface PlanPreview {
 export class AssistantApi {
   private readonly http: WorkbenchApi;
   private readonly descriptors = new Map<string, Promise<OperationDescriptors>>();
+  private readonly copies = new Map<string, OperationCopy>();
   constructor(readonly base: string) { this.http = new WorkbenchApi(base); }
   private path(rest: string) { return `/v1/assistant${rest}`; }
   /** Share the request (including failures) across refreshes, versions and locales in one conversation. */
@@ -159,12 +164,19 @@ export class AssistantApi {
     }
     return request;
   }
-  private async operationCopy(sessionId: string): Promise<OperationCopy> {
-    try { return { descriptors: await this.operations(sessionId) }; }
-    catch (problem) { return { error: problem instanceof Error ? problem.message : String(problem) }; }
+  private operationCopy(sessionId: string): OperationCopy {
+    const cached = this.copies.get(sessionId);
+    if (cached) return cached;
+    const pending = this.operations(sessionId).then<OperationCopy, OperationCopy>(
+      descriptors => ({ descriptors }),
+      problem => ({ error: problem instanceof Error ? problem.message : String(problem) }),
+    ).then(copy => { this.copies.set(sessionId, copy); return copy; });
+    const copy = { pending };
+    this.copies.set(sessionId, copy);
+    return copy;
   }
-  private async describedSession(session: Session): Promise<Session> {
-    const copy = await this.operationCopy(session.id);
+  private describedSession(session: Session): Session {
+    const copy = this.operationCopy(session.id);
     return { ...session, plan: session.plan ? { ...session.plan, operationCopy: copy } : null };
   }
   connection(signal?: AbortSignal) { return this.http.request<Connection>(this.path('/connection'), { signal }); }
@@ -178,7 +190,7 @@ export class AssistantApi {
   cancel(id: string) { return this.http.request<{ cancelled: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/cancel`), { body: {} }); }
   async plan(id: string, version: number, signal?: AbortSignal): Promise<PlanVersion> {
     const plan = compiledParts(await this.http.request<PlanVersion>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}`), { signal }));
-    return { ...plan, operationCopy: await this.operationCopy(id) };
+    return { ...plan, operationCopy: this.operationCopy(id) };
   }
   preview(id: string, version: number, signal?: AbortSignal) { return this.http.request<PlanPreview>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/scenario`), { signal }); }
   async choose(id: string, version: number) { return this.describedSession(await this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/choose`), { body: {} })); }

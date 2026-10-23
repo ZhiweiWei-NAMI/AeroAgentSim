@@ -180,12 +180,18 @@ failures remain HTTP 500, not successful discovery.
 The browser fetches this snapshot once per conversation in its `AssistantApi`
 instance, sharing the request across refreshes, plan versions and locale changes.
 It attaches copy as client-only display metadata; operation recipes, diffs,
-validation and approval state are unchanged. Failed reads remain failures in that
-cache and are shown with an unavailable notice when a plan is displayed; reload
-or a new conversation obtains a fresh snapshot. Unknown IDs (including missing
-legacy aliases) render with their exact ID and **Unknown operation / 未知操作**,
-never a guessed name. Titles and operation summaries are plain text in the
-active locale, not execution or completion claims.
+validation and approval state are unchanged. Session creation, session reads and
+plan reads return without waiting for this optional copy, so a stalled descriptor
+fetch cannot block messaging or event polling. Pending copy renders the same neutral
+ID labels as unavailable copy; mounted summary and changes views update when the
+shared request settles, without another session read. Cancelling a consumer or
+unmounting a view does not abort the shared descriptor request.
+
+Failed reads remain failures in that cache and are shown with a quiet unavailable
+notice when a plan is displayed; reload or a new conversation obtains a fresh
+snapshot. Unknown IDs (including missing legacy aliases) render with their exact
+ID and **Unknown operation / 未知操作**, never a guessed name. Titles and operation
+summaries are plain text in the active locale, not execution or completion claims.
 
 This HTTP slice does **not** generalize assistant spatial overlays. Presentation
 v1 already declares pose fields, frames and optional role hints, but

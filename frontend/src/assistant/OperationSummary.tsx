@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n/I18nProvider';
 import { readableLabel } from '../pages/inspection-format';
-import type { Operation, OperationDescriptors, PlanVersion, Release, SceneSummary } from './api';
+import type { Operation, OperationCopy, OperationDescriptors, PlanVersion, Release, SceneSummary } from './api';
+import { useOperationCopy } from './useOperationCopy';
 import { bi, kindNoun, pick, placeRole, releaseText, valueText, type Lang } from './present';
 
 /** Only canonical IDs and catalogue-declared aliases identify an operation; never guess by suffix. */
@@ -17,9 +18,9 @@ export function operationSummary(op: string, L: Lang, descriptors?: OperationDes
   return summary ? L(summary.en,summary.zh) : undefined;
 }
 
-export function OperationCopyNotice({plan}: {plan: PlanVersion}) {
+export function OperationCopyNotice({copy}: {copy?: OperationCopy}) {
   const {locale}=useI18n(),L: Lang=(en,zh)=>locale==='zh-CN'?zh:en;
-  return plan.operationCopy?.error ? <p className="as-quiet" role="alert">{L('Operation descriptions are unavailable; IDs are shown instead.','操作说明不可用，暂显示操作标识。')} {bi(plan.operationCopy.error,locale==='zh-CN')}</p> : null;
+  return copy?.error ? <p className="as-quiet" role="status">{L('Operation descriptions are unavailable; IDs are shown instead.','操作说明不可用，暂显示操作标识。')} {bi(copy.error,locale==='zh-CN')}</p> : null;
 }
 
 const PARAMS: Record<string,[string,string]> = {
@@ -85,11 +86,12 @@ export function isUnchangedPlan(plan: PlanVersion): boolean {
 /** The compiler's revision summaries sometimes contain a full operation dump. */
 export function PlanSummary({ plan }: { plan: PlanVersion }) {
   const {locale}=useI18n(), zh=locale==='zh-CN', L: Lang=(en,cn)=>zh?cn:en;
-  if(isUnchangedPlan(plan))return <><OperationCopyNotice plan={plan}/><p>{L('This proposal makes no changes to the current scene.','此提议没有改变当前场景。')}</p></>;
+  const copy=useOperationCopy(plan.operationCopy);
+  if(isUnchangedPlan(plan))return <><OperationCopyNotice copy={copy}/><p>{L('This proposal makes no changes to the current scene.','此提议没有改变当前场景。')}</p></>;
   const machineSummary=plan.operations.some(op=>plan.summary.includes(`${op.op}:`)) && /[{}]/.test(plan.summary);
-  if(!machineSummary && !hasCompiledExpansion(plan))return <><OperationCopyNotice plan={plan}/>{plan.summary?<p>{bi(plan.summary,zh)}</p>:null}</>;
-  const descriptors=plan.operationCopy?.descriptors;
-  return <><OperationCopyNotice plan={plan}/><ul className="as-arrangement" data-testid="as-arrangement">{effectiveOperations(plan).map(op=>{
+  if(!machineSummary && !hasCompiledExpansion(plan))return <><OperationCopyNotice copy={copy}/>{plan.summary?<p>{bi(plan.summary,zh)}</p>:null}</>;
+  const descriptors=copy?.descriptors;
+  return <><OperationCopyNotice copy={copy}/><ul className="as-arrangement" data-testid="as-arrangement">{effectiveOperations(plan).map(op=>{
     const params=operationParams(op), summary=operationSummary(op.op,L,descriptors);
     const entries=Object.entries(params).filter(([key])=>!(zh ? key==='label' && typeof params.label_zh==='string' : key==='label_zh'));
     return <li key={op.id}><strong>{operationName(op.op,L,descriptors)}</strong>

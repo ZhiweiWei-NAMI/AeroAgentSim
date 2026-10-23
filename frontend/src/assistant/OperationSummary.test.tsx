@@ -1,13 +1,14 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
-import type { Operation, OperationDescriptors, PlanVersion } from './api';
+import { AssistantApi, type Operation, type OperationDescriptors, type PlanVersion, type Session } from './api';
+import { useAssistantSession } from './useAssistant';
 import { operationName, PlanSummary } from './OperationSummary';
 import { PlanChanges } from './PlanChanges';
 import summarySource from './OperationSummary.tsx?raw';
 import changesSource from './PlanChanges.tsx?raw';
 
-afterEach(()=>{cleanup();localStorage.clear();});
+afterEach(()=>{cleanup();localStorage.clear();vi.unstubAllGlobals();});
 
 const descriptors: OperationDescriptors={api_version:1,families:[
   {name:'garden',operations:[{
@@ -91,7 +92,7 @@ it.each(['en-US','zh-CN'])('shows descriptor failures without hiding the proposa
   localStorage.setItem('aeroagentsim.locale',locale);
   const proposed={...plan(),operationCopy:{error:'Family unavailable / 操作族不可用'}};
   render(<I18nProvider><PlanSummary plan={proposed}/><PlanChanges plan={proposed}/></I18nProvider>);
-  for(const alert of screen.getAllByRole('alert')) {
+  for(const alert of screen.getAllByRole('status')) {
     expect(alert).toHaveTextContent(locale==='zh-CN'?'操作说明不可用':'Operation descriptions are unavailable');
     expect(alert).toHaveTextContent(locale==='zh-CN'?'操作族不可用':'Family unavailable');
   }
@@ -127,6 +128,104 @@ it('labels effective prerequisite operations without changing the authored recip
   expect(proposed.operations).toEqual([{id:'group',op:'add_fleet',params:{count:2}}]);
   expect(proposed.compile.ok).toBe(true);
   expect(proposed.validation.state).toBe('valid');
+});
+
+function conversation(): Session {
+  const proposed=plan();
+  delete proposed.operationCopy;
+  return {id:'s1',created_at:'',updated_at:'',workspace_id:null,title:'Conversation',busy:false,last_seq:0,
+    events:[],plan:proposed,plan_versions:[],alternatives:[],applied:[]};
+}
+
+function LiveConversation({api}: {api: AssistantApi}) {
+  const assistant=useAssistantSession(api,'s1');
+  return <>
+    <button disabled={!assistant.session} onClick={()=>void assistant.send('Continue')}>Send</button>
+    <button onClick={()=>void assistant.cancel()}>Cancel</button>
+    {assistant.error && <p role="alert">{assistant.error}</p>}
+    {assistant.plan && <><PlanSummary plan={assistant.plan}/><PlanChanges plan={assistant.plan}/></>}
+  </>;
+}
+
+it('starts event polling and allows sending and cancelling while copy never resolves, even after remount',async()=>{
+  localStorage.setItem('aeroagentsim.locale','en-US');
+  const raw=conversation(),never=new Promise<never>(()=>{}),pollSignals: AbortSignal[]=[];
+  const fetch=vi.fn(async(url: string,options?: RequestInit)=>{
+    if(url.endsWith('/operations'))return never;
+    if(url.includes('/events?')) {
+      pollSignals.push(options!.signal!);
+      return new Promise<never>((_resolve,reject)=>options!.signal!.addEventListener('abort',
+        ()=>reject(new DOMException('Cancelled','AbortError')),{once:true}));
+    }
+    return {ok:true,text:async()=>JSON.stringify(url.endsWith('/messages')?{turn:1,seq:1}
+      :url.endsWith('/cancel')?{cancelled:true}:raw)};
+  });
+  vi.stubGlobal('fetch',fetch);
+  const api=new AssistantApi('http://api');
+  expect((await api.create()).id).toBe('s1');
+  const view=render(<I18nProvider><LiveConversation api={api}/></I18nProvider>);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Send'})).toBeEnabled());
+  expect(screen.getByTestId('as-arrangement')).toHaveTextContent('Unknown operation · garden.irrigate');
+  expect(screen.getByTestId('as-op')).toHaveTextContent('Unknown operation · garden.irrigate');
+  expect(pollSignals).toHaveLength(1);
+  expect(screen.queryByRole('status')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Send'}));
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  await waitFor(()=>expect(fetch.mock.calls.some(([url])=>url.endsWith('/messages'))).toBe(true));
+  await waitFor(()=>expect(fetch.mock.calls.some(([url])=>url.endsWith('/cancel'))).toBe(true));
+  expect(screen.queryByRole('alert')).toBeNull();
+  view.unmount();
+  expect(pollSignals[0].aborted).toBe(true);
+  render(<I18nProvider><LiveConversation api={api}/></I18nProvider>);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Send'})).toBeEnabled());
+  expect(pollSignals).toHaveLength(2);
+  expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(1);
+  expect(fetch.mock.calls.find(([url])=>url.endsWith('/operations'))![1]?.signal).toBeUndefined();
+});
+
+it.each(['en-US','zh-CN'])('updates both mounted label views when pending copy arrives late in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  let finish!:(text: string)=>void;
+  const body=new Promise<string>(resolve=>{finish=resolve;});
+  const raw=conversation();
+  const fetch=vi.fn(async(url: string)=>({ok:true,text:()=>url.endsWith('/operations')?body:Promise.resolve(JSON.stringify(raw))}));
+  vi.stubGlobal('fetch',fetch);
+  const api=new AssistantApi('http://api'),current=await api.session('s1'),proposed=current.plan!;
+  render(<I18nProvider><PlanSummary plan={proposed}/><PlanChanges plan={proposed}/></I18nProvider>);
+  const unknown=locale==='zh-CN'?'未知操作':'Unknown operation',language=locale==='zh-CN'?'zh':'en';
+  expect(screen.getAllByText(`${unknown} · garden.irrigate`)).toHaveLength(2);
+  await act(async()=>{finish(JSON.stringify(descriptors));await proposed.operationCopy!.pending;});
+  const copy=descriptors.families[0].operations[0];
+  for(const row of [screen.getByTestId('as-arrangement'),screen.getByTestId('as-op')]) {
+    expect(row).toHaveTextContent(copy.title[language]);
+    expect(row).toHaveTextContent(copy.summary![language]);
+  }
+  expect(screen.queryByText(`${unknown} · garden.irrigate`)).toBeNull();
+  expect((await api.session('s1')).plan?.operationCopy?.descriptors).toEqual(descriptors);
+  expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(1);
+  expect(proposed.operations).toEqual(raw.plan!.operations);
+  expect(proposed.validation).toEqual(raw.plan!.validation);
+});
+
+it.each(['en-US','zh-CN'])('shows an unobtrusive notice if pending copy fails late in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  let fail!:(problem: Error)=>void;
+  const body=new Promise<string>((_resolve,reject)=>{fail=reject;});
+  const fetch=vi.fn(async(url: string)=>({ok:true,text:()=>url.endsWith('/operations')?body:Promise.resolve(JSON.stringify(conversation()))}));
+  vi.stubGlobal('fetch',fetch);
+  const api=new AssistantApi('http://api'),current=await api.session('s1'),proposed=current.plan!;
+  render(<I18nProvider><PlanSummary plan={proposed}/><PlanChanges plan={proposed}/></I18nProvider>);
+  expect(screen.queryByRole('status')).toBeNull();
+  await act(async()=>{fail(new Error('Family unavailable / 操作族不可用'));await proposed.operationCopy!.pending;});
+  expect(screen.getAllByRole('status')).toHaveLength(2);
+  for(const notice of screen.getAllByRole('status')) {
+    expect(notice).toHaveClass('as-quiet');
+    expect(notice).toHaveTextContent(locale==='zh-CN'?'操作说明不可用':'Operation descriptions are unavailable');
+  }
+  expect(screen.getByTestId('as-op')).toHaveTextContent(`${locale==='zh-CN'?'未知操作':'Unknown operation'} · garden.irrigate`);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect((await api.session('s1')).plan?.operationCopy?.error).toContain('Family unavailable');
+  expect(fetch.mock.calls.filter(([url])=>url.endsWith('/operations'))).toHaveLength(1);
 });
 
 it('does not contain a hardcoded operation-label map in either operation-copy consumer',()=>{
