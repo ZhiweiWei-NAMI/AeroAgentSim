@@ -62,6 +62,12 @@ jobs:
             --ignore=tests/authoring/test_replay_scene.py \
             tests/demos/traffic_accident/test_public_demo.py \
             tests/demos/traffic_accident/test_packaging.py \
+            tests/demos/traffic_accident/test_air.py \
+            tests/demos/traffic_accident/test_live_decisions.py \
+            tests/demos/traffic_accident/test_policy.py \
+            tests/demos/traffic_accident/test_road.py \
+            tests/demos/traffic_accident/test_runtime_contract.py \
+            tests/demos/traffic_accident/test_scenario.py \
             --deselect=tests/observations/test_artifact_service.py::test_service_output_scope_without_mutating_input \
             --deselect=tests/authoring/test_portable_yaml.py::test_region_roundtrip_preserves_parameters_geometry_crop_and_real_network \
             --deselect=tests/assistant/test_blank_projects.py::test_blank_centre_charging_station_compiles_validates_and_applies[aerograph] \
