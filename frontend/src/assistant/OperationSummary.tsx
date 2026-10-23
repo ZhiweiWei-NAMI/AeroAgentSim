@@ -1,19 +1,26 @@
 import { useI18n } from '../i18n/I18nProvider';
 import { readableLabel } from '../pages/inspection-format';
-import type { Operation, PlanVersion, Release, SceneSummary } from './api';
+import type { Operation, OperationDescriptors, PlanVersion, Release, SceneSummary } from './api';
 import { bi, kindNoun, pick, placeRole, releaseText, valueText, type Lang } from './present';
 
-const OPS: Record<string, [string,string]> = {
-  add_lowalt_components: ['Add the drone scene components','添加无人机场景组件'], set_region: ['Set the geographic area','设置地理区域'],
-  set_control: ['Change a scene setting','修改场景设置'], set_duration: ['Set the run length','设置运行时长'], set_run_mode: ['Choose the input mode','选择输入方式'],
-  set_wind: ['Set background wind','设置常态风'], add_gust: ['Add a wind gust','添加阵风'], remove_gust: ['Remove a wind gust','移除阵风'], set_rule: ['Change a safety rule','修改安全规则'], set_algorithm: ['Choose a decision method','选择决策方法'],
-  add_place: ['Add a place','添加地点'], update_place: ['Change a place','修改地点'], remove_place: ['Remove a place','移除地点'],
-  add_fleet: ['Add a group of UAVs','添加无人机编队'], set_fleet: ['Change a UAV group','修改无人机编队'], set_vehicle: ['Adjust one UAV','调整单架无人机'],
-  add_orders: ['Add tasks','添加任务'], set_orders: ['Change tasks','修改任务'], remove_orders: ['Remove tasks','移除任务'], set_task: ['Change one task','修改单个任务'],
-  add_incident: ['Schedule an incident','安排事件'], set_incident: ['Change an incident','修改事件'], remove_incident: ['Remove an incident','移除事件'],
-  schedule_event: ['Schedule an event','安排事件'], set_cooperation: ['Set who notices, decides and helps','设置发现、决策与协助'], remove_cooperation: ['Remove cooperation','移除协作'],
-};
-export function operationName(op: string, L: Lang) { const row=OPS[op]; return row ? L(...row) : L('Scene change','场景变更'); }
+/** Only canonical IDs and catalogue-declared aliases identify an operation; never guess by suffix. */
+export function operationDescriptor(op: string, descriptors: OperationDescriptors | undefined) {
+  const operations=descriptors?.families.flatMap(family=>family.operations) ?? [];
+  return operations.find(row=>row.id===op) ?? operations.find(row=>row.aliases?.includes(op));
+}
+export function operationName(op: string, L: Lang, descriptors?: OperationDescriptors): string {
+  const row=operationDescriptor(op,descriptors);
+  return row ? L(row.title.en,row.title.zh) : `${L('Unknown operation','未知操作')} · ${op}`;
+}
+export function operationSummary(op: string, L: Lang, descriptors?: OperationDescriptors): string | undefined {
+  const summary=operationDescriptor(op,descriptors)?.summary;
+  return summary ? L(summary.en,summary.zh) : undefined;
+}
+
+export function OperationCopyNotice({plan}: {plan: PlanVersion}) {
+  const {locale}=useI18n(),L: Lang=(en,zh)=>locale==='zh-CN'?zh:en;
+  return plan.operationCopy?.error ? <p className="as-quiet" role="alert">{L('Operation descriptions are unavailable; IDs are shown instead.','操作说明不可用，暂显示操作标识。')} {bi(plan.operationCopy.error,locale==='zh-CN')}</p> : null;
+}
 
 const PARAMS: Record<string,[string,string]> = {
   index: ['Gust index','阵风索引'], id: ['ID','标识'], count: ['Count','数量'], capacity: ['Capacity','容量'], power_w: ['Charging power (W)','充电功率（瓦）'],
@@ -78,14 +85,16 @@ export function isUnchangedPlan(plan: PlanVersion): boolean {
 /** The compiler's revision summaries sometimes contain a full operation dump. */
 export function PlanSummary({ plan }: { plan: PlanVersion }) {
   const {locale}=useI18n(), zh=locale==='zh-CN', L: Lang=(en,cn)=>zh?cn:en;
-  if(isUnchangedPlan(plan))return <p>{L('This proposal makes no changes to the current scene.','此提议没有改变当前场景。')}</p>;
+  if(isUnchangedPlan(plan))return <><OperationCopyNotice plan={plan}/><p>{L('This proposal makes no changes to the current scene.','此提议没有改变当前场景。')}</p></>;
   const machineSummary=plan.operations.some(op=>plan.summary.includes(`${op.op}:`)) && /[{}]/.test(plan.summary);
-  if(!machineSummary && !hasCompiledExpansion(plan))return plan.summary?<p>{bi(plan.summary,zh)}</p>:null;
-  return <ul className="as-arrangement" data-testid="as-arrangement">{effectiveOperations(plan).map(op=>{
-    const params=operationParams(op);
+  if(!machineSummary && !hasCompiledExpansion(plan))return <><OperationCopyNotice plan={plan}/>{plan.summary?<p>{bi(plan.summary,zh)}</p>:null}</>;
+  const descriptors=plan.operationCopy?.descriptors;
+  return <><OperationCopyNotice plan={plan}/><ul className="as-arrangement" data-testid="as-arrangement">{effectiveOperations(plan).map(op=>{
+    const params=operationParams(op), summary=operationSummary(op.op,L,descriptors);
     const entries=Object.entries(params).filter(([key])=>!(zh ? key==='label' && typeof params.label_zh==='string' : key==='label_zh'));
-    return <li key={op.id}><strong>{operationName(op.op,L)}</strong>
+    return <li key={op.id}><strong>{operationName(op.op,L,descriptors)}</strong>
+      {summary && <p className="hint">{summary}</p>}
       <dl>{entries.map(([key,value])=><div key={key}><dt>{parameterName(key,L)}</dt><dd>{parameterValue(key,value,plan.scene,zh,L)}</dd></div>)}</dl>
     </li>;
-  })}</ul>;
+  })}</ul></>;
 }

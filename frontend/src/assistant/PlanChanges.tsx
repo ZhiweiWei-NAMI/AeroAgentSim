@@ -1,9 +1,9 @@
 import { useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
-import type { Diff, DiffItem, Operation, PlanVersion } from './api';
+import type { Diff, DiffItem, Operation, OperationDescriptors, PlanVersion } from './api';
 import { Icon } from './icons';
 import { bi, pick } from './present';
-import { effectiveOperations, operationName, operationParams, parameterName, parameterValue } from './OperationSummary';
+import { effectiveOperations, OperationCopyNotice, operationName, operationParams, operationSummary, parameterName, parameterValue } from './OperationSummary';
 
 const KIND: Record<string, [string, string, string]> = {
   fleet: ['drone', 'fleet', '机队'], vehicle: ['drone', 'UAV', '无人机'], place: ['customer', 'place', '地点'], workload: ['parcel', 'tasks', '任务'], task: ['parcel', 'task', '任务'],
@@ -52,20 +52,22 @@ export function PlanChanges({ plan, onHover }: { plan: PlanVersion; onHover?: (i
     </div>
     <DiffList diff={diff} onHover={onHover} empty={since === 'previous' ? L('Nothing changed in the scene since the previous version.', '与上一版相比场景没有变化。') : L('This plan leaves the scene as it is.', '此方案不改变场景。')} />
     <h5 className="as-subhead">{L('How the plan is built', '方案如何构成')}<small>{L('Places, participants, tasks and settings in this plan','此方案中的地点、参与者、任务与设置')}</small></h5>
-    <ol className="as-ops">{effectiveOperations(plan).map(op => <Op key={op.id} op={op} issue={plan.compile.errors.find(error => error.op_id === op.id)?.message} />)}</ol>
+    <OperationCopyNotice plan={plan}/>
+    <ol className="as-ops">{effectiveOperations(plan).map(op => <Op key={op.id} op={op} descriptors={plan.operationCopy?.descriptors} issue={plan.compile.errors.find(error => error.op_id === op.id)?.message} />)}</ol>
   </div>;
 }
 
-function Op({ op, issue }: { op: Operation; issue?: string }) {
+function Op({ op, issue, descriptors }: { op: Operation; issue?: string; descriptors?: OperationDescriptors }) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const { op: name, id, explain } = op;
+  const summary = operationSummary(name,L,descriptors);
   // Parameters arrive nested under params; show their top-level values and keep the full payload one click away.
   const args = operationParams(op);
   // Show the label in the reader's language only.
   const entries = Object.entries(args).filter(([key, value]) => value !== undefined && value !== null && !(zh ? key === 'label' && 'label_zh' in args : key.endsWith('_zh')));
   return <li className={`as-op${issue ? ' is-bad' : ''}`} data-testid="as-op">
     <span className="as-op-id wb-mono" title={L('Operation id — name it to revise this step', '操作标识，修改此步骤时可引用')}>{id}</span>
-    <div><b className="as-op-title">{operationName(name,L)}</b>{explain && <p>{bi(explain,zh)}</p>}
+    <div><b className="as-op-title">{operationName(name,L,descriptors)}</b>{summary && <p>{summary}</p>}{explain && <p>{bi(explain,zh)}</p>}
       {entries.length > 0 && <span className="as-op-args">{entries.slice(0, 6).map(([key, value]) => <span key={key}><i>{parameterName(key,L)}</i> {parameterValue(key,value,undefined,zh,L)}</span>)}</span>}
       <details className="as-op-full"><summary>{L('Advanced','高级')}</summary><code>{name}</code><pre className="wb-mono">{JSON.stringify(args, null, 2)}</pre></details>
       {issue && <p className="as-bad">{bi(issue,zh)}</p>}

@@ -71,6 +71,16 @@ export interface Expectation {
   approx_s?: number | null; precheck?: { ok: boolean; text: string; text_zh?: string } | null; depends_on?: string[];
 }
 export interface Operation { id: string; op: string; explain?: string; [key: string]: unknown }
+export interface OperationText { en: string; zh: string }
+export interface OperationDescriptor {
+  id: string; title: OperationText; summary?: OperationText; parameters: Record<string, unknown>; aliases?: string[];
+  prerequisites: Array<{ operation: string; params: Record<string, unknown>; conditional: boolean; note: string | null; warning: string | null }>;
+}
+export interface OperationDescriptors {
+  api_version: 1; families: Array<{ name: string; operations: OperationDescriptor[] }>;
+}
+/** Client-only display metadata, never an authored recipe or an approval result. */
+export interface OperationCopy { descriptors?: OperationDescriptors; error?: string }
 /** Questions arrive as plain text or with suggested answers (assistant/tools.py QUESTIONS). */
 export type OpenQuestion = string | { question: string; options?: string[] };
 export const questionOf = (row: OpenQuestion) => typeof row === 'string' ? { question: row, options: [] as string[] } : { options: [] as string[], ...row };
@@ -84,6 +94,8 @@ export interface PlanVersion {
   compile: { ok: boolean; errors: CompileIssue[]; warnings: Array<string | CompileIssue>; operations?: Operation[] };
   validation: { state: 'pending' | 'valid' | 'invalid'; errors?: PlanIssue[] };
   scene?: SceneSummary; diff_base?: Diff; diff_previous?: Diff | null; interactions?: Interactions; expectations?: Expectation[];
+  /** Attached by this client from the session-cached descriptor request. */
+  operationCopy?: OperationCopy;
 }
 /** A draft that failed to compile is stored with empty scene parts; it has no scene, sequence or expectations to show. */
 export function compiledParts(plan: PlanVersion): PlanVersion {
@@ -131,20 +143,45 @@ export interface PlanPreview {
 
 export class AssistantApi {
   private readonly http: WorkbenchApi;
+  private readonly descriptors = new Map<string, Promise<OperationDescriptors>>();
   constructor(readonly base: string) { this.http = new WorkbenchApi(base); }
   private path(rest: string) { return `/v1/assistant${rest}`; }
+  /** Share the request (including failures) across refreshes, versions and locales in one conversation. */
+  operations(sessionId: string): Promise<OperationDescriptors> {
+    let request = this.descriptors.get(sessionId);
+    if (!request) {
+      // No caller-owned abort signal: cancelling a plan read must not poison the shared request.
+      request = this.http.request<OperationDescriptors>(this.path('/operations')).then(value => {
+        if (value.api_version !== 1) throw new Error('Unsupported assistant operation descriptors / 不支持的助手操作说明版本');
+        return value;
+      });
+      this.descriptors.set(sessionId, request);
+    }
+    return request;
+  }
+  private async operationCopy(sessionId: string): Promise<OperationCopy> {
+    try { return { descriptors: await this.operations(sessionId) }; }
+    catch (problem) { return { error: problem instanceof Error ? problem.message : String(problem) }; }
+  }
+  private async describedSession(session: Session): Promise<Session> {
+    const copy = await this.operationCopy(session.id);
+    return { ...session, plan: session.plan ? { ...session.plan, operationCopy: copy } : null };
+  }
   connection(signal?: AbortSignal) { return this.http.request<Connection>(this.path('/connection'), { signal }); }
   connect(body: { base_url: string; model: string; api_key?: string; clear_key?: boolean }) { return this.http.request<Connection>(this.path('/connection'), { body }); }
   test() { return this.http.request<Connection>(this.path('/connection/test'), { body: {} }); }
   sessions(workspaceId?: string, signal?: AbortSignal) { return this.http.request<SessionRow[]>(this.path(`/sessions${workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : ''}`), { signal }); }
-  create(workspaceId?: string, locale?: string) { return this.http.request<Session>(this.path('/sessions'), { body: { ...(workspaceId ? { workspace_id: workspaceId } : {}), ...(locale ? { locale } : {}) } }); }
-  session(id: string, signal?: AbortSignal) { return this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}`), { signal }); }
+  async create(workspaceId?: string, locale?: string) { return this.describedSession(await this.http.request<Session>(this.path('/sessions'), { body: { ...(workspaceId ? { workspace_id: workspaceId } : {}), ...(locale ? { locale } : {}) } })); }
+  async session(id: string, signal?: AbortSignal) { return this.describedSession(await this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}`), { signal })); }
   send(id: string, text: string, context?: MessageContext) { return this.http.request<{ turn: number; seq: number }>(this.path(`/sessions/${encodeURIComponent(id)}/messages`), { body: { text, ...(context ? { context } : {}) } }); }
   events(id: string, after: number, wait: number, signal?: AbortSignal) { return this.http.request<{ events: AssistantEvent[]; last_seq: number; busy: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/events?after=${after}&wait=${wait}`), { signal }); }
   cancel(id: string) { return this.http.request<{ cancelled: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/cancel`), { body: {} }); }
-  async plan(id: string, version: number, signal?: AbortSignal) { return compiledParts(await this.http.request<PlanVersion>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}`), { signal })); }
+  async plan(id: string, version: number, signal?: AbortSignal) {
+    const plan = compiledParts(await this.http.request<PlanVersion>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}`), { signal }));
+    return { ...plan, operationCopy: await this.operationCopy(id) };
+  }
   preview(id: string, version: number, signal?: AbortSignal) { return this.http.request<PlanPreview>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/scenario`), { signal }); }
-  choose(id: string, version: number) { return this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/choose`), { body: {} }); }
+  async choose(id: string, version: number) { return this.describedSession(await this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/choose`), { body: {} })); }
   apply(id: string, version: number) { return this.http.request<ApplyRecord>(this.path(`/sessions/${encodeURIComponent(id)}/apply`), { body: { plan_version: version } }); }
   story(id: string, runId: string, signal?: AbortSignal, locale?: string) { return this.http.request<Story>(this.path(`/sessions/${encodeURIComponent(id)}/story/${encodeURIComponent(runId)}${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`), { signal }); }
 }
