@@ -8,6 +8,7 @@ Authored scene geometry is still read by the generic authoring scene adapter.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections import OrderedDict
@@ -104,14 +105,17 @@ def _pinned_snapshot(directory: Path) -> _PinnedSnapshot | None:
         if expected is not None:
             raise ValueError("pinned presentation unavailable: recorded snapshot is missing") from None
         return None
-    # The manifest's stored digest participates in cache admission as well as
-    # path/size/mtime. Inode/ctime also catch replacement or restored mtimes.
-    key = (path, *identity, expected)
+    # Cache admission uses file identity, a hash of the exact bytes and the manifest's stored
+    # digest: stat fields alone miss same-size writes with a restored mtime when
+    # the filesystem's ctime is coarse. Hashing bytes is cheap; full semantic
+    # verification is what the cache avoids.
+    raw = path.read_bytes()
+    key = (path, *identity, hashlib.sha256(raw).hexdigest(), expected)
     cached = _SNAPSHOTS.get(key)
     if cached is not None:
         _SNAPSHOTS.move_to_end(key)
         return cached
-    snapshot = freeze_presentation_snapshot(json.loads(path.read_text(encoding="utf-8")))
+    snapshot = freeze_presentation_snapshot(json.loads(raw.decode("utf-8")))
     if expected is not None and snapshot["digest"] != expected:
         raise ValueError("pinned presentation: snapshot digest differs from run manifest")
     if _file_identity(path) != identity:
