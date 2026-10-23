@@ -176,7 +176,7 @@ export class AssistantApi {
   send(id: string, text: string, context?: MessageContext) { return this.http.request<{ turn: number; seq: number }>(this.path(`/sessions/${encodeURIComponent(id)}/messages`), { body: { text, ...(context ? { context } : {}) } }); }
   events(id: string, after: number, wait: number, signal?: AbortSignal) { return this.http.request<{ events: AssistantEvent[]; last_seq: number; busy: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/events?after=${after}&wait=${wait}`), { signal }); }
   cancel(id: string) { return this.http.request<{ cancelled: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/cancel`), { body: {} }); }
-  async plan(id: string, version: number, signal?: AbortSignal) {
+  async plan(id: string, version: number, signal?: AbortSignal): Promise<PlanVersion> {
     const plan = compiledParts(await this.http.request<PlanVersion>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}`), { signal }));
     return { ...plan, operationCopy: await this.operationCopy(id) };
   }
