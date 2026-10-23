@@ -518,15 +518,24 @@ def test_unmeasured_is_none_and_observed_zero_is_not_missing() -> None:
     assert accumulator.snapshot() == {TOTAL.id: 4}
 
 
+def _row(value: object) -> dict[str, object]:
+    """A KPI row: the value plus the additive descriptor fields."""
+    return {
+        "value": value, "unit": "count", "label": TOTAL.label, "label_zh": TOTAL.label_zh,
+        "direction": TOTAL.direction, "aggregation": TOTAL.aggregation,
+        "missing_data_policy": TOTAL.missing_data_policy,
+    }
+
+
 def test_custom_schema_is_exposed_through_direct_service_adapter() -> None:
     projector = KPIProjector(MemoryRegistry(()), plugins=(plugin(),))
     assert projector.descriptors[TOTAL.id] == TOTAL
-    assert projector.snapshot()[TOTAL.id] == {"value": None, "unit": "count", "label": TOTAL.label}
+    assert projector.snapshot()[TOTAL.id] == _row(None)
     projector.consume(recorded("zero", 0))
     assert projector.snapshot()[TOTAL.id]["value"] == 0
     projector.consume(recorded("sample", 7))
     projector.consume(recorded("sample", 999))
-    assert projector.snapshot()[TOTAL.id] == {"value": 7, "unit": "count", "label": TOTAL.label}
+    assert projector.snapshot()[TOTAL.id] == _row(7)
 
 
 @pytest.mark.parametrize("item_kind", ["operation", None])
@@ -683,7 +692,7 @@ def test_installed_custom_schema_enters_default_kpi_host(monkeypatch: pytest.Mon
     entry_points(monkeypatch, SimpleNamespace(name="external", load=lambda: contribution))
     projector = KPIProjector(MemoryRegistry(()))
     projector.consume(frame(1, [emitted(recorded("custom", 6))]))
-    assert projector.snapshot() == {TOTAL.id: {"value": 6, "unit": "count", "label": TOTAL.label}}
+    assert projector.snapshot() == {TOTAL.id: _row(6)}
     from aeroagentsim.services.kpis import METRICS
 
     # Comparison enumerates this catalogue even when all recorded samples are None.
