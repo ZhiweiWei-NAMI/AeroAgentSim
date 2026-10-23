@@ -192,10 +192,10 @@ class NarrativeProjector:
             "providers": presentation_snapshot(self._plugins),
             "declarations": self._declarations, "labels": self._labels, "labels_zh": self._labels_zh,
         })
-        # feed_index fingerprints this private mapping. A reserved, hidden
-        # metadata entry covers even selections with NO narrative declarations.
-        # This pins all DATA/normalizer revisions without editing that module or
-        # changing any event/viewer row. It is never an event declaration.
+        # Retain the private declaration-fingerprint contract for callers even
+        # when providers have NO narratives. The feed index fingerprints provider
+        # DATA directly, without constructing a projector just for this mapping.
+        # This hidden metadata is never an event declaration or viewer row.
         self._cache_key = _CONTRACT_KEY
         while self._cache_key in self._declarations:
             self._cache_key = "\x00" + self._cache_key

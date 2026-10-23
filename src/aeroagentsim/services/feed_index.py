@@ -19,6 +19,8 @@ from typing import Any
 
 from aerokernel.registry import MemoryRegistry
 
+from ..presentation_api import PresentationPlugin, presentation_snapshot
+from ..presentations import presentation_selection
 from .kpis import KPIProjector
 from .narratives import NarrativeProjector
 from .projector import project, projection_record
@@ -61,9 +63,9 @@ def _path_lock(path: Path) -> threading.RLock:
         return _PATH_LOCKS.setdefault(path, threading.RLock())
 
 
-def _signature(path: Path) -> list[Any]:
-    import hashlib
-
+def _signature(
+    path: Path, *, plugins: tuple[PresentationPlugin, ...] | None = None,
+) -> list[Any]:
     from aeroagentsim import metrics_api
     from aeroagentsim.runs import reader as run_reader
 
@@ -78,16 +80,14 @@ def _signature(path: Path) -> list[Any]:
     # Every eligible provider is retained for schema-prefix dispatch, including
     # external providers whose first matching message arrives after this cut.
     # Revisions, entry-point identity and descriptors replace pack source paths.
-    plugins = metrics_api.discover_metric_plugins()
-    result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(plugins)]]
-    # Removing the old pack-file list must not drop narrative invalidation. Hash
-    # the effective declarations (including pack/IR/scenario overrides), rather
-    # than assuming two particular source filenames own every narrative.
-    declarations = NarrativeProjector.from_directory(path)._declarations
-    result.append(["narratives", hashlib.sha256(json.dumps(
-        declarations, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")).hexdigest()])
+    metric_plugins = metrics_api.discover_metric_plugins()
+    result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(metric_plugins)]]
+    # Fingerprint provider DATA/revisions without initializing a throwaway
+    # projector or its normalizer state on every page. The file stats below
+    # already invalidate authored scenario/IR declarations and entity labels.
+    if plugins is None:
+        plugins, _ = presentation_selection(path)
+    result.append(["narratives", presentation_snapshot(plugins)["digest"]])
     for file in files:
         stat = file.stat()
         result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])
@@ -195,7 +195,8 @@ def update(
 def _update_batch(path: Path, requested_target: int) -> bool:
     """Publish one complete checkpoint, at most 64 new journal records."""
     with _path_lock(path), closing(_connect(path)) as database, database:
-        signature = _signature(path)
+        plugins, _ = presentation_selection(path)
+        signature = _signature(path, plugins=plugins)
         database.execute("BEGIN IMMEDIATE")
         row = database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
         # Remove the working cursor before mutation. A projection/SQLite failure
@@ -264,7 +265,7 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                 # header context below without a redundant record-zero read.
                 for header in storage.records(0, 1):
                     kpis.consume(header)
-            narratives = NarrativeProjector.from_directory(path)
+            narratives = NarrativeProjector.from_directory(path, plugins=plugins)
         if valid:
             cursor = state["next"]
             if cached is None:

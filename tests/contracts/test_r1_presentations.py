@@ -10,7 +10,7 @@ import ast
 import copy
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -118,11 +118,16 @@ def _entry_points(monkeypatch: pytest.MonkeyPatch, *entries: Any) -> None:
         return entries
 
     monkeypatch.setattr(presentation_api, "entry_points", query)
+    presentation_api.clear_presentation_plugin_cache()
 
 
 @pytest.fixture(autouse=True)
-def _isolate_installed_providers(monkeypatch: pytest.MonkeyPatch) -> None:
+def _isolate_installed_providers(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     _entry_points(monkeypatch)
+    try:
+        yield
+    finally:
+        presentation_api.clear_presentation_plugin_cache()
 
 
 def _external_provider(monkeypatch: pytest.MonkeyPatch, plugin: PresentationPlugin) -> None:
@@ -622,6 +627,41 @@ def test_installed_override_replaces_the_whole_builtin_provider(monkeypatch: pyt
     assert called == []
     assert "old" not in discovered[0].data["labels"]
     assert discovered[0].control_readers == {}
+
+
+def test_discovery_reuses_metadata_and_providers_until_explicit_clear(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = PresentationPlugin("external", _data(), revision="1")
+    calls = {"queries": 0, "loads": 0}
+
+    def load() -> PresentationPlugin:
+        calls["loads"] += 1
+        return provider
+
+    def query(*, group: str) -> tuple[Any, ...]:
+        assert group == presentation_api.PRESENTATION_ENTRY_POINT_GROUP
+        calls["queries"] += 1
+        return (SimpleNamespace(name="external", load=load),)
+
+    monkeypatch.setattr(presentation_api, "BUILTINS", {})
+    monkeypatch.setattr(presentation_api, "entry_points", query)
+    presentation_api.clear_presentation_plugin_cache()
+    assert discover_presentation_plugins(names=()) == ()
+    assert calls == {"queries": 1, "loads": 0}
+    first, = discover_presentation_plugins(names=("external",))
+    provider = replace(provider, revision="2")
+    # Different selections share both admitted metadata and frozen providers.
+    for names in (None, ("external",), ()):
+        selected = discover_presentation_plugins(names=names)
+        if selected:
+            assert selected[0] is first and selected[0].revision == "1"
+    assert calls == {"queries": 1, "loads": 1}
+    with pytest.raises(TypeError):
+        first.data["format"] = "changed"
+
+    presentation_api.clear_presentation_plugin_cache()
+    refreshed, = discover_presentation_plugins()
+    assert refreshed.revision == "2" and first.revision == "1"
+    assert calls == {"queries": 2, "loads": 2}
 
 
 def test_discovery_returns_sorted_builtin_installed_union(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1172,6 +1212,34 @@ def test_legacy_road_overrides_preserve_main_evidence_dependent_wording_and_styl
     assert row == expected
 
 
+def test_feed_signature_fingerprints_provider_and_authored_data_without_a_projector(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.services.feed_index import _signature
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("signatures must not initialize a narrative projector")
+
+    monkeypatch.setattr(NarrativeProjector, "__init__", forbidden)
+    directory = _pinned_projection(tmp_path)
+    provider = PresentationPlugin("external", _data(labels={"Sensor": {"en": "Sensor", "zh": "传感器"}}))
+    baseline = _signature(directory, plugins=(provider,))
+    assert _signature(directory, plugins=(provider,)) == baseline
+    assert _signature(directory, plugins=(replace(provider, revision="2"),)) != baseline
+    changed = replace(provider, data=_data(labels={"Sensor": {"en": "Sensor", "zh": "新标签"}}))
+    assert _signature(directory, plugins=(changed,)) != baseline
+    scenario_path = directory / "scenario.json"
+    scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+    scenario["event_narratives"] = {EVENT: _simple_recipe("note")}
+    scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
+    authored = _signature(directory, plugins=(provider,))
+    assert authored != baseline
+    (directory / "behaviour.ir.json").write_text(json.dumps({
+        "packages": [{"document": {"event_narratives": {"external.raw": _simple_recipe("reading")}}}],
+    }), encoding="utf-8")
+    assert _signature(directory, plugins=(provider,)) != authored
+
+
 @pytest.mark.parametrize("change", ["revision", "labels"])
 def test_provider_without_narratives_invalidates_serialized_cache_and_cursor(change: str) -> None:
     original_data = _data(labels={"Remote sensor": {"en": "Remote sensor", "zh": "远端传感器"}})
@@ -1185,8 +1253,8 @@ def test_provider_without_narratives_invalidates_serialized_cache_and_cursor(cha
     second = NarrativeProjector(plugins=(changed,))
 
     def fingerprint(projector: NarrativeProjector) -> str:
-        # Match the existing feed cache's declaration serialization, without
-        # constructing its database, journals, KPIs or signature dependencies.
+        # Retain compatibility for callers fingerprinting the private mapping;
+        # the feed index now fingerprints provider DATA and source files directly.
         encoded = json.dumps(projector._declarations, sort_keys=True, ensure_ascii=False,
                              separators=(",", ":"), allow_nan=False).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()

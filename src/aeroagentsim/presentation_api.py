@@ -13,13 +13,15 @@ import math
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
+from functools import lru_cache
 from importlib import import_module
 from importlib.metadata import PackageNotFoundError, entry_points, version
 from inspect import isasyncgenfunction, iscoroutinefunction
+from threading import RLock
 from types import MappingProxyType
 from typing import Any, Protocol
 
-from .extensions.discovery import discover, validate_name
+from .extensions.discovery import DiscoveryResult, discover, validate_name
 from .presentation_controls import ControlReader, ControlRegistry, Known, Unavailable, known, read_controls
 
 PRESENTATION_API_VERSION = 1
@@ -686,12 +688,26 @@ BUILTINS = MappingProxyType({
 })
 
 
-def discover_presentation_plugins(*, names: tuple[str, ...] | None = None) -> tuple[PresentationPlugin, ...]:
-    """Use shared admission, loading only the selected whole providers.
+# Serialize cold cache fills too: functools caches alone can compute a miss
+# more than once when the server's request and projection threads race.
+_PRESENTATION_DISCOVERY_LOCK = RLock()
 
-    Metadata-only enumeration retains every declaration. Reject duplicates first,
-    then admit ALL declared names before filtering or invoking any provider.
+
+def clear_presentation_plugin_cache() -> None:
+    """Forget process-local presentation discovery and resolved providers.
+
+    Installed entry points are assumed fixed for the process lifetime. Tests
+    replacing entry points or BUILTINS must clear before using the replacement
+    and again at teardown. Existing plugin tuples/projectors remain unchanged;
+    this is not a live plugin reload or a reset of projection state.
     """
+    with _PRESENTATION_DISCOVERY_LOCK:
+        _presentation_provider.cache_clear()
+        _presentation_discovery.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def _presentation_discovery() -> DiscoveryResult[PresentationPlugin]:
     discovery = discover(
         PRESENTATION_ENTRY_POINT_GROUP, BUILTINS, expected_type=PresentationPlugin,
         api_version=PRESENTATION_API_VERSION, name_of=lambda plugin: plugin.name,
@@ -702,34 +718,52 @@ def discover_presentation_plugins(*, names: tuple[str, ...] | None = None) -> tu
     for contribution in discovery.contributions:
         origin = "entry point" if contribution.source == "installed" else "builtin"
         validate_name(contribution.name, label=f"{PRESENTATION_ENTRY_POINT_GROUP} {origin}")
-    selected_names = discovery.names
-    if names is not None:
-        if (not isinstance(names, tuple) or any(type(name) is not str or not name for name in names)
-                or len(set(names)) != len(names)):
-            raise ValueError("presentation selection: unique provider names required")
-        if missing := set(names) - set(selected_names):
-            raise ValueError(f"pinned presentation unavailable: missing providers {sorted(missing)}")
-        selected_names = tuple(sorted(names))
-    installed = {item.name: item for item in discovery.contributions if item.source == "installed"}
-    plugins = []
-    for name in selected_names:
-        value = discovery.resolve(name)
-        entry = installed.get(name)
-        if entry is not None and entry.distribution is not None and entry.version is not None:
-            release = [entry.distribution, entry.version]
-        elif entry is None:
-            try:
-                release = ["aeroagentsim", version("aeroagentsim")]
-            except PackageNotFoundError:
-                release = ["aeroagentsim", "source"]
-        else:
-            release = None
-        plugins.append(replace(value, source={
-            "kind": "installed" if entry is not None else "builtin",
-            "entry_point": entry.entry_point if entry is not None else None, "distribution": release,
-        }))
-    validate_plugins(tuple(plugins))
-    return tuple(plugins)
+    return discovery
+
+
+@lru_cache(maxsize=None)
+def _presentation_provider(name: str) -> PresentationPlugin:
+    discovery = _presentation_discovery()
+    value = discovery.resolve(name)
+    entry = next((item for item in discovery.contributions
+                  if item.name == name and item.source == "installed"), None)
+    if entry is not None and entry.distribution is not None and entry.version is not None:
+        release = [entry.distribution, entry.version]
+    elif entry is None:
+        try:
+            release = ["aeroagentsim", version("aeroagentsim")]
+        except PackageNotFoundError:
+            release = ["aeroagentsim", "source"]
+    else:
+        release = None
+    return replace(value, source={
+        "kind": "installed" if entry is not None else "builtin",
+        "entry_point": entry.entry_point if entry is not None else None, "distribution": release,
+    })
+
+
+def discover_presentation_plugins(*, names: tuple[str, ...] | None = None) -> tuple[PresentationPlugin, ...]:
+    """Reuse process-local metadata and immutable providers, loading each once.
+
+    Installed entry points do not change within a server process. Enumeration
+    and name admission happen once; only selected whole providers are loaded,
+    lazily and at most once each, even across different selections. Duplicates
+    and ALL declared names are admitted before any provider is loaded. Use
+    clear_presentation_plugin_cache explicitly in tests changing installations.
+    """
+    with _PRESENTATION_DISCOVERY_LOCK:
+        discovery = _presentation_discovery()
+        selected_names = discovery.names
+        if names is not None:
+            if (not isinstance(names, tuple) or any(type(name) is not str or not name for name in names)
+                    or len(set(names)) != len(names)):
+                raise ValueError("presentation selection: unique provider names required")
+            if missing := set(names) - set(selected_names):
+                raise ValueError(f"pinned presentation unavailable: missing providers {sorted(missing)}")
+            selected_names = tuple(sorted(names))
+        plugins = tuple(_presentation_provider(name) for name in selected_names)
+        validate_plugins(plugins)
+        return plugins
 
 
 def _contribution_ids(
@@ -884,7 +918,7 @@ def verify_presentation_snapshot(
 __all__ = [
     "PRESENTATION_API_VERSION", "PRESENTATION_ENTRY_POINT_GROUP", "PRESENTATION_FORMAT",
     "PRESENTATION_SNAPSHOT_FORMAT", "HEADER_RESOURCE_KEYS", "PresentationPlugin", "NarrativeNormalizer",
-    "discover_presentation_plugins",
+    "discover_presentation_plugins", "clear_presentation_plugin_cache",
     "validate_presentation", "validate_header_hints", "admit_presentation_plugins", "resolve_poses", "presentation_snapshot",
     "validate_presentation_snapshot", "verify_presentation_snapshot",
     "ControlReader", "ControlRegistry", "Known", "Unavailable", "known", "read_controls",
