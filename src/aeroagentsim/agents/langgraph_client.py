@@ -86,7 +86,11 @@ class ScriptedProvider:
             raise ProviderError("SCRIPT_EXHAUSTED", key)
         response = self.responses[key].pop(0)
         if "error" in response:
-            raise ProviderError(response["error"]["code"], response["error"]["message"])
+            raise ProviderError(
+                response["error"]["code"],
+                response["error"]["message"],
+                status_code=response["error"].get("status_code"),
+            )
         return json_copy(response)  # type: ignore[no-any-return]
 
     def complete(
@@ -127,6 +131,7 @@ class JournalClient:
         )
         self._deadline = time.monotonic() + budget["wall_timeout_s"]
         self._calls: dict[tuple[int, str, str, int], dict[str, Any]] = {}
+        self._pending: set[tuple[int, str, str, int]] = set()
         self._replay = (
             None
             if replay is None
@@ -135,6 +140,9 @@ class JournalClient:
         if replay is not None and len(self._replay or {}) != len(replay):
             raise ValueError("duplicate replay call identity")
         self._used: set[tuple[int, str, str, int]] = set()
+        self._spent_tokens = 0
+        self._reserved_tokens = 0
+        self._admission = asyncio.Lock()
 
     @property
     def records(self) -> list[dict[str, Any]]:
@@ -200,14 +208,67 @@ class JournalClient:
             key,
             attempt,
         )
-        if not isinstance(key, str) or not key or identity in self._calls:
+        if (
+            not isinstance(key, str)
+            or not key
+            or identity in self._calls
+            or identity in self._pending
+        ):
             raise ProviderError("CALL_ID", "unique nonempty key per node/step required")
+        # Retain identity before the cancellable wait, without reserving tokens.
+        self._pending.add(identity)
+        try:
+            if self._replay is not None:
+                return await self._complete(key, messages, tools, identity=identity)
+            # The per-call cap is also the aggregate cap: only one full remaining
+            # allowance fits at a time. Recheck bounds after the active call settles.
+            try:
+                await self._admission.acquire()
+            except asyncio.CancelledError:
+                # Journal the request and typed cancellation, but never dispatch,
+                # settle tokens, or release the active call's admission lock.
+                return await self._complete(
+                    key, messages, tools, identity=identity, cancelled=True
+                )
+            try:
+                return await self._complete(key, messages, tools, identity=identity)
+            finally:
+                self._admission.release()
+        finally:
+            self._pending.remove(identity)
+
+    async def _complete(
+        self,
+        key: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        *,
+        identity: tuple[int, str, str, int],
+        cancelled: bool = False,
+    ) -> dict[str, Any]:
+        allowance = max(
+            0, self.budget["max_tokens"] - self._spent_tokens - self._reserved_tokens
+        )
+        if self._replay is not None:
+            if identity not in self._replay:
+                raise ProviderError("REPLAY_MISMATCH", f"request changed: {identity}")
+            # Admission/cancellation timing is not reproduced by zero-I/O replay.
+            # New rows retain that input; legacy rows used the full per-call cap.
+            # Compare the entire request, including max_tokens, below.
+            allowance = self._replay[identity].get(
+                "token_allowance", self.budget["max_tokens"]
+            )
+            if (
+                type(allowance) is not int
+                or not 0 <= allowance <= self.budget["max_tokens"]
+            ):
+                raise ProviderError("REPLAY_MISMATCH", "invalid token allowance")
         request = json_copy(
             {
                 "messages": messages,
                 "tools": [] if tools is None else tools,
                 "model": self.model,
-                "max_tokens": self.budget["max_tokens"],
+                "max_tokens": min(self.budget["max_tokens"], allowance),
                 "stream": False,
             }
         )
@@ -222,20 +283,19 @@ class JournalClient:
                 if request["tools"]
                 else "structured_json"
             ),
-            "attempt": attempt,
+            "attempt": identity[3],
             "failure_code": None,
         }
         self._calls[identity] = row
         if self._replay is not None:
-            if (
-                identity not in self._replay
-                or self._replay[identity]["request"] != request
-            ):
+            if self._replay[identity]["request"] != request:
                 raise ProviderError("REPLAY_MISMATCH", f"request changed: {identity}")
             recorded = self._replay[identity]
             self._used.add(identity)
             row.update(deepcopy(recorded))
         else:
+            row["token_allowance"] = allowance
+            reserved = 0
             started = time.monotonic()
             remaining = self._deadline - started
             row["timeout_s"] = (
@@ -244,6 +304,8 @@ class JournalClient:
                 else max(0.0, remaining)
             )
             try:
+                if cancelled:
+                    raise asyncio.CancelledError
                 if len(self._calls) > self.budget["max_calls"]:
                     raise ProviderError("CALL_BUDGET", "graph call limit exceeded")
                 if (
@@ -255,6 +317,14 @@ class JournalClient:
                     )
                 if remaining <= 0:
                     raise ProviderError("WALL_TIMEOUT", "graph wall deadline expired")
+                if allowance <= 0:
+                    raise ProviderError(
+                        "TOKEN_BUDGET", "aggregate graph token limit exhausted"
+                    )
+                # No await between admission and reservation: parallel nodes
+                # cannot promise the same remaining tokens to two providers.
+                reserved = request["max_tokens"]
+                self._reserved_tokens += reserved
                 response = await self._exchange(
                     key,
                     request["messages"],
@@ -291,9 +361,38 @@ class JournalClient:
                     else "PROTOCOL"
                 )
                 row["error"] = {"code": code, "message": str(exc)}
+                if isinstance(exc, ProviderError) and exc.status_code is not None:
+                    row["error"]["status_code"] = exc.status_code
             except Exception as exc:  # noqa: BLE001 -- retain provider faults, never synthesize success
                 row["error"] = {"code": "PROVIDER_ERROR", "message": str(exc)}
             finally:
+                if reserved:
+                    recorded_response = row.get("response")
+                    usage = (
+                        recorded_response.get("usage")
+                        if isinstance(recorded_response, dict)
+                        else None
+                    )
+                    used = (
+                        usage.get("completion_tokens") if isinstance(usage, dict) else None
+                    )
+                    if type(used) is int and used >= 0:
+                        self._reserved_tokens -= reserved
+                        self._spent_tokens += used
+                    elif "response" not in row:
+                        error = row.get("error", {})
+                        status = error.get("status_code")
+                        if isinstance(self._provider, ScriptedProvider) or (
+                            error.get("code") == "HTTP_STATUS"
+                            and type(status) is int
+                            and 400 <= status < 500
+                        ):
+                            # Only a structured 4xx establishes pre-inference
+                            # rejection. 5xx/unknown failures may follow inference.
+                            # Offline script faults also perform no inference.
+                            self._reserved_tokens -= reserved
+                    # Unknown usage is not zero. Keep its reservation, including
+                    # after cancellation: an I/O worker may still be running.
                 row["latency_s"] = (
                     0.0
                     if isinstance(self._provider, ScriptedProvider)
@@ -303,7 +402,11 @@ class JournalClient:
                     row["failure_code"] = row["error"]["code"]
         if "error" in row:
             row["failure_code"] = row["error"]["code"]
-            raise ProviderError(row["error"]["code"], row["error"]["message"])
+            raise ProviderError(
+                row["error"]["code"],
+                row["error"]["message"],
+                status_code=row["error"].get("status_code"),
+            )
         if "rejection" in row:
             row["failure_code"] = row["rejection"]["code"]
         return cast(dict[str, Any], deepcopy(row["response"]))

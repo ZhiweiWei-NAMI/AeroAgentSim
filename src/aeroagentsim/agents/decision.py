@@ -15,8 +15,8 @@ from aerokernel.values import thaw, typed_equal
 
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .langgraph_client import provider_record_metadata
-from .observation import FieldGrant, build_observation, delivery_route
+from .langgraph_client import json_copy, provider_record_metadata
+from .observation import FieldGrant, build_observation, delivery_route, prompt_observation
 from .provider import OpenAIProvider, Provider, ProviderError
 from .tools import ToolCatalog, ToolGrant
 
@@ -108,14 +108,15 @@ class Decision(ContextEngine):
                     build.registry.field(p["field"]).schema, p["value"]
                 )
         self.budget = cfg["budget"]
-        if set(self.budget) != {
+        required_budget = {
             "wall_timeout_s",
             "max_rounds",
             "max_calls",
             "max_tokens",
             "max_retries",
             "max_prompt_bytes",
-        }:
+        }
+        if set(self.budget) not in (required_budget, required_budget | {"history_window"}):
             raise ValueError("explicit decision budget fields required")
         for key, value in self.budget.items():
             if key == "wall_timeout_s":
@@ -261,6 +262,8 @@ class Decision(ContextEngine):
         )
         observation["receipts"] = list(self.receipts.values())
         self.record(ctx, decision, "observation", observation)
+        history_window = self.budget.get("history_window")
+        observation = prompt_observation(observation, history_window)
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": self.instruction},
             {
@@ -279,8 +282,26 @@ class Decision(ContextEngine):
             if tokens >= self.budget["max_tokens"]:
                 self.record(ctx, decision, "failure", {"code": "TOKEN_BUDGET"})
                 return
+            request = json_copy(
+                {
+                    "model": self.provider.model,
+                    "messages": messages,
+                    "tools": self.catalog.tools,
+                    "max_tokens": self.budget["max_tokens"] - tokens,
+                    "stream": False,
+                }
+            )
             if (
-                len(json.dumps(messages, ensure_ascii=False).encode())
+                isinstance(self.provider, OpenAIProvider)
+                and self.provider.host == "opencode.ai"
+            ):
+                # Apply the provider's idempotent transport policy to this copy
+                # before sizing/sending. Keep logical recorded tools unchanged.
+                for tool in request["tools"]:
+                    if tool.get("type") == "function":
+                        tool["function"].pop("strict", None)
+            if (
+                len(json.dumps(request, ensure_ascii=False, allow_nan=False).encode())
                 > self.budget["max_prompt_bytes"]
             ):
                 self.record(ctx, decision, "failure", {"code": "PROMPT_BUDGET"})
@@ -295,15 +316,20 @@ class Decision(ContextEngine):
                     "tools": self.catalog.tools,
                     "model": self.provider.model,
                     **self.provider_metadata,
-                    "max_tokens": self.budget["max_tokens"] - tokens,
+                    "max_tokens": request["max_tokens"],
+                    **(
+                        {"history_window": history_window}
+                        if history_window is not None
+                        else {}
+                    ),
                 },
             )
             try:
                 response = self.provider.complete(
-                    messages,
-                    self.catalog.tools,
+                    request["messages"],
+                    request["tools"],
                     timeout_s=remaining,
-                    max_tokens=self.budget["max_tokens"] - tokens,
+                    max_tokens=request["max_tokens"],
                 )
             except ProviderError as exc:
                 self.record(

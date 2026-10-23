@@ -141,3 +141,26 @@ def build_observation(
         if action.head is not None:
             ctx.inputs.append(action.head)
     return result
+
+
+def prompt_observation(
+    observation: dict[str, Any], history_window: int | None
+) -> dict[str, Any]:
+    """Project recent command history without pruning the recorded observation.
+
+    Recency is command submission order, not receipt status or completion order.
+    The default returns the original observation, preserving prompt bytes.
+    """
+    if history_window is None:
+        return observation
+    actions = observation["actions"][-history_window:]
+    command_ids = {action["command_id"] for action in actions}
+    return {
+        **observation,
+        "actions": actions,
+        "receipts": [
+            receipt
+            for receipt in observation["receipts"]
+            if receipt["command_id"] in command_ids
+        ],
+    }

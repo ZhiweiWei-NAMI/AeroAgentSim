@@ -165,6 +165,54 @@ plus JSON `validation`. Responses, errors and rejections remain with their
 own attempt. This may repeat generation/billing; it is not automatic command
 resubmission. The transport provider itself does not retry.
 
+## Request budgets and optional recent history
+
+Decision `budget.history_window` is optional. When present it must be a positive
+integer: only the most recently submitted N commands' action states and latest
+receipts enter the model observation. For example, `history_window: 16` retains
+up to 16 actions and their receipts, in their original order. It is not a time
+window, a receipt-status filter, or a claim that omitted commands completed.
+Fields, relations and current inbox events are unchanged. Each recorded `prompt`
+includes the effective `history_window` when configured; absent means the
+historical unbounded prompt, with no added metadata. The recorded `observation`,
+all command/receipt phases and the engine's retained history remain complete;
+this is prompt projection, not WAL pruning or an in-memory retention limit.
+This key applies to the decision engine, not graph budgets.
+
+Decision prompt-byte admission measures the JSON request envelope, including
+tools, with the provider's serialization settings. The same detached request
+contents are passed to the provider. The OpenCode strict-stripping policy is
+applied before accounting/sending; logical recorded tool definitions remain
+unchanged. Graph prompt-byte admission continues to measure the full request.
+
+Graph calls reserve the remaining aggregate completion-token allowance before
+provider dispatch and cap `max_tokens` at that allowance. The current per-call
+cap is also the aggregate cap, so parallel nodes queue model admission until the
+in-flight call settles instead of overbooking the same tokens. Waiting does not
+extend the original wall deadline; all preflight checks run before each dispatch.
+Exhausted allowance fails with `TOKEN_BUDGET` without calling the provider.
+Valid reported usage settles a reservation, even if the response subsequently
+fails validation. An `HTTP_STATUS` error with no completion releases its reservation
+only for an established pre-inference rejection: a provider-reported structured
+4xx `status_code` (for example 400, 401, 403, 404, 413, 422 or 429). `ProviderError`
+also normalizes the legacy `HTTP 401: ...` status-prefix format into that field,
+without changing the public error code or message. Configured retries can then
+proceed, subject to the other budgets. A scripted fault before any response likewise
+performs no inference and releases its reservation, without inventing usage evidence.
+In contrast, HTTP 5xx errors (including 502/503/504), unknown HTTP statuses, a timeout
+after sending, an ambiguous `TRANSPORT` failure, cancellation, or a completion with
+missing usage may have spent tokens. Unknown usage in those cases retains the
+reservation rather than assuming zero spend, so another attempt may fail token
+admission. Post-call checks remain in place; these limits are not measured cost
+savings or a guarantee that a provider obeys its cap.
+
+New graph call rows record `token_allowance`, the pre-dispatch admission input.
+Conformance replay uses that recorded allowance, not replay completion timing,
+and still compares the entire request including `max_tokens`. Legacy rows
+without it retain the historical full per-call cap, so old request equality and
+post-call aggregate failures remain reproducible without provider access. Kernel
+state replay remains engine-free and does not reapply new prompt limits.
+
 ## Replay and audit limits
 
 - **State replay** reconstructs committed kernel state from admitted WAL
