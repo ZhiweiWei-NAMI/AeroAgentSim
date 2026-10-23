@@ -255,9 +255,20 @@ class NarrativeProjector:
         projector._pin_contract()
         return projector
 
+    def _legacy_task_context(self) -> dict[str, Any]:
+        # Compatibility with the original public cursor, not domain dispatch in
+        # projection. The pack normalizer remains the sole owner of task state.
+        for normalizer, state in zip(self._normalizers, self._states):
+            if normalizer.id == "lowalt.task-context":
+                return state
+        return {"task_kinds": {}, "task_info": {}}
+
     def cursor(self) -> dict[str, Any]:
+        context = self._legacy_task_context()
         return {
             "seen": sorted(self._seen), "presentation_digest": self.contract_digest,
+            "task_kinds": json_data(context["task_kinds"]),
+            "task_info": json_data(context["task_info"]),
             "normalizers": json_data(self._states),
             "positions": [[*key, list(value)] for key, value in self._positions.items()],
         }
@@ -269,6 +280,10 @@ class NarrativeProjector:
         if not isinstance(states, list) or len(states) != len(self._normalizers):
             raise ValueError("narrative cursor: invalid normalizer states")
         self._states = json_data(states)
+        context = self._legacy_task_context()
+        for field in ("task_kinds", "task_info"):
+            if field in cursor:
+                context[field] = json_data(cursor[field])
         self._seen = set(cursor["seen"])
         self._positions.clear()
         self._by_id.clear()

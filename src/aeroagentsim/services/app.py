@@ -318,15 +318,20 @@ def create_app(
                 "studio_revision": revision,
                 "workspace_name": draft["name"],
             }
-        try:
+        def pin_presentation() -> dict[str, Any]:
             presentation_plugins = discover_presentation_plugins()
             admit_presentation_plugins(presentation_plugins, scenario.registry, document=scenario.document)
+            source_template = template or workspace_metadata.get("template")
+            pinned_controls = next((item["knobs"] for item in templates.list()
+                                    if item["id"] == source_template["id"]), []) if source_template else []
+            return presentation_snapshot(presentation_plugins, controls=tuple(pinned_controls))
+
+        try:
+            # Admission may load providers and compile schemas. Keep it off the
+            # HTTP event loop, and finish pinning before the worker can wait.
+            display = await asyncio.to_thread(pin_presentation)
         except (TypeError, ValueError) as exc:
             raise HTTPException(422, str(exc)) from exc
-        source_template = template or workspace_metadata.get("template")
-        pinned_controls = next((item["knobs"] for item in templates.list()
-                                if source_template and item["id"] == source_template["id"]), [])
-        display = presentation_snapshot(presentation_plugins, controls=tuple(pinned_controls))
         storage = RunStorage(path)
         storage.prepare(scenario)
         storage._atomic("presentation.snapshot.json", display)
@@ -369,21 +374,28 @@ def create_app(
         template = metadata.get("template")
         knobs: dict[str, Any] = {}
         effective_controls: dict[str, Any] = {}
-        display = read_presentation_snapshot(path)
+        display = read_presentation_snapshot(path) if template or not include_kpis else None
         presentation_unavailable: str | None = None
-        try:
+
+        def select_presentations() -> tuple[Any, ...]:
             if display is None:
-                selected = discover_presentation_plugins()
-            else:
-                names = tuple(provider["name"] for provider in display["providers"])
-                selected = verify_presentation_snapshot(display, discover_presentation_plugins(names=names))
-        except Exception as exc:
-            if display is None:
-                raise  # Malformed current admission is never a legacy fallback.
-            presentation_unavailable = f"Presentation dependency unavailable ({type(exc).__name__}): {exc}"
-            selected = ()
-        control_readers = {name: reader for plugin in selected for name, reader in plugin.control_readers.items()}
+                return discover_presentation_plugins()
+            names = tuple(provider["name"] for provider in display["providers"])
+            return verify_presentation_snapshot(display, discover_presentation_plugins(names=names))
+
+        selected = ()
+        # A non-template KPI projection already verifies its pinned selection.
+        # Do not load/validate all providers a second time just to expose an
+        # empty effective_controls mapping during a live input wait.
+        if template or not include_kpis:
+            try:
+                selected = select_presentations()
+            except Exception as exc:
+                if display is None:
+                    raise  # Malformed current admission is never a legacy fallback.
+                presentation_unavailable = f"Presentation dependency unavailable ({type(exc).__name__}): {exc}"
         if template:
+            control_readers = {name: reader for plugin in selected for name, reader in plugin.control_readers.items()}
             # Template metadata records the controls originally applied. Other
             # editors can change their sources before the version is pinned.
             # Read the immutable run document, never the current workspace or defaults.
@@ -483,9 +495,32 @@ def create_app(
                 )
                 for identifier, observation in observations.items()
             }
+        kpis = None
+        if presentation_unavailable is None and include_kpis:
+            try:
+                kpis = project_run(path, include_series=False)
+            except Exception:
+                if template:
+                    raise
+                display = read_presentation_snapshot(path)
+                if display is None:
+                    raise
+                # Keep unavailable-dependency diagnostics for non-template runs
+                # too, without paying for duplicate discovery on healthy polls.
+                try:
+                    select_presentations()
+                except Exception as exc:
+                    presentation_unavailable = f"Presentation dependency unavailable ({type(exc).__name__}): {exc}"
+                else:
+                    raise  # A genuine projection error is not dependency drift.
         if presentation_unavailable is None:
-            kpis = project_run(path, include_series=False) if include_kpis else None
-            state = results_state(path, metadata)
+            # kpi_result has just published/read this same checkpoint. Calling
+            # results_state again rebuilds its presentation signature needlessly
+            # and can spend an input wait's wall-clock budget before replying.
+            state = (
+                {key: kpis[key] for key in ("results_final", "results_cursor", "final_commit_index")}
+                if kpis is not None else results_state(path, metadata)
+            )
         else:
             # Cached projections also depend on the pinned presentation selection.
             # Do not serve stale KPIs or ask the cache to reinterpret this run just
