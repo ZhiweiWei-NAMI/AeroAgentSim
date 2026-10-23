@@ -11,7 +11,7 @@ import dataclasses
 import importlib.resources
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -22,6 +22,9 @@ from aeroagentsim.plugin_api import (
     discover_scenario_plugins,
 )
 from aeroagentsim.scenario.loader import UniqueLoader
+
+if TYPE_CHECKING:
+    from aeroagentsim.scenario import Scenario
 
 POS = "aas.studio.position_enu_m"
 VEL = "aas.studio.velocity_enu_m_s"
@@ -242,10 +245,21 @@ def demo_source(name: str) -> Path:
 
 @dataclasses.dataclass(frozen=True)
 class PreparedTemplate:
+    # Authored, knob-applied input; never replace it with an expanded preview.
     document: dict[str, Any]
     base: Path
     knobs: dict[str, Any]
     metadata: dict[str, Any]
+
+    def prepare(self, final_seed: int | None = None) -> Scenario:
+        """Prepare a fresh run/preview after choosing its final seed.
+
+        Experiment cells must re-prepare this authored document, not re-seed a
+        sampled preview. Neither validation nor preparation changes this input.
+        """
+        from aeroagentsim.scenario import load_scenario
+
+        return load_scenario(self.document, base=self.base, final_seed=final_seed)
 
     def run_metadata(self) -> dict[str, Any]:
         """Pin authored display titles beside the actual applied knob values."""
@@ -608,8 +622,6 @@ class TemplateRegistry:
     def apply(
         self, identifier: str, knobs: dict[str, Any] | None = None
     ) -> PreparedTemplate:
-        from aeroagentsim.scenario import load_scenario
-
         metadata, template = self._templates[identifier]
         if knobs is not None and not isinstance(knobs, dict):
             raise ValueError("knobs: mapping required")
@@ -644,7 +656,10 @@ class TemplateRegistry:
                         f"knob {name}: unregistered apply hook {knob['apply']}"
                     )
                 hook(document, source.parent, values[name])
-        load_scenario(document, base=source.parent)
-        return PreparedTemplate(
+        prepared = PreparedTemplate(
             document, source.parent, values, copy.deepcopy(metadata)
         )
+        # Validate a disposable preview at the authored seed. Execution callers
+        # retain the original declaration and can choose a different final seed.
+        prepared.prepare()
+        return prepared

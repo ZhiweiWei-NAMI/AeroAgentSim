@@ -10,7 +10,7 @@ from typing import Any
 
 from aeroagentsim.packs.common import finite, ns, vec
 
-from .overlay import overlay
+from .overlay import cooperation_overlay, overlay
 from .rules import apply_rules, configure_detection
 
 SECOND = 1_000_000_000
@@ -173,12 +173,62 @@ def install_components(document: dict[str, Any], *, directory: Path) -> None:
     document["presentation"].extend(copy.deepcopy(base["presentation"]))
 
 
-def expand(document: dict[str, Any]) -> None:
-    """Expand explicitly authored fleet prototypes before normal validation.
+def _expand_cooperation(
+    document: dict[str, Any], registry_snapshot: dict[str, Any] | None,
+) -> None:
+    from .cooperation import expand as expand_cooperation
 
-    The source declaration is retained in the journal; generated entities are
-    marked by their authored prefix and recreated on load, including replay of
-    a pinned scenario. No hidden defaults or external geometry is consulted.
+    if registry_snapshot is None:
+        # Retain the direct pack helper's historical read-only path behavior.
+        expand_cooperation(document)
+        return
+    if not any(
+        engine["plugin"] == "lowalt_tasks"
+        and any(key in engine["config"] for key in ("cooperation", "vehicle_task_kinds"))
+        for engine in document["engines"].values()
+    ):
+        return
+    # B1 bridge to the existing cooperation helper, whose snapshot read only
+    # supplies ancestry. Use captured resource bytes instead of reopening a path.
+    # Remove only these temporary rows: cooperation's real overlay additions
+    # must survive. The original authored snapshot reference is never rewritten.
+    registry = document["registry"]
+    had_types = "types" in registry
+    types = registry.setdefault("types", [])
+    injected = copy.deepcopy(registry_snapshot["registry"]["types"])
+    if any(
+        engine["plugin"] == "lowalt_tasks" and "cooperation" in engine["config"]
+        for engine in document["engines"].values()
+    ):
+        snapshot_ids = {row["id"] for row in injected}
+        inline_ids = {row["id"] for row in types}
+        contributed_ids = {row["id"] for row in cooperation_overlay()["types"]}
+        if (snapshot_ids - inline_ids) & contributed_ids:
+            # Otherwise temporary ancestry could hide a duplicate descriptor
+            # that normal registry compilation rejected on the old path.
+            raise ValueError("cooperation: snapshot conflicts with contributed type ids")
+    snapshot = registry.pop("snapshot", None)
+    injected_ids = {id(row) for row in injected}
+    types.extend(injected)
+    try:
+        expand_cooperation(document)
+    finally:
+        types[:] = [row for row in types if id(row) not in injected_ids]
+        if not had_types and not types:
+            del registry["types"]
+        if snapshot is not None:
+            registry["snapshot"] = snapshot
+
+
+def expand(
+    document: dict[str, Any], *, registry_snapshot: dict[str, Any] | None = None,
+) -> None:
+    """Expand legacy pack shorthand before normal validation.
+
+    The named lowalt-legacy preparer supplies captured registry resource data;
+    direct pack callers may retain the historical read-only snapshot lookup.
+    Re-preparation with another seed must start from authored inputs, not an
+    expanded preview. No providers, processes or file writes are permitted.
     """
     from .rescue import materialize as materialize_rescue
 
@@ -269,9 +319,7 @@ def expand(document: dict[str, Any]) -> None:
             if not any(m["id"] == descriptor["id"] for m in messages):
                 messages.append(descriptor)
     if "generators" not in document:
-        from .cooperation import expand as expand_cooperation
-
-        expand_cooperation(document)
+        _expand_cooperation(document, registry_snapshot)
         from .rescue import expand as expand_rescue
 
         expand_rescue(document)
@@ -358,9 +406,7 @@ def expand(document: dict[str, Any]) -> None:
         fleet.append(generated)
     document["entities"][slot:slot] = fleet
 
-    from .cooperation import expand as expand_cooperation
-
-    expand_cooperation(document)
+    _expand_cooperation(document, registry_snapshot)
     from .rescue import expand as expand_rescue
 
     expand_rescue(document)
