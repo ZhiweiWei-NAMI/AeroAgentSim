@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { PlanBoard } from './PlanBoard';
-import type { AssistantApi, PlanVersion, Session } from './api';
+import type { AssistantApi, OperationDescriptors, PlanVersion, Session } from './api';
 import type { AssistantSession } from './useAssistant';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { RunStory } from './RunStory';
@@ -11,10 +11,16 @@ import { draftChanges } from './draftChanges';
 beforeEach(()=>{vi.clearAllMocks();vi.mocked(assistant.send).mockResolvedValue(undefined);localStorage.setItem('aeroagentsim.locale','en-US');sessionStorage.clear();});
 afterEach(() => {cleanup();localStorage.clear();vi.restoreAllMocks();});
 
+const operationDescriptors: OperationDescriptors = {api_version:1,families:[{name:'lowalt',operations:[
+  {id:'lowalt.add_place',aliases:['add_place'],title:{en:'Add facility',zh:'添加设施'},parameters:{type:'object'},prerequisites:[]},
+  {id:'lowalt.add_fleet',aliases:['add_fleet'],title:{en:'Add UAV group',zh:'添加无人机群'},parameters:{type:'object'},prerequisites:[]},
+  {id:'lowalt.add_lowalt_components',aliases:['add_lowalt_components'],title:{en:'Install lowalt components',zh:'安装低空组件'},parameters:{type:'object'},prerequisites:[]},
+]}]};
+
 const plan = (version: number, variant?: string): PlanVersion => ({
   version, created_at: '', note: variant ?? '', variant: variant ?? null, parent: version > 1 ? 1 : null,
   base: {}, base_label: 'your scene', title: `Plan ${variant ?? version}`, summary: `Summary ${version}`,
-  operations: [], assumptions: ['Three UAVs fly the route'], open_questions: [],
+  operations: [], assumptions: ['Three UAVs fly the route'], open_questions: [], operationCopy: {descriptors:operationDescriptors},
   compile: { ok: true, errors: [], warnings: [] }, validation: { state: 'valid' },
   scene: {
     places: [{ id: 'pad-west', role: 'origin', label: 'West pad' }, { id: 'tower', role: 'destination', label: 'Tower' }],
@@ -346,7 +352,7 @@ it('T2-R2-011: revision summaries show the real arrangement rather than operatio
   const revision={...plan(7),operations,summary:operations.map(op=>`${op.id} ${op.op}: ${JSON.stringify(op.params)}`).join('; ')};
   board({...assistant,plan:revision,session:{...session,plan:revision}});
   const summary=screen.getByTestId('as-arrangement');
-  expect(summary).toHaveTextContent('Add a place');expect(summary).toHaveTextContent(/Capacity\s*2/);
+  expect(summary).toHaveTextContent('Add facility');expect(summary).toHaveTextContent(/Capacity\s*2/);
   expect(summary).toHaveTextContent(/Charging power \(W\)\s*5000/);expect(summary).toHaveTextContent(/Count\s*3/);
   expect(summary).toHaveTextContent('Meal courier');
   expect(summary).not.toHaveTextContent(/add_place|add_fleet|op-1|\{/);
@@ -392,7 +398,7 @@ it.each(['en-US','zh-CN'])('T4-R3-002: replaces legacy pre-compilation prose wit
   expect(changes).toHaveTextContent(locale==='en-US'?'6 required drone scene engines':'6 个必需的无人机场景引擎');
   expect(changes).toHaveTextContent('airspace, behaviour, energy, environment, motion, tasks');
   expect(changes).toHaveTextContent('qa-pad');
-  expect(screen.getByTestId('as-arrangement')).toHaveTextContent(locale==='en-US'?'Add the drone scene components':'添加无人机场景组件');
+  expect(screen.getByTestId('as-arrangement')).toHaveTextContent(locale==='en-US'?'Install lowalt components':'安装低空组件');
   expect(screen.getByTestId('as-plan-board')).not.toHaveTextContent(/No simulation components|No lowalt engines/);
   expect(screen.queryByText(/Assumptions \(/)).toBeNull();
 });

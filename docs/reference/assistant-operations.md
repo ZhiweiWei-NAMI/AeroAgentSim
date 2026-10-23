@@ -116,6 +116,93 @@ accidentally producing a `TypeError` diagnostic at field `params`. That bug is
 are an explicit exception to diagnostic parity; this does not enable region
 edits through the form compilation path.
 
+## HTTP descriptors
+
+`GET /v1/assistant/operations` returns a read-only, data-only projection of the
+same discovered `OperationCatalogue` used by assistant tools and compilation:
+
+```text
+{api_version: 1, families: [{name, operations: [
+  {id, title: {en, zh}, summary?: {en, zh}, parameters, prerequisites, aliases?}
+]}]}
+```
+
+- `families` contains `lowalt` and `traffic` (builtin unless replaced) plus other
+  installed families, in discovery order. Whole-provider replacement and all
+  discovery/admission checks apply; there is no separate HTTP operation table.
+- `id` is canonical. `title` comes from `title`/`title_zh`; `summary` comes from
+  `description`/`description_zh`. V1 operation specs require both descriptions,
+  so this implementation includes `summary` on every operation.
+- `parameters` is the detached parameter JSON Schema, not evaluated defaults.
+- `prerequisites` is the catalogue's array of
+  `{operation, params, conditional, note, warning}` records. `operation` is a
+  canonical ID; `conditional: true` describes a predicate, not its evaluated
+  result for a scene. Absent notes/warnings remain JSON `null`. No condition is
+  invoked by this request.
+- Optional `aliases` lists only explicit, still-effective catalogue aliases for
+  that operation. It lets legacy recipes retain their copy without client-side
+  suffix matching. A retired operation's alias is not redirected to another
+  installed family.
+
+For example, with the `example` family above installed, its operation entry is:
+
+```json
+{
+  "id": "example.annotate",
+  "title": {"en": "Annotate scene", "zh": "标注场景"},
+  "summary": {
+    "en": "Propose a scenario identifier and text resource",
+    "zh": "提议场景标识和文本资源"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 80}},
+    "required": ["text"],
+    "additionalProperties": false
+  },
+  "prerequisites": []
+}
+```
+
+The GET invokes discovery, but not operation compilers, applicability predicates,
+prerequisite conditions, read projections or dependency callbacks. It does not
+start a model provider, create a conversation, compile/apply a proposal or start a
+run. No executable Python callbacks, plugin JavaScript, private staging adapters
+or model credentials are returned. Installed Python remains trusted code;
+this endpoint is not a sandbox for discovery factories.
+
+Discovery failures fail the whole request rather than returning an empty or
+partial list. The existing assistant HTTP boundary preserves its error text in
+`{"detail": "..."}` for handled errors: contract `ValueError`/`TypeError` failures
+return HTTP 422, and missing files return HTTP 404. Unhandled loader/factory
+failures remain HTTP 500, not successful discovery.
+
+The browser fetches this snapshot once per conversation in its `AssistantApi`
+instance, sharing the request across refreshes, plan versions and locale changes.
+It attaches copy as client-only display metadata; operation recipes, diffs,
+validation and approval state are unchanged. Session creation, session reads and
+plan reads return without waiting for this optional copy, so a stalled descriptor
+fetch cannot block messaging or event polling. Pending copy renders the same neutral
+ID labels as unavailable copy; mounted summary and changes views update when the
+shared request settles, without another session read. Cancelling a consumer or
+unmounting a view does not abort the shared descriptor request.
+
+Failed reads remain failures in that cache and are shown with a quiet unavailable
+notice when a plan is displayed; reload or a new conversation obtains a fresh
+snapshot. Unknown IDs (including missing legacy aliases) render with their exact
+ID and **Unknown operation / 未知操作**, never a guessed name. Titles and operation
+summaries are plain text in the active locale, not execution or completion claims.
+
+This HTTP slice does **not** generalize assistant spatial overlays. Presentation
+v1 already declares pose fields, frames and optional role hints, but
+[`apply_header_presentations`](../../src/aeroagentsim/presentations.py) resolves
+those into run-header data. The assistant plan-preview response currently carries
+the compiled scenario and geography, not resolved family poses or the resolved
+registry/type context needed to interpret them. Consuming them here would widen
+the preview contract, so `frontend/src/assistant/overlay.ts` remains unchanged in
+this step. Broader generic
+forms/cards and presentation-driven assistant previews remain **planned**.
+
 ## Operation contract
 
 `OperationSpec` contains:

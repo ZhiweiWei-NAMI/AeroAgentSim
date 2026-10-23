@@ -56,6 +56,37 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
     harness = Harness(sessions, connection, runner) if harness is None else harness
     router = APIRouter(prefix="/v1/assistant", tags=["assistant"])
 
+    @router.get("/operations")
+    def get_operations() -> dict[str, Any]:
+        """Read discovered operation copy/contracts without invoking their callbacks."""
+        from aeroagentsim.assistant_api import ASSISTANT_API_VERSION
+
+        from .catalogue import operation_catalogue
+
+        def describe() -> dict[str, Any]:
+            catalogue = operation_catalogue()
+            families = []
+            for plugin in catalogue.plugins:
+                operations = []
+                for spec in plugin.operations:
+                    descriptor = catalogue.describe(spec.id)
+                    row: dict[str, Any] = {
+                        "id": descriptor["id"],
+                        "title": {"en": descriptor["title"], "zh": descriptor["title_zh"]},
+                        "summary": {"en": descriptor["description"], "zh": descriptor["description_zh"]},
+                        "parameters": descriptor["parameters"],
+                        "prerequisites": descriptor["prerequisites"],
+                    }
+                    # Forward explicit bindings only; never infer aliases from ID suffixes.
+                    aliases = [alias for alias, target in catalogue.aliases.items() if target == spec.id]
+                    if aliases:
+                        row["aliases"] = aliases
+                    operations.append(row)
+                families.append({"name": plugin.name, "operations": operations})
+            return {"api_version": ASSISTANT_API_VERSION, "families": families}
+
+        return checked(describe)
+
     @router.get("/connection")
     def get_connection() -> dict[str, Any]:
         return checked(connection.get)
