@@ -7,6 +7,7 @@ a cut whose lifecycle, KPI or narrative state belongs to another prefix.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import threading
@@ -69,9 +70,10 @@ def _signature(
     from aeroagentsim import metrics_api
     from aeroagentsim.runs import reader as run_reader
 
-    files = [path / "scenario.json", path / "runtime.registry.json"]
+    authored = [path / "scenario.json"]
     if (path / "behaviour.ir.json").exists():
-        files.append(path / "behaviour.ir.json")
+        authored.append(path / "behaviour.ir.json")
+    files = [*authored, path / "runtime.registry.json"]
     files.extend(
         Path(__file__).with_name(name + ".py")
         for name in ("feed_index", "projector", "subjects", "kpis", "narratives")
@@ -83,11 +85,14 @@ def _signature(
     metric_plugins = metrics_api.discover_metric_plugins()
     result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(metric_plugins)]]
     # Fingerprint provider DATA/revisions without initializing a throwaway
-    # projector or its normalizer state on every page. The file stats below
-    # already invalidate authored scenario/IR declarations and entity labels.
+    # projector or its normalizer state on every page. Hash authored inputs too:
+    # stats miss equal-length declaration/label edits with restored mtimes.
     plugins, snapshot = presentation_selection(path, plugins)
     result.append(["narratives", snapshot["digest"] if snapshot is not None
                    else presentation_plugin_digest(plugins)])
+    result.append(["authored", [
+        [str(file), hashlib.sha256(file.read_bytes()).hexdigest()] for file in authored
+    ]])
     for file in files:
         stat = file.stat()
         result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])

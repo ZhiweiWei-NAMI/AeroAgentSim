@@ -948,6 +948,35 @@ def test_normalized_selector_references_use_declared_output_schema() -> None:
         PresentationPlugin("external", _data(narratives={"external.raw": recipe}), normalizers=(BadOutput(),))
 
 
+def test_normalizer_descriptors_are_detached_frozen_and_preserve_implementation() -> None:
+    normalizer = _NestedNormalizer()
+    normalizer.output_schemas = copy.deepcopy(normalizer.output_schemas)
+    provider = PresentationPlugin("external", _data(narratives={"external.raw": _simple_recipe("reading")}),
+                                  normalizers=(normalizer,))
+    before = presentation_api.presentation_snapshot((provider,))
+    frozen = provider.normalizers[0]
+    assert frozen is not normalizer
+    assert before["providers"][0]["normalizers"][0]["implementation"] == (
+        f"{type(normalizer).__module__}:{type(normalizer).__qualname__}"
+    )
+    normalizer.id = "changed"
+    normalizer.version = "2"
+    normalizer.input_schemas = ()
+    normalizer.fact_fields = ("changed.field",)
+    normalizer.output_schemas["external.raw"]["members"].clear()
+    assert presentation_api.presentation_snapshot((provider,)) == before
+    assert frozen.output_schemas["external.raw"]["members"]["reading"] == STRING
+    with pytest.raises(FrozenInstanceError):
+        frozen.input_schemas = ()
+    with pytest.raises(TypeError):
+        frozen.output_schemas["external.raw"]["members"]["reading"]["type"] = "number"
+    assert presentation_api.presentation_snapshot((replace(provider, revision="2"),))["providers"][0]["normalizers"] == (
+        before["providers"][0]["normalizers"]
+    )
+    projector = NarrativeProjector(plugins=(provider,))
+    assert projector.consume(_encoded_event("external.raw", {"envelope": {"reading": "measured"}}))[0]["text"] == "Value: measured"
+
+
 # External providers reach the service through discovery, without host schema switches.
 
 
@@ -1244,6 +1273,30 @@ def test_feed_signature_fingerprints_provider_and_authored_data_without_a_projec
         "packages": [{"document": {"event_narratives": {"external.raw": _simple_recipe("reading")}}}],
     }), encoding="utf-8")
     assert _signature(directory, plugins=(provider,)) != authored
+
+
+def test_feed_signature_hashes_equal_length_label_edits_without_projection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.services.feed_index import _signature
+
+    directory = _pinned_projection(tmp_path)
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("signature invalidation must not initialize a narrative projector")
+
+    monkeypatch.setattr(NarrativeProjector, "__init__", forbidden)
+    baseline = _signature(directory, plugins=())
+    path = directory / "scenario.json"
+    stat = path.stat()
+    raw = path.read_bytes()
+    edited = raw.replace(b"Remote sensor", b"Nearby sensor")
+    assert edited != raw and len(edited) == len(raw)
+    path.write_bytes(edited)
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    assert path.stat().st_size == stat.st_size
+    assert path.stat().st_mtime_ns == stat.st_mtime_ns
+    assert _signature(directory, plugins=()) != baseline
 
 
 def test_narrative_projectors_share_frozen_recipes_but_not_override_tables() -> None:

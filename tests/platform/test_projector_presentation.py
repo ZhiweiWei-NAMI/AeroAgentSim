@@ -121,6 +121,89 @@ def test_page_rejects_a_tampered_snapshot_after_warming_the_index(
         page(directory, 1, 1)
 
 
+@pytest.mark.parametrize("explicit_available", [False, True])
+def test_second_launch_and_warm_selection_keep_frozen_normalizer_descriptors(
+    tmp_path: Path, document: dict[str, Any], monkeypatch: pytest.MonkeyPatch,
+    explicit_available: bool,
+) -> None:
+    from aeroagentsim.presentations import presentation_selection
+
+    class MutableNormalizer:
+        id = "external.flatten"
+        version = "1"
+        input_schemas = ("external.raw",)
+        fact_fields: tuple[str, ...] = ()
+
+        def __init__(self) -> None:
+            self.output_schemas = {"external.raw": {
+                "type": "record", "members": {"reading": {"type": "string"}},
+                "required": [], "extra": False,
+            }}
+
+        def initial(self) -> dict[str, Any]:
+            return {}
+
+        def consume(self, state: Any, record: Any) -> None:
+            return None
+
+    normalizer = MutableNormalizer()
+    provider = presentation_api.PresentationPlugin("external", {
+        "format": presentation_api.PRESENTATION_FORMAT,
+        "narratives": {"external.raw": {
+            "template": "Value: {reading}", "template_zh": "值：{reading}",
+            "category": "mixed", "severity": "info",
+        }},
+    }, normalizers=(normalizer,))
+    monkeypatch.setattr(presentation_api, "BUILTINS", {"external": lambda: provider})
+    monkeypatch.setattr(presentation_api, "entry_points", lambda **kwargs: ())
+    monkeypatch.delenv("AEROAGENTSIM_API_TOKEN", raising=False)
+    monkeypatch.delenv("AEROAGENTSIM_CONSOLE_URL", raising=False)
+    presentation_api.clear_presentation_plugin_cache()
+    application = create_app(tmp_path / "runs")
+    starts: list[dict[str, Any]] = []
+
+    def start(scenario: Any, path: Path, **kwargs: Any) -> Path:
+        # Exercise real HTTP admission/pinning, but never start a worker.
+        snapshot = json.loads((path / "presentation.snapshot.json").read_text())
+        presentation_api.validate_presentation_snapshot(snapshot)
+        starts.append(snapshot)
+        return path
+
+    async def wait_started(path: Path) -> dict[str, Any]:
+        return {"id": path.name, "status": "initialized"}
+
+    monkeypatch.setattr(application.state.worker_registry, "start", start)
+    monkeypatch.setattr(application.state.worker_registry, "wait_started", wait_started)
+    try:
+        with TestClient(application, base_url="http://localhost") as client:
+            first = client.post("/v1/runs", json={"scenario": document, "autostart": False})
+            assert first.status_code == 201, first.text
+            directory = tmp_path / "runs" / first.json()["id"]
+            available = presentation_api.discover_presentation_plugins() if explicit_available else None
+            selected, snapshot = presentation_selection(directory, available)
+            digest = presentation_api.presentation_plugin_digest(selected)
+
+            # The provider retains its original objects. Changing all descriptor
+            # fields must affect neither a warm identity hit nor the next launch.
+            normalizer.output_schemas["external.raw"]["members"].clear()
+            normalizer.id = "changed"
+            normalizer.version = "2"
+            normalizer.input_schemas = ()
+            normalizer.fact_fields = ("external.changed",)
+            again, same_snapshot = presentation_selection(directory, available)
+            assert again is selected and same_snapshot is snapshot
+            assert presentation_api.presentation_snapshot(again)["providers"] == starts[0]["providers"]
+            assert presentation_api.presentation_plugin_digest(again) == digest
+            second = client.post("/v1/runs", json={"scenario": document, "autostart": False})
+            assert second.status_code == 201, second.text
+            assert len(starts) == 2 and starts[1] == starts[0]
+            assert starts[1]["providers"][0]["normalizers"][0]["output_schemas"]["external.raw"]["members"] == {
+                "reading": {"type": "string"},
+            }
+    finally:
+        presentation_api.clear_presentation_plugin_cache()
+
+
 def test_frozen_payload_projection_keeps_refs_and_lossless_json_shapes() -> None:
     from aerokernel.ids import EntityRef
 

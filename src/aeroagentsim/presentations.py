@@ -155,6 +155,8 @@ def presentation_selection(
         key = tuple(id(plugin) for plugin in available)
         if key not in cached.selections:
             selected = verify_presentation_snapshot(cached.snapshot, available)
+            # PresentationPlugin owns frozen normalizer descriptors as well as
+            # DATA, so provider-side mutation cannot stale this identity hit.
             # Retain strong references alongside IDs to prevent identity reuse.
             cached.selections[key] = (available, selected)
             cached.selections[tuple(id(plugin) for plugin in selected)] = (selected, selected)

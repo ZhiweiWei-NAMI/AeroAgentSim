@@ -12,7 +12,7 @@ import json
 import math
 import re
 from collections import OrderedDict
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from importlib import import_module
@@ -240,6 +240,8 @@ def _synchronous(value: Any) -> bool:
 
 
 def _implementation(value: Any) -> str:
+    if isinstance(value, _FrozenNormalizer):
+        return value.implementation
     target = value if hasattr(value, "__qualname__") else type(value)
     return f"{target.__module__}:{target.__qualname__}"
 
@@ -298,6 +300,20 @@ def _normalized_registry(schemas: Mapping[str, Any]) -> Any:
 
 
 @dataclass(frozen=True)
+class _FrozenNormalizer:
+    """Owned descriptors plus trusted callbacks; never reread provider metadata."""
+
+    id: str
+    version: str
+    implementation: str
+    input_schemas: tuple[str, ...]
+    fact_fields: tuple[str, ...]
+    output_schemas: Mapping[str, Mapping[str, Any]]
+    initial: Callable[[], Any]
+    consume: Callable[[Any, Mapping[str, Any]], Mapping[str, Any] | None]
+
+
+@dataclass(frozen=True)
 class PresentationPlugin:
     name: str
     data: Mapping[str, Any]
@@ -321,6 +337,7 @@ class PresentationPlugin:
             raise ValueError("presentation normalizers must be a tuple")
         ids: set[str] = set()
         schemas: set[str] = set()
+        normalizers: list[_FrozenNormalizer] = []
         for normalizer in self.normalizers:
             for name in ("id", "version"):
                 if type(getattr(normalizer, name, None)) is not str or not getattr(normalizer, name):
@@ -343,9 +360,21 @@ class PresentationPlugin:
                     raise ValueError(f"presentation normalizer {name}: synchronous callable required")
             if not isinstance(getattr(normalizer, "output_schemas", None), Mapping) or set(normalizer.output_schemas) != set(normalizer.input_schemas):
                 raise ValueError("presentation normalizer must declare each normalized payload schema")
+            if not isinstance(normalizer, _FrozenNormalizer):
+                normalizer = _FrozenNormalizer(
+                    id=normalizer.id, version=normalizer.version,
+                    implementation=f"{type(normalizer).__module__}:{type(normalizer).__qualname__}",
+                    input_schemas=tuple(normalizer.input_schemas), fact_fields=tuple(normalizer.fact_fields),
+                    output_schemas=freeze_data(json_data(normalizer.output_schemas)),
+                    initial=normalizer.initial, consume=normalizer.consume,
+                )
             schema_registry = _normalized_registry(normalizer.output_schemas)
             validate_references(self.data, schema_registry, schemas=normalizer.output_schemas,
                                 selected=set(normalizer.input_schemas))
+            normalizers.append(normalizer)
+        # Freeze at construction for both discovered and explicit providers, so
+        # identity-based snapshot/digest hits cannot hide later descriptor drift.
+        object.__setattr__(self, "normalizers", tuple(normalizers))
         if not isinstance(self.control_readers, Mapping) or not isinstance(self.source, Mapping):
             raise ValueError("presentation control_readers/source: mappings required")
         _source(self.source)
@@ -673,8 +702,9 @@ def admit_presentation_plugins(
                            if schema not in normalized_ids},
             "enums": plugin.data.get("enums", {}),
         }, registry)
-        # Normalized output schemas and their DATA references were admitted by
-        # PresentationPlugin construction. Only run-specific bindings belong here.
+        # Normalized descriptors (including output schemas) are detached/frozen
+        # and their DATA references admitted by PresentationPlugin construction.
+        # Only run-specific bindings belong here; no per-launch recompilation.
         fields = {item.id: item for item in registry.fields}
         types = {item.id for item in registry.types}
         for lighting in plugin.data.get("header", {}).get("lighting", ()):
@@ -849,7 +879,7 @@ def presentation_snapshot(
             "name": plugin.name, "api_version": plugin.api_version, "revision": plugin.revision,
             "source": json_data(plugin.source), "data": json_data(plugin.data),
             "normalizers": [{"id": item.id, "version": item.version,
-                             "implementation": f"{type(item).__module__}:{type(item).__qualname__}",
+                             "implementation": _implementation(item),
                              "input_schemas": list(item.input_schemas), "fact_fields": list(item.fact_fields),
                              "output_schemas": json_data(item.output_schemas)} for item in plugin.normalizers],
             "control_readers": {name: _implementation(reader) for name, reader in plugin.control_readers.items()},
