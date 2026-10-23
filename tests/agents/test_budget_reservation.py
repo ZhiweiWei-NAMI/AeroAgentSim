@@ -93,7 +93,12 @@ class FakeProvider:
         assert self.responses, "unexpected provider call"
         response = self.responses.pop(0)
         if "error" in response:
-            raise ProviderError(response["error"]["code"], response["error"]["message"])
+            error = response["error"]
+            if "status_code" in error:
+                raise ProviderError(
+                    error["code"], error["message"], status_code=error["status_code"]
+                )
+            raise ProviderError(error["code"], error["message"])
         return response
 
 
@@ -225,13 +230,18 @@ def test_graph_failed_or_unknown_usage_does_not_restore_allowance(
 
 @pytest.mark.parametrize("max_retries", [1, 2])
 @pytest.mark.parametrize("recovers", [False, True], ids=["exhausted", "recovered"])
+@pytest.mark.parametrize("legacy_message", [False, True], ids=["structured", "live-demo"])
 def test_http_rejection_releases_reservation_for_configured_retries(
-    graph_budget: dict[str, Any], max_retries: int, recovers: bool
+    graph_budget: dict[str, Any], max_retries: int, recovers: bool, legacy_message: bool
 ) -> None:
     graph_budget["max_retries"] = max_retries
-    rejection = {
-        "error": {"code": "HTTP_STATUS", "message": "HTTP 401: authentication rejected"}
-    }
+    error: dict[str, Any] = {"code": "HTTP_STATUS"}
+    if legacy_message:
+        # Match the unchanged live-demo double's two-argument ProviderError.
+        error["message"] = "HTTP 401: authentication rejected"
+    else:
+        error.update(message="upstream returned HTTP 401", status_code=401)
+    rejection = {"error": error}
     provider = FakeProvider(
         [rejection] * max_retries + [completion(3) if recovers else rejection]
     )
@@ -260,12 +270,128 @@ def test_http_rejection_releases_reservation_for_configured_retries(
     assert [row["failure_code"] for row in client.records] == expected_failures
     rejected_rows = client.records[:-1] if recovers else client.records
     assert all("response" not in row for row in rejected_rows)
+    assert all(row["error"]["status_code"] == 401 for row in rejected_rows)
     assert client._reserved_tokens == 0
     assert client._spent_tokens == (3 if recovers else 0)
     offline = JournalClient(None, provider.model, graph_budget, replay=client.records)
     asyncio.run(run(offline))
     assert offline.records == client.records
     assert len(provider.requests) == max_retries + 1
+
+
+@pytest.mark.parametrize("status", [401, 504])
+def test_openai_http_error_carries_status_without_changing_message(
+    monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    response = SimpleNamespace(status=status, read=lambda limit: b"private error body")
+    connection = SimpleNamespace(
+        connect=lambda: None,
+        request=lambda *args: None,
+        getresponse=lambda: response,
+        close=lambda: None,
+    )
+    monkeypatch.setattr(
+        "aeroagentsim.agents.provider.http.client.HTTPConnection",
+        lambda *args, **kwargs: connection,
+    )
+    provider = OpenAIProvider("http://127.0.0.1/v1", "test-model")
+    with pytest.raises(ProviderError) as raised:
+        provider.complete(MESSAGES, [], timeout_s=2, max_tokens=10)
+    assert raised.value.code == "HTTP_STATUS"
+    assert raised.value.status_code == status
+    assert str(raised.value) == f"HTTP_STATUS: upstream returned HTTP {status}"
+
+
+@pytest.mark.parametrize(
+    ("message", "status", "expected"),
+    [
+        ("HTTP 401: authentication rejected", None, 401),
+        ("HTTP 504: gateway timeout", None, 504),
+        ("upstream returned HTTP 401", 401, 401),
+        ("HTTP 401: authentication rejected", 504, 504),
+        ("gateway failed after HTTP 401: retry", None, None),
+        ("unknown upstream status", None, None),
+        ("unknown upstream status", "401", None),
+        ("unknown upstream status", True, None),
+        ("unknown upstream status", 401.0, None),
+        ("unknown upstream status", 600, None),
+    ],
+)
+def test_provider_error_normalizes_only_explicit_or_legacy_status(
+    message: str, status: Any, expected: int | None
+) -> None:
+    error = ProviderError("HTTP_STATUS", message, status_code=status)
+    assert error.code == "HTTP_STATUS"
+    assert str(error) == f"HTTP_STATUS: {message}"
+    assert error.status_code == expected
+    assert ProviderError("TRANSPORT", message).status_code is None
+
+
+@pytest.mark.parametrize(
+    ("message", "status"),
+    [
+        ("upstream returned HTTP 504", 504),
+        ("HTTP 504: gateway timeout", None),
+        ("upstream returned HTTP 502", 502),
+        ("upstream returned HTTP 503", 503),
+        ("upstream returned HTTP 500", 500),
+        ("unknown upstream status", None),
+        ("gateway failed after HTTP 401: retry", None),
+        ("unknown upstream status", "401"),
+        ("unknown upstream status", True),
+        ("unknown upstream status", 401.0),
+        ("unexpected redirect", 302),
+    ],
+)
+def test_ambiguous_http_failure_keeps_reservation_and_blocks_retry(
+    graph_budget: dict[str, Any], message: str, status: Any
+) -> None:
+    provider = FakeProvider(
+        [
+            {"error": {"code": "HTTP_STATUS", "message": message, "status_code": status}},
+            completion(10),
+        ]
+    )
+    client = JournalClient(provider, provider.model, graph_budget)
+
+    async def run(target: JournalClient) -> None:
+        with pytest.raises(ProviderError, match="TOKEN_BUDGET"):
+            await target.ask_json("first", "Return JSON", {}, lambda value: None)
+        target.verify()
+
+    asyncio.run(run(client))
+    assert len(provider.requests) == 1
+    assert [row["failure_code"] for row in client.records] == ["HTTP_STATUS", "TOKEN_BUDGET"]
+    assert [row["request"]["max_tokens"] for row in client.records] == [10, 0]
+    assert all("response" not in row for row in client.records)
+    assert client._reserved_tokens == 10
+    assert client._spent_tokens == 0
+    offline = JournalClient(None, provider.model, graph_budget, replay=client.records)
+    asyncio.run(run(offline))
+    assert offline.records == client.records
+    assert len(provider.requests) == 1
+
+
+def test_http_status_survives_client_recording_and_replay(
+    graph_budget: dict[str, Any],
+) -> None:
+    provider = FakeProvider(
+        [{"error": {"code": "HTTP_STATUS", "message": "gateway timeout", "status_code": 504}}]
+    )
+    client = JournalClient(provider, provider.model, graph_budget)
+
+    async def run(target: JournalClient) -> None:
+        with pytest.raises(ProviderError) as raised:
+            await target.complete("first", MESSAGES)
+        assert raised.value.code == "HTTP_STATUS"
+        assert raised.value.status_code == 504
+
+    asyncio.run(run(client))
+    assert client.records[0]["error"]["status_code"] == 504
+    offline = JournalClient(None, provider.model, graph_budget, replay=client.records)
+    asyncio.run(run(offline))
+    assert offline.records == client.records
+    assert len(provider.requests) == 1
 
 
 def test_unknown_transport_usage_cannot_fund_another_request(

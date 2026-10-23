@@ -192,15 +192,19 @@ in-flight call settles instead of overbooking the same tokens. Waiting does not
 extend the original wall deadline; all preflight checks run before each dispatch.
 Exhausted allowance fails with `TOKEN_BUDGET` without calling the provider.
 Valid reported usage settles a reservation, even if the response subsequently
-fails validation. An `HTTP_STATUS` rejection with no completion releases its
-reservation so the configured retries can proceed: the request was rejected rather
-than returning an inference result. A scripted fault before any response likewise
+fails validation. An `HTTP_STATUS` error with no completion releases its reservation
+only for an established pre-inference rejection: a provider-reported structured
+4xx `status_code` (for example 400, 401, 403, 404, 413, 422 or 429). `ProviderError`
+also normalizes the legacy `HTTP 401: ...` status-prefix format into that field,
+without changing the public error code or message. Configured retries can then
+proceed, subject to the other budgets. A scripted fault before any response likewise
 performs no inference and releases its reservation, without inventing usage evidence.
-In contrast, a timeout after sending, an ambiguous `TRANSPORT` failure, cancellation,
-or a completion with missing usage may have spent tokens. Unknown usage in those
-cases retains the reservation rather than assuming zero spend, so another attempt
-may fail token admission. Post-call checks remain in place; these limits are not
-measured cost savings or a guarantee that a provider obeys its cap.
+In contrast, HTTP 5xx errors (including 502/503/504), unknown HTTP statuses, a timeout
+after sending, an ambiguous `TRANSPORT` failure, cancellation, or a completion with
+missing usage may have spent tokens. Unknown usage in those cases retains the
+reservation rather than assuming zero spend, so another attempt may fail token
+admission. Post-call checks remain in place; these limits are not measured cost
+savings or a guarantee that a provider obeys its cap.
 
 New graph call rows record `token_allowance`, the pre-dispatch admission input.
 Conformance replay uses that recorded allowance, not replay completion timing,

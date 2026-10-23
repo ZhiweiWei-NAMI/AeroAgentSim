@@ -86,7 +86,11 @@ class ScriptedProvider:
             raise ProviderError("SCRIPT_EXHAUSTED", key)
         response = self.responses[key].pop(0)
         if "error" in response:
-            raise ProviderError(response["error"]["code"], response["error"]["message"])
+            raise ProviderError(
+                response["error"]["code"],
+                response["error"]["message"],
+                status_code=response["error"].get("status_code"),
+            )
         return json_copy(response)  # type: ignore[no-any-return]
 
     def complete(
@@ -357,6 +361,8 @@ class JournalClient:
                     else "PROTOCOL"
                 )
                 row["error"] = {"code": code, "message": str(exc)}
+                if isinstance(exc, ProviderError) and exc.status_code is not None:
+                    row["error"]["status_code"] = exc.status_code
             except Exception as exc:  # noqa: BLE001 -- retain provider faults, never synthesize success
                 row["error"] = {"code": "PROVIDER_ERROR", "message": str(exc)}
             finally:
@@ -373,14 +379,18 @@ class JournalClient:
                     if type(used) is int and used >= 0:
                         self._reserved_tokens -= reserved
                         self._spent_tokens += used
-                    elif "response" not in row and (
-                        isinstance(self._provider, ScriptedProvider)
-                        or row.get("error", {}).get("code") == "HTTP_STATUS"
-                    ):
-                        # HTTP rejection (or a script fault) returned no completion.
-                        # Release for retries; timeouts/transport faults and replies
-                        # with missing usage may have spent tokens.
-                        self._reserved_tokens -= reserved
+                    elif "response" not in row:
+                        error = row.get("error", {})
+                        status = error.get("status_code")
+                        if isinstance(self._provider, ScriptedProvider) or (
+                            error.get("code") == "HTTP_STATUS"
+                            and type(status) is int
+                            and 400 <= status < 500
+                        ):
+                            # Only a structured 4xx establishes pre-inference
+                            # rejection. 5xx/unknown failures may follow inference.
+                            # Offline script faults also perform no inference.
+                            self._reserved_tokens -= reserved
                     # Unknown usage is not zero. Keep its reservation, including
                     # after cancellation: an I/O worker may still be running.
                 row["latency_s"] = (
@@ -392,7 +402,11 @@ class JournalClient:
                     row["failure_code"] = row["error"]["code"]
         if "error" in row:
             row["failure_code"] = row["error"]["code"]
-            raise ProviderError(row["error"]["code"], row["error"]["message"])
+            raise ProviderError(
+                row["error"]["code"],
+                row["error"]["message"],
+                status_code=row["error"].get("status_code"),
+            )
         if "rejection" in row:
             row["failure_code"] = row["rejection"]["code"]
         return cast(dict[str, Any], deepcopy(row["response"]))

@@ -7,6 +7,7 @@ import json
 import math
 import os
 import queue
+import re
 import socket
 import threading
 import time
@@ -21,9 +22,23 @@ from .tools import strict_json
 
 
 class ProviderError(Exception):
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(
+        self, code: str, message: str, *, status_code: int | None = None
+    ) -> None:
         super().__init__(f"{code}: {message}")
         self.code = code
+        if code == "HTTP_STATUS" and status_code is None:
+            # Compatibility for providers using the legacy "HTTP 401: ..." form,
+            # including the live-demo provider double. Do not search prose for
+            # status-like numbers or change the public code/message.
+            legacy_status = re.match(r"\AHTTP ([1-5][0-9]{2}):(?: |$)", message)
+            if legacy_status is not None:
+                status_code = int(legacy_status.group(1))
+        self.status_code = (
+            status_code
+            if type(status_code) is int and 100 <= status_code < 600
+            else None
+        )
 
 
 @runtime_checkable
@@ -265,7 +280,9 @@ class OpenAIProvider:
                     # Never surface upstream body text: error bodies can echo
                     # credentials or other secrets from the gateway.
                     raise ProviderError(
-                        "HTTP_STATUS", f"upstream returned HTTP {response.status}"
+                        "HTTP_STATUS",
+                        f"upstream returned HTTP {response.status}",
+                        status_code=response.status,
                     )
                 try:
                     raw = strict_json(body.decode())
