@@ -76,8 +76,19 @@ def create_app(
     scenario_root = Path.cwd() if scenario_root is None else scenario_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.presentation_api import (
+        ControlRegistry,
+        Known,
+        Unavailable,
+        discover_presentation_plugins,
+        presentation_snapshot,
+        read_controls,
+    )
 
     templates = TemplateRegistry(templates_root)
+    # Check duplicate installed names before loading anything. Pinned reads load
+    # only their recorded names; unrelated new factories cannot activate there.
+    discover_presentation_plugins(names=())
     from .experiments import ExperimentManager
 
     experiments = ExperimentManager(root, templates)
@@ -305,8 +316,30 @@ def create_app(
                 "studio_revision": revision,
                 "workspace_name": draft["name"],
             }
+        def pin_presentation() -> dict[str, Any]:
+            presentation_plugins = discover_presentation_plugins()
+            source_template = template or workspace_metadata.get("template")
+            pinned_controls = next((item["knobs"] for item in templates.list()
+                                    if item["id"] == source_template["id"]), []) if source_template else []
+            # Snapshot construction admits run-specific bindings once, before
+            # writing anything or starting the worker; malformed DATA fails closed.
+            return presentation_snapshot(
+                presentation_plugins, controls=tuple(pinned_controls),
+                registry=scenario.registry, document=scenario.document,
+            )
+
+        try:
+            # Admission may load providers and compile schemas. Keep it off the
+            # HTTP event loop, and finish pinning before the worker can wait.
+            display = await asyncio.to_thread(pin_presentation)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(422, str(exc)) from exc
         storage = RunStorage(path)
         storage.prepare(scenario)
+        storage._atomic("presentation.snapshot.json", display)
+        storage._atomic("manifest.json", {
+            **storage.metadata(), "presentation_snapshot_digest": display["digest"],
+        })
         if workspace_metadata:
             storage._atomic(
                 "manifest.json", {**storage.metadata(), **workspace_metadata}
@@ -336,12 +369,33 @@ def create_app(
         from .feed_index import kpi_result as project_run
         from .feed_index import results_state
         from .storage import summary_configuration
+        from aeroagentsim.presentations import presentation_selection, read_presentation_snapshot
 
         metadata = json.loads((path / "manifest.json").read_text())
         document = summary_configuration(path)
         template = metadata.get("template")
         knobs: dict[str, Any] = {}
+        effective_controls: dict[str, Any] = {}
+        display = read_presentation_snapshot(path) if template or not include_kpis else None
+        presentation_unavailable: str | None = None
+
+        def select_presentations() -> tuple[Any, ...]:
+            selected, _ = presentation_selection(path)
+            return selected
+
+        selected = ()
+        # A non-template KPI projection already verifies its pinned selection.
+        # Do not load/validate all providers a second time just to expose an
+        # empty effective_controls mapping during a live input wait.
+        if template or not include_kpis:
+            try:
+                selected = select_presentations()
+            except Exception as exc:
+                if display is None:
+                    raise  # Malformed current admission is never a legacy fallback.
+                presentation_unavailable = f"Presentation dependency unavailable ({type(exc).__name__}): {exc}"
         if template:
+            control_readers = {name: reader for plugin in selected for name, reader in plugin.control_readers.items()}
             # Template metadata records the controls originally applied. Other
             # editors can change their sources before the version is pinned.
             # Read the immutable run document, never the current workspace or defaults.
@@ -418,10 +472,69 @@ def create_app(
                 # remains available in the pinned configuration comparison.
                 if type(value) in (str, bool) or numeric(value):
                     knobs[knob["id"]] = value
-        kpis = project_run(path, include_series=False) if include_kpis else None
+            # This additive contract reports unknown sources explicitly. Keep the
+            # legacy knobs projection and historical template metadata unchanged.
+            effective_declared = declared if display is None else display.get("controls", [])
+            effective_readers = control_readers
+            if presentation_unavailable is not None:
+                # Pointers remain readable, but changed/unavailable trusted code
+                # must not reinterpret a pinned run or replay an apply hook.
+                effective_readers = {
+                    control["apply"]: (lambda document, reason=presentation_unavailable: Unavailable(reason))
+                    for control in effective_declared if "apply" in control
+                }
+            observations = read_controls(
+                pinned, ControlRegistry(controls=tuple(effective_declared), readers=effective_readers)
+            )
+            effective_controls = {
+                identifier: (
+                    {"status": "known", "value": observation.value,
+                     "evidence_digest": observation.evidence_digest}
+                    if isinstance(observation, Known)
+                    else {"status": "unavailable", "reason": observation.reason}
+                )
+                for identifier, observation in observations.items()
+            }
+        kpis = None
+        if presentation_unavailable is None and include_kpis:
+            try:
+                kpis = project_run(path, include_series=False)
+            except Exception:
+                if template:
+                    raise
+                display = read_presentation_snapshot(path)
+                if display is None:
+                    raise
+                # Keep unavailable-dependency diagnostics for non-template runs
+                # too, without paying for duplicate discovery on healthy polls.
+                try:
+                    select_presentations()
+                except Exception as exc:
+                    presentation_unavailable = f"Presentation dependency unavailable ({type(exc).__name__}): {exc}"
+                else:
+                    raise  # A genuine projection error is not dependency drift.
+        if presentation_unavailable is None:
+            # kpi_result has just published/read this same checkpoint. Calling
+            # results_state again rebuilds its presentation signature needlessly
+            # and can spend an input wait's wall-clock budget before replying.
+            state = (
+                {key: kpis[key] for key in ("results_final", "results_cursor", "final_commit_index")}
+                if kpis is not None else results_state(path, metadata)
+            )
+        else:
+            # Cached projections also depend on the pinned presentation selection.
+            # Do not serve stale KPIs or ask the cache to reinterpret this run just
+            # to read its configuration/controls. None is not a measured zero.
+            kpis = None
+            final_cursor = metadata.get("final_cursor")
+            state = {
+                "results_final": False, "results_cursor": None,
+                "final_commit_index": final_cursor - 1 if type(final_cursor) is int and final_cursor >= 1 else None,
+                "results_unavailable": presentation_unavailable,
+            }
         return {
             **metadata,
-            **results_state(path, metadata),
+            **state,
             "title": template["title"] if template else document["id"],
             **(
                 {
@@ -432,6 +545,7 @@ def create_app(
                 else {}
             ),
             "knobs": knobs,
+            "effective_controls": effective_controls,
             "algorithms": document.get("algorithms", {}),
             **(
                 {"kpis": kpis["final"]}

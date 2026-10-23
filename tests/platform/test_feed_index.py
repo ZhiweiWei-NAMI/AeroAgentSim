@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -123,6 +124,69 @@ def test_persistent_page_resume_and_source_invalidation(
         for event in cut["events"]:
             if event["text"].startswith("Parcel "):
                 assert "text_zh" not in event  # Never reuse the overwritten pack wording.
+
+
+@pytest.mark.parametrize("source", ["scenario", "behaviour"])
+def test_equal_length_authored_edit_with_restored_mtime_invalidates_cuts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str,
+) -> None:
+    from aeroagentsim.services import feed_index
+
+    monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
+    prepared = TemplateRegistry().apply("parcel-delivery", {"fleet_size": 2})
+    prepared.document["run"]["until_ns"] = 20_000_000_000
+    directory = tmp_path / "parcel"
+    with RunSession(load_scenario(prepared.document, base=prepared.base), directory) as run:
+        run.run()
+    schema = "lowalt.task.created"
+    declarations = {schema: {
+        "template": "Parcel {task} arrived", "category": "logistics",
+        "severity": "notice", "entities": ["task"],
+    }}
+    scenario_path = directory / "scenario.json"
+    scenario = json.loads(scenario_path.read_text())
+    if source == "scenario":
+        scenario["event_narratives"] = declarations
+        authored_path = scenario_path
+        authored = scenario
+    else:
+        # Scenario declarations take precedence over IR, so leave this schema
+        # owned by the authored package for this regression.
+        overrides = scenario.get("event_narratives", {})
+        overrides.pop(schema, None)
+        if not overrides:
+            scenario.pop("event_narratives", None)
+        scenario_path.write_text(json.dumps(scenario))
+        authored_path = directory / "behaviour.ir.json"
+        authored = json.loads(authored_path.read_text()) if authored_path.exists() else {}
+        for package in authored.get("packages", []):
+            document = package.get("document", {})
+            document.get("event_narratives", {}).pop(schema, None)
+            if document.get("event_narratives") == {}:
+                document.pop("event_narratives")
+        authored.setdefault("packages", []).append({"document": {"event_narratives": declarations}})
+    authored_path.write_text(json.dumps(authored))
+    before = page(directory, 1, 4096)
+    assert any(event["schema"] == schema and event["text"].startswith("Parcel ")
+               for cut in before for event in cut["events"])
+    assert feed_index.results_state(directory)["results_cursor"] is not None
+    stat = authored_path.stat()
+    original = authored_path.read_bytes()
+    edited = original.replace(b"Parcel {task} arrived", b"Packet {task} arrived")
+    assert edited != original and len(edited) == len(original)
+    authored_path.write_bytes(edited)
+    os.utime(authored_path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    assert authored_path.stat().st_size == stat.st_size
+    assert authored_path.stat().st_mtime_ns == stat.st_mtime_ns
+    assert feed_index.results_state(directory)["results_cursor"] is None
+    assert feed_index.results_state(directory)["results_final"] is False
+
+    # Both the retained in-memory projector and SQLite cuts must be invalidated.
+    after = page(directory, 1, 4096)
+    texts = [event["text"] for cut in after for event in cut["events"] if event["schema"] == schema]
+    assert texts and all(text.startswith("Packet ") for text in texts)
+    assert after[-1]["kpis"] == before[-1]["kpis"]
+    assert page(directory, 1, 4096) == after
 
 
 def test_live_cache_recovers_after_failed_projection_and_external_writer(

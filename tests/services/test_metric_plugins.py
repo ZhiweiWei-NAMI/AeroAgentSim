@@ -7,6 +7,7 @@ service adapter is exercised separately from the public accumulator/discovery AP
 from __future__ import annotations
 
 import json
+import os
 from copy import deepcopy
 from dataclasses import FrozenInstanceError, asdict, replace
 from pathlib import Path
@@ -1140,9 +1141,10 @@ def test_physical_retraction_and_generations_preserve_measured_baselines() -> No
 
 
 def test_feed_fingerprint_tracks_plugin_release_revision_and_narratives(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any, request: pytest.FixtureRequest,
 ) -> None:
-    from aeroagentsim.services.feed_index import NarrativeProjector, _signature
+    import aeroagentsim.presentation_api as presentation_api
+    from aeroagentsim.services.feed_index import _signature
 
     reducer = CheckpointSumReducer()
     contribution = plugin(reducer=reducer)
@@ -1150,9 +1152,28 @@ def test_feed_fingerprint_tracks_plugin_release_revision_and_narratives(
     entry = SimpleNamespace(name="external", value="external.metrics:plugin", dist=dist, load=lambda: contribution)
     monkeypatch.setattr(metrics_api, "BUILTINS", {})
     entry_points(monkeypatch, entry)
-    declarations = {"custom.event": {"template": "one"}}
-    monkeypatch.setattr(NarrativeProjector, "from_directory", lambda path: SimpleNamespace(_declarations=declarations))
-    (tmp_path / "scenario.json").write_text("{}")
+    declarations = {"custom.event": {
+        "template": "one", "template_zh": "一", "category": "mixed", "severity": "info",
+    }}
+    presentation_data = {"format": presentation_api.PRESENTATION_FORMAT, "narratives": declarations}
+    presentation = presentation_api.PresentationPlugin("custom", presentation_data)
+    presentation_entry = SimpleNamespace(
+        name="custom", value="custom.presentations:plugin", load=lambda: presentation,
+    )
+
+    def presentation_entries(*, group: str) -> tuple[Any, ...]:
+        assert group == "aeroagentsim.presentations"
+        return (presentation_entry,)
+
+    monkeypatch.setattr(presentation_api, "BUILTINS", {})
+    monkeypatch.setattr(presentation_api, "entry_points", presentation_entries)
+    presentation_api.clear_presentation_plugin_cache()
+    request.addfinalizer(presentation_api.clear_presentation_plugin_cache)
+    authored = {"event_narratives": {"authored.event": {
+        "template": "one", "category": "mixed", "severity": "info",
+    }}}
+    scenario_path = tmp_path / "scenario.json"
+    scenario_path.write_text(json.dumps(authored))
     (tmp_path / "runtime.registry.json").write_text(json.dumps(MemoryRegistry(()).to_data()))
     (tmp_path / "journal.jsonl").write_text("first\n")
     first = _signature(tmp_path)
@@ -1168,5 +1189,21 @@ def test_feed_fingerprint_tracks_plugin_release_revision_and_narratives(
     reducer.version = "samples-v2"
     third = _signature(tmp_path)
     assert third != second
+    # Provider DATA is immutable: replace the descriptor without changing its
+    # revision/source, and simulate discovery in a fresh process.
     declarations["custom.event"]["template"] = "two"
-    assert _signature(tmp_path) != third
+    presentation = replace(presentation, data=presentation_data)
+    presentation_api.clear_presentation_plugin_cache()
+    fourth = _signature(tmp_path)
+    assert fourth != third
+
+    # Authored overrides must invalidate even when the file's stat tuple agrees.
+    before = scenario_path.stat()
+    authored["event_narratives"]["authored.event"]["template"] = "two"
+    scenario_path.write_text(json.dumps(authored))
+    os.utime(scenario_path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    after = scenario_path.stat()
+    assert (after.st_size, after.st_mtime_ns, after.st_ino) == (
+        before.st_size, before.st_mtime_ns, before.st_ino,
+    )
+    assert _signature(tmp_path) != fourth

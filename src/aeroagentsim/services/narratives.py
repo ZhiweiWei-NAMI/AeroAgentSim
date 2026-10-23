@@ -1,19 +1,17 @@
-"""Business event narratives projected from committed kernel records.
+"""Generic committed-event projection using presentation-family DATA.
 
-Declarations map a committed event schema id to a plain-language template with a
-category and severity. Rendering never fabricates data: a placeholder whose
-payload member is absent raises ``ValueError``, optional entity links are simply
-omitted when genuinely absent, and a position is only attached when the actual
-payload carries an ENU vector or a linked entity has a stored ENU position.
-Task facility names follow committed origin and destination writes.
+The host owns interpolation, identity, evidence order, positions and dedup. Packs
+own vocabulary and (where necessary) pure normalization of detached read records.
+Missing placeholders fail; optional links and positions are never invented.
 """
 
 from __future__ import annotations
 
 import json
 import math
-import re
 from collections.abc import Mapping
+from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -24,857 +22,483 @@ from aerokernel.operations import Create, FactWrite, Remove, RetractFact
 from aerokernel.registry import MemoryRegistry
 from aerokernel.values import thaw
 
-
-CATEGORIES = frozenset(
-    {
-        "logistics",
-        "emergency",
-        "inspection",
-        "agriculture",
-        "mobility",
-        "security",
-        "airspace",
-        "weather",
-        "energy",
-        "mixed",
-    }
+from ..presentation_api import (
+    CATEGORIES,
+    SEVERITIES,
+    PresentationPlugin,
+    admit_presentation_plugins,
+    discover_presentation_plugins,
+    freeze_data,
+    json_data,
+    placeholders,
+    presentation_digest,
+    presentation_snapshot,
+    resolve_poses,
+    validate_narratives,
+    validate_plugins,
 )
-SEVERITIES = frozenset({"info", "notice", "warning", "critical"})
+from ..presentations import presentation_label
 
-_PLACEHOLDER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
-_BRACES = re.compile(r"\{[^{}]*\}|[{}]")
+_MISSING = object()
+_CONTRACT_KEY = "\x00aeroagentsim.presentation/v1"  # Private cache metadata, never a binding.
 
 
-# Finite shipped display vocabulary only; arbitrary authored names/prose stay intact.
-_LABELS_ZH = {
-    "Customer": "客户",
-    "Shared city weather": "城市天气",
-    "Vertiport West Plaza": "西广场起降场",
-    "Vertiport East Roof": "东侧屋顶起降场",
-    "Vertiport North Roof": "北侧屋顶起降场",
-    "Vertiport Bund Roof": "外滩屋顶起降场",
-    "West Plaza charging pad": "西广场充电桩",
-    "East rooftop charging pad": "东侧屋顶充电桩",
-    "Bund rooftop charging pad": "外滩屋顶充电桩",
-    "East pad": "东侧充电桩",
-    "North pad": "北侧充电桩",
-    "Hospital rooftop pad": "医院屋顶起降位",
-    "Clinic rooftop": "诊所屋顶",
-    "Customer rooftop east": "东侧客户屋顶",
-    "North road power-line start": "北侧道路输电线路起点",
-    "North road survey return point": "北侧道路巡检返航点",
-    "Powerline corridor": "输电线路走廊",
-    "Power-line survey drone": "输电线路巡检无人机",
-    "Field sprayer": "农田喷洒无人机",
-    "Field-edge battery station": "田边换电站",
-    "Field-edge battery swap pad": "田边换电位",
-    "Field entry": "农田入口",
-    "Field exit": "农田出口",
-    "Field start": "农田起点",
-    "Field end": "农田终点",
-    "Huangpu edge demonstration field": "黄浦边缘示范农田",
-    "Guard return": "巡逻返航点",
-    "Incident site": "事件现场",
-    "Temporary incident no-fly zone": "事故临时禁飞区",
-    "Huangpu road flight corridor": "黄浦道路飞行走廊",
-    "East west corridor": "东西向走廊",
-    "North corridor": "北侧走廊",
-    "Landmark rooftop exclusion": "地标屋顶禁飞区",
-    "Edge coordinator": "边缘协调器",
-    "Lane incident": "事故车道",
-    "Lane adjacent": "相邻车道",
-    "Adjacent lane bypass": "相邻车道绕行路线",
-}
-_NUMBERED_LABELS_ZH = {
-    "Drone": "无人机", "UAV": "无人机", "Survey drone": "巡检无人机",
-    "Patrol drone": "巡逻无人机", "Sprayer": "喷洒无人机", "Air taxi": "空中出租车",
-    "Customer": "客户", "Customer rooftop": "客户屋顶", "Vertiport": "起降场",
-    "Pad": "充电桩", "Charging pad": "充电桩", "Depot": "配送站",
-    "Vehicle": "车辆", "Car": "车辆", "Task": "任务",
-    "Parcel mission": "包裹配送任务", "Medical mission": "医疗配送任务",
-    "Passenger mission": "载客任务", "Spraying mission": "喷洒任务",
-    "Inspection mission": "巡检任务", "Patrol mission": "巡逻任务",
-    "Incident Response mission": "事故响应任务", "Route vehicle": "车辆路线",
-    "Road vehicle": "道路车辆", "Road task vehicle": "道路车辆任务",
-    "Medical delivery": "医疗配送", "District patrol": "街区巡逻",
-    "Background patrol": "背景巡逻", "Incident capture": "事故现场图像",
-    "Incident": "事故", "Bg": "背景机",
-}
-_NUMBERED_LABEL = re.compile(
-    "(" + "|".join(re.escape(name) for name in _NUMBERED_LABELS_ZH) + r") ([A-Z]?\d+)\Z"
-)
-_ENUMS_ZH = {
-    "kind": {"person_fall": "行人跌倒", "fire": "火情"},
-    "choice": {
-        "respond_now": "立即响应", "request_handoff": "请求交接",
-        "finish_then_respond": "完成任务后响应", "report_only": "仅上报",
-        "accept": "接受", "decline": "拒绝",
-    },
-    "mode": {"prescribed": "预设规则", "agent": "智能体决策"},
-    "algorithm": {
-        "nearest": "就近分配", "auction": "竞价分配", "hungarian": "批量最优匹配",
-        "llm": "语言模型智能体", "straight": "直线航线", "corridor_astar": "安全走廊航线",
-        "coverage": "区域覆盖", "survey": "巡检航点", "patrol": "巡逻环线",
-        "altitude_layers": "高度分层", "hold_and_go": "等待放行", "threshold_return": "低电量返航",
-    },
-    "action": {
-        "altitude_layers": "高度分层", "hold_and_go": "等待放行",
-        "altitude": "调整高度", "hold": "等待", "release": "放行", "reroute": "改道",
-        "stop": "停止", "already resolving": "正在解除冲突", "observed separation": "已恢复安全间隔",
-    },
-    "reason": {
-        "battery low": "电量不足", "battery reserve": "预留电量不足",
-        "battery below reserve": "电量低于预留阈值", "active no-fly zone": "禁飞区生效",
-        "no-fly zone": "禁飞区限制", "vertiport closed": "起降场关闭",
-        "wind exceeds vehicle limit": "风速超过飞行器上限",
-        "wind within vehicle limit": "风速恢复到允许范围", "active interval": "设定生效时段",
-        "incident": "事故影响", "cleared": "限制已解除", "weather": "天气限制",
-        "wind subsided": "风速减弱", "zone closed": "空域关闭",
-        "separation conflict": "间隔冲突", "charging finished": "充电完成",
-        "charging algorithm": "充电策略", "traffic incident": "交通事故影响",
-        "motion failed": "飞行指令失败", "motion rejected": "飞行指令被拒绝",
-        "motion canceled": "飞行指令被取消",
-        "control diversion made no progress": "控制绕行未取得进展",
-        "no route to assigned target": "没有通往指定目标的航线",
-        "no progress toward assigned target": "未向指定目标取得进展",
-        "route planner returned no route": "航线规划器未返回可用航线",
-    },
-}
+@lru_cache(maxsize=1)
+def _legacy_label_data() -> Mapping[str, Any]:
+    # Resolve public DATA lazily, not a pack-private translation implementation.
+    provider, = discover_presentation_plugins(names=("lowalt",))
+    return provider.data
 
 
 def _chinese_label(label: str) -> str:
-    if label in _LABELS_ZH:
-        return _LABELS_ZH[label]
-    match = _NUMBERED_LABEL.fullmatch(label)
-    if match:
-        return f"{_NUMBERED_LABELS_ZH[match[1]]} {match[2]}"
-    match = re.fullmatch(r"(Incident drone|Route uav) (Alpha|Bravo|Bg \d+)", label)
-    if match:
-        family = "事故响应无人机" if match[1] == "Incident drone" else "无人机路线"
-        name = match[2].replace("Bg ", "背景机 ")
-        return f"{family} {name}"
-    match = re.fullmatch(r"Road (task vehicle|vehicle) (reporter|(?:incident )?[ab])", label)
-    if match:
-        family = "道路车辆任务" if match[1] == "task vehicle" else "道路车辆"
-        name = "报告车" if match[2] == "reporter" else match[2].replace("incident ", "事故 ")
-        return f"{family} {name}"
-    return label
+    """Source-compatible vocabulary rendering through the generic interpreter."""
+    return presentation_label(label, "zh", _legacy_label_data())
 
 
-TASK_KIND_CATEGORY = {
-    "parcel": "logistics",
-    "food": "logistics",
-    "medical": "emergency",
-    "inspection": "inspection",
-    "survey": "inspection",
-    "spraying": "agriculture",
-    "passenger": "mobility",
-    "patrol": "security",
-    "incident_response": "emergency",
-}
+def __getattr__(name: str) -> Any:
+    # Source-compatible legacy exports, not a domain dispatch in projection.
+    if name in {"LOWALT_DEFAULTS", "TASK_KIND_CATEGORY", "TASK_NOUN", "TASK_DONE", "TASK_NOUN_ZH", "TASK_DONE_ZH"}:
+        from ..packs.lowalt import presentation
 
-# Plain nouns and completion phrases per task kind, used by task narratives.
-TASK_NOUN = {
-    "parcel": "parcel order",
-    "food": "meal order",
-    "medical": "urgent medical order",
-    "inspection": "inspection job",
-    "survey": "survey job",
-    "spraying": "spraying job",
-    "passenger": "passenger trip",
-    "patrol": "patrol round",
-    "incident_response": "incident response",
-}
-TASK_DONE = {
-    "parcel": "delivered the parcel to",
-    "food": "delivered the meal to",
-    "medical": "delivered urgent supplies to",
-    "inspection": "finished inspecting",
-    "survey": "finished surveying",
-    "spraying": "finished spraying",
-    "passenger": "dropped off the passenger at",
-    "patrol": "finished patrolling",
-    "incident_response": "responded at",
-}
-
-TASK_NOUN_ZH = {
-    "parcel": "包裹配送任务",
-    "food": "外卖订单",
-    "medical": "紧急医疗配送任务",
-    "inspection": "巡检任务",
-    "survey": "测绘任务",
-    "spraying": "喷洒任务",
-    "passenger": "载客任务",
-    "patrol": "巡逻任务",
-    "incident_response": "事故响应任务",
-}
-TASK_DONE_ZH = {
-    "parcel": "完成包裹投递",
-    "food": "送达餐食",
-    "medical": "送达紧急医疗物资",
-    "inspection": "完成巡检",
-    "survey": "完成测绘",
-    "spraying": "完成喷洒",
-    "passenger": "送达乘客",
-    "patrol": "完成巡逻",
-    "incident_response": "完成事故响应",
-}
-
-LOWALT_DEFAULTS: dict[str, dict[str, Any]] = {
-    "lowalt.task.created": {
-        "template": "{task} task created",
-        "template_zh": "任务{task}已创建",
-        "category": "mixed",
-        "severity": "info",
-        "entities": ["task"],
-        "position": "task",
-    },
-    "lowalt.task.assigned": {
-        "template": "{vehicle} assigned to {task} using {algorithm}",
-        "template_zh": "通过{algorithm}将{task}分配给{vehicle}",
-        "category": "mixed",
-        "severity": "info",
-        "entities": ["task", "vehicle"],
-        "position": "vehicle",
-    },
-    "lowalt.task.started": {
-        "template": "{vehicle} started {task}",
-        "template_zh": "{vehicle}开始执行{task}",
-        "category": "mixed",
-        "severity": "info",
-        "entities": ["task", "vehicle"],
-        "position": "vehicle",
-    },
-    "lowalt.task.picked_up": {
-        "template": "{vehicle} picked up {task}",
-        "template_zh": "{vehicle}接取任务{task}",
-        "category": "mixed",
-        "severity": "info",
-        "entities": ["task", "vehicle"],
-        "position": "vehicle",
-    },
-    "lowalt.task.completed": {
-        "template": "{vehicle} completed {task} in {latency_s} seconds",
-        "template_zh": "{vehicle}完成{task}，耗时 {latency_s} 秒",
-        "category": "mixed",
-        "severity": "info",
-        "entities": ["task", "vehicle"],
-        "position": "vehicle",
-    },
-    "lowalt.task.failed": {
-        "template": "{task} failed: {reason}",
-        "template_zh": "{task}失败：{reason}",
-        "category": "mixed",
-        "severity": "warning",
-        "entities": ["task", "vehicle"],
-        "position": "vehicle",
-    },
-    "lowalt.airspace.conflict": {
-        "template": "{a} and {b} separation conflict: {horizontal_m} m horizontal, {vertical_m} m vertical",
-        "template_zh": "{a}与{b}间隔冲突：水平 {horizontal_m} 米，垂直 {vertical_m} 米",
-        "category": "airspace",
-        "severity": "warning",
-        "entities": ["a", "b"],
-    },
-    "lowalt.airspace.conflict_resolved": {
-        "template": "{a} and {b} conflict resolved: {action}",
-        "template_zh": "{a}与{b}的冲突已解除：{action}",
-        "category": "airspace",
-        "severity": "notice",
-        "entities": ["a", "b"],
-    },
-    "lowalt.airspace.geofence_entered": {
-        "template": "{vehicle} entered geofence zone {zone}",
-        "template_zh": "{vehicle}进入电子围栏区域{zone}",
-        "category": "airspace",
-        "severity": "warning",
-        "entities": ["vehicle", "zone"],
-        "position": "vehicle",
-    },
-    "lowalt.airspace.zone_activated": {
-        "template": "Zone {zone} activated: {reason}",
-        "template_zh": "区域{zone}已启用：{reason}",
-        "category": "airspace",
-        "severity": "notice",
-        "entities": ["zone"],
-    },
-    "lowalt.airspace.zone_deactivated": {
-        "template": "Zone {zone} deactivated: {reason}",
-        "template_zh": "区域{zone}已停用：{reason}",
-        "category": "airspace",
-        "severity": "notice",
-        "entities": ["zone"],
-    },
-    "lowalt.energy.low": {
-        "template": "{vehicle} battery low: {soc} state of charge",
-        "template_zh": "{vehicle}电量不足，剩余电量比例为 {soc}",
-        "category": "energy",
-        "severity": "warning",
-        "entities": ["vehicle"],
-        "position": "vehicle",
-    },
-    "lowalt.energy.charging_started": {
-        "template": "{vehicle} charging started at {pad}: {soc} state of charge",
-        "template_zh": "{vehicle}在{pad}开始充电，剩余电量比例为 {soc}",
-        "category": "energy",
-        "severity": "info",
-        "entities": ["vehicle", "pad"],
-        "position": "vehicle",
-    },
-    "lowalt.energy.charging_finished": {
-        "template": "{vehicle} charging finished at {pad}: {soc} state of charge",
-        "template_zh": "{vehicle}在{pad}完成充电，剩余电量比例为 {soc}",
-        "category": "energy",
-        "severity": "info",
-        "entities": ["vehicle", "pad"],
-        "position": "vehicle",
-    },
-    "lowalt.weather.hold": {
-        "template": "Weather hold: {reason}",
-        "template_zh": "因天气暂停飞行：{reason}",
-        "category": "weather",
-        "severity": "warning",
-        "entities": ["vehicle", "zone"],
-    },
-    "lowalt.weather.release": {
-        "template": "Weather released: {reason}",
-        "template_zh": "天气限制已解除：{reason}",
-        "category": "weather",
-        "severity": "notice",
-        "entities": ["vehicle", "zone"],
-    },
-    # Registry table spells the release alias without the lowalt prefix.
-    "weather.release": {
-        "template": "Weather released: {reason}",
-        "template_zh": "天气限制已解除：{reason}",
-        "category": "weather",
-        "severity": "notice",
-        "entities": ["vehicle", "zone"],
-    },
-}
-
-
-def _is_enu(value: Any) -> bool:
-    return (
-        isinstance(value, (list, tuple))
-        and len(value) == 3
-        and all(type(v) in (int, float) and math.isfinite(v) for v in value)
-    )
+        return getattr(presentation, name)
+    raise AttributeError(name)
 
 
 def validate_declarations(data: dict[str, Any]) -> None:
-    """Validate a ``schemaId -> declaration`` mapping; raise ValueError."""
-    if not isinstance(data, dict) or not data:
-        raise ValueError("event_narratives: mapping required")
-    for schema_id, declaration in data.items():
-        if type(schema_id) is not str or not schema_id:
-            raise ValueError("event_narratives: schema id must be a nonempty string")
-        if not isinstance(declaration, dict):
-            raise ValueError(f"event_narratives.{schema_id}: mapping required")
-        allowed = {
-            "template",
-            "template_zh",
-            "category",
-            "severity",
-            "entities",
-            "position",
-            "hidden",
-        }
-        if extra := set(declaration) - allowed:
-            raise ValueError(
-                f"event_narratives.{schema_id}: unknown keys {sorted(extra)}"
-            )
-        for field in ("template", "category", "severity"):
-            if field not in declaration:
-                raise ValueError(f"event_narratives.{schema_id}: missing {field}")
-        for field in ("template", "template_zh"):
-            if field not in declaration:
-                continue
-            template = declaration[field]
-            if type(template) is not str or not template.strip():
-                raise ValueError(
-                    f"event_narratives.{schema_id}.{field}: nonempty string required"
-                )
-            # Plain JSON placeholders only: every brace group is a bare {field}.
-            for match in _BRACES.finditer(template):
-                if _PLACEHOLDER.fullmatch(match.group(0)) is None:
-                    raise ValueError(
-                        f"event_narratives.{schema_id}.{field}: "
-                        f"invalid placeholder {match.group(0)!r}"
-                    )
-        if "template_zh" in declaration and set(_fields(declaration["template_zh"])) != set(
-            _fields(declaration["template"])
-        ):
-            raise ValueError(
-                f"event_narratives.{schema_id}.template_zh: "
-                "placeholders must match template"
-            )
-        if declaration["category"] not in CATEGORIES:
-            raise ValueError(f"event_narratives.{schema_id}.category: unknown category")
-        if declaration["severity"] not in SEVERITIES:
-            raise ValueError(f"event_narratives.{schema_id}.severity: unknown severity")
-        entities = declaration.get("entities", [])
-        if not isinstance(entities, list) or any(
-            type(name) is not str or not name for name in entities
-        ):
-            raise ValueError(
-                f"event_narratives.{schema_id}.entities: list of strings required"
-            )
-        if "position" in declaration and (
-            type(declaration["position"]) is not str or not declaration["position"]
-        ):
-            raise ValueError(f"event_narratives.{schema_id}.position: string required")
+    """Retain the authored event_narratives/v1 admission and error contract."""
+    validate_narratives(data)
+
+
+def _is_enu(value: Any) -> bool:
+    return isinstance(value, (list, tuple)) and len(value) == 3 and all(
+        type(member) in (int, float) and math.isfinite(member) for member in value
+    )
 
 
 def _entity_id(value: Any) -> str | None:
-    """Human id from a declared entity field: string or {$ref: {...}}."""
     if type(value) is str and value:
         return value
-    if isinstance(value, dict):
-        ref = value.get("$ref")
-        if isinstance(ref, dict) and type(ref.get("id")) is str and ref["id"]:
-            return str(ref["id"])
-        if type(value.get("id")) is str and value["id"]:
-            return str(value["id"])
+    if isinstance(value, Mapping):
+        ref = value.get("$ref", value)
+        if isinstance(ref, Mapping) and type(ref.get("id")) is str and ref["id"]:
+            return ref["id"]
     return None
 
 
-def _merge(target: dict[str, dict[str, Any]], source: dict[str, Any]) -> None:
-    for schema_id, declaration in source.items():
-        if schema_id in target and target[schema_id] != declaration:
-            raise ValueError(
-                f"event_narratives: conflicting declaration for {schema_id}"
-            )
-        target[schema_id] = declaration
+def _at(value: Any, path: Any) -> Any:
+    for part in path:
+        if isinstance(value, Mapping) and part in value:
+            value = value[part]
+        elif isinstance(value, (tuple, list)) and type(part) is int and 0 <= part < len(value):
+            value = value[part]
+        else:
+            return _MISSING
+    return value
+
+
+def _enum_key(value: Any, path: str) -> str:
+    if value is not None and type(value) not in (str, int, float, bool):
+        raise ValueError(f"{path}: enum requires scalar field")
+    return value if type(value) is str else json.dumps(value, ensure_ascii=False, allow_nan=False)
+
+
+def _merge(target: dict[str, Any], source: Mapping[str, Any]) -> None:
+    for schema, declaration in source.items():
+        if schema in target and target[schema] != declaration:
+            raise ValueError(f"event_narratives: conflicting declaration for {schema}")
+        target[schema] = json_data(declaration)
 
 
 class NarrativeProjector:
-    """Project committed kernel records into plain-language event feed rows."""
+    """Project each committed event emission once, without domain switches."""
 
     def __init__(
         self,
-        declarations: dict[str, dict[str, Any]],
+        declarations: dict[str, dict[str, Any]] | None = None,
         position_fields: set[str] | None = None,
         labels: dict[str, str] | None = None,
         labels_zh: dict[str, str] | None = None,
+        *,
+        plugins: tuple[PresentationPlugin, ...] | None = None,
     ) -> None:
-        validate_declarations(declarations)
-        self._declarations = declarations
-        self._labels = labels or {}
-        self._labels_zh = labels_zh or {}
-        self._task_info: dict[str, dict[str, str]] = {}
+        self._plugins = discover_presentation_plugins() if plugins is None else plugins
+        validate_plugins(self._plugins)
+        self._declarations: dict[str, Any] = {}
+        self._cache_key: str | None = None
+        self._vocabulary: dict[str, Any] = {}
+        self._numbered: dict[str, Any] = {}
+        self._label_groups: list[Any] = []
+        self._enums: dict[str, Any] = {}
+        self._normalizers: list[Any] = []
+        self._states: list[Any] = []
+        self._by_schema: dict[str, int] = {}
+        self._by_field: dict[str, list[int]] = {}
+        self._overrides: set[str] = set()
+        for plugin in self._plugins:
+            # Provider DATA is recursively frozen at admission. Share recipes and
+            # vocabulary; only this projector's top-level tables are mutable.
+            data = plugin.data
+            self._declarations.update(data.get("narratives", {}))
+            self._vocabulary.update(data.get("labels", {}))
+            self._numbered.update(data.get("numbered_labels", {}))
+            self._label_groups.extend(data.get("label_groups", []))
+            for schema, fields in data.get("enums", {}).items():
+                self._enums.setdefault(schema, {}).update(fields)
+            for normalizer in plugin.normalizers:
+                index = len(self._normalizers)
+                self._normalizers.append(normalizer)
+                self._states.append(json_data(normalizer.initial()))
+                for schema in normalizer.input_schemas:
+                    if schema in self._by_schema:
+                        raise ValueError(f"Conflicting normalized narrative schema: {schema}")
+                    self._by_schema[schema] = index
+                for field in normalizer.fact_fields:
+                    self._by_field.setdefault(field, []).append(index)
+        self._provider_declarations = dict(self._declarations)
+        if declarations is not None:
+            self._override(declarations)
+        self._labels = dict(labels or {})
+        self._labels_zh = dict(labels_zh or {})
         self._seen: set[str] = set()
         self._position_fields = position_fields or set()
-        self._task_kinds: dict[str, str] = {}
-        # Entity identity -> latest stored ENU position (ENU only).
         self._positions: dict[tuple[str, str, str, int], tuple[float, ...]] = {}
         self._by_id: dict[str, list[tuple[str, str, str, int]]] = {}
+        self._pin_contract()
+
+    def _override(self, declarations: Mapping[str, Any]) -> None:
+        validate_declarations(declarations)
+        if self._cache_key is not None:
+            self._declarations.pop(self._cache_key)
+            self._cache_key = None
+        for schema, declaration in declarations.items():
+            # Retain normalized bindings, but do not inherit translations or
+            # variants accidentally. Explicit legacy variants still apply below.
+            base = self._provider_declarations.get(schema, {})
+            legacy_keys = {"template", "template_zh", "category", "severity", "entities", "position", "hidden"}
+            declared = json_data(declaration)
+            if freeze_data(declared) == {key: value for key, value in base.items() if key in legacy_keys}:
+                # Old run materializers copied pack declarations into the pinned
+                # scenario. Identical DATA is not an override of its own recipe.
+                self._declarations[schema] = {**base, **declared}
+                self._overrides.discard(schema)
+            else:
+                metadata = {key: base[key] for key in ("selectors", "category_field", "category_map") if key in base}
+                self._declarations[schema] = {**metadata, **declared}
+                self._overrides.add(schema)
+            self._declarations[schema]["_legacy_bindings"] = True
+
+    def _pin_contract(self) -> None:
+        if self._cache_key is not None:
+            self._declarations.pop(self._cache_key)
+        self.contract_digest = presentation_digest({
+            "providers": presentation_snapshot(self._plugins),
+            "declarations": self._declarations, "labels": self._labels, "labels_zh": self._labels_zh,
+        })
+        # Retain the private declaration-fingerprint contract for callers even
+        # when providers have NO narratives. The feed index fingerprints provider
+        # DATA directly, without constructing a projector just for this mapping.
+        # This hidden metadata is never an event declaration or viewer row.
+        self._cache_key = _CONTRACT_KEY
+        while self._cache_key in self._declarations:
+            self._cache_key = "\x00" + self._cache_key
+        self._declarations[self._cache_key] = {"hidden": True, "digest": self.contract_digest}
 
     @classmethod
-    def from_directory(cls, path: str | Path) -> NarrativeProjector:
-        """Load declarations from defaults, pack, behaviour IR and scenario."""
+    def from_directory(
+        cls, path: str | Path, *, plugins: tuple[PresentationPlugin, ...] | None = None,
+    ) -> NarrativeProjector:
         base = Path(path)
-        declarations: dict[str, dict[str, Any]] = {}
 
         def read(name: str) -> dict[str, Any]:
-            file = base / name
-            with file.open("r", encoding="utf-8") as handle:
-                loaded: dict[str, Any] = json.load(handle)
-                return loaded
+            with (base / name).open("r", encoding="utf-8") as handle:
+                return json.load(handle)
 
-        for key, value in LOWALT_DEFAULTS.items():
-            declarations[key] = dict(value)
-        from ..packs.lowalt.overlay import EVENT_NARRATIVES as LOWALT_PACK
-        from ..packs.traffic_accident.narratives import EVENT_NARRATIVES
+        scenario = read("scenario.json")
+        registry = MemoryRegistry.from_data(read("runtime.registry.json"))
+        labels = {item["id"]: item["label"] for item in scenario.get("entities", [])
+                  if isinstance(item, dict) and type(item.get("id")) is str
+                  and type(item.get("label")) is str and item["label"]}
+        labels_zh = {item["id"]: item["label_zh"] for item in scenario.get("entities", [])
+                     if isinstance(item, dict) and type(item.get("id")) is str
+                     and type(item.get("label_zh")) is str and item["label_zh"].strip()}
+        from ..presentations import presentation_selection
 
-        # Pack declarations are authoritative statements of what the pack's
-        # engines emit; they pin the defaults truthfully (defaults stay for
-        # schemas no pack declares).
-        for key, value in LOWALT_PACK.items():
-            own = declarations.get(key, {})
-            # Task events carry the pack's per-kind category map; render the
-            # category from the actual task kind instead of a flat default.
-            per_kind = value.get("category_by_kind")
-            declarations[key] = {
-                "template": value["text"],
-                **({"template_zh": value["text_zh"]} if "text_zh" in value else {}),
-                "category": "mixed" if per_kind else value["category"],
-                "severity": value["severity"],
-                "entities": value.get("entities", [n for n in own.get("entities", [])]),
-                **(
-                    {"position": value["position"]}
-                    if "position" in value
-                    else ({"position": own["position"]} if "position" in own else {})
-                ),
-            }
-            del own
-        for key, value in EVENT_NARRATIVES.items():
-            declarations[key] = dict(value)
-
-        behaviour = (
-            read("behaviour.ir.json") if (base / "behaviour.ir.json").exists() else {}
-        )
-        package_declarations: dict[str, dict[str, Any]] = {}
+        selected, _ = presentation_selection(base, plugins)
+        presentations = {item["positionField"] for item in scenario.get("presentation", []) if item["frame"] == "enu"}
+        for plugin in selected:
+            poses, _ = resolve_poses({"format": plugin.data["format"], "poses": plugin.data.get("poses", ())}, registry)
+            presentations.update(pose["positionField"] for pose in poses if pose["frame"] == "enu")
+        position_fields = set()
+        for field in registry.fields:
+            unit, frame = field.metadata.get("unit"), field.metadata.get("frame")
+            unit = unit.get("symbol") if isinstance(unit, Mapping) else unit
+            frame = frame.get("convention") if isinstance(frame, Mapping) else frame
+            if ((field.id in presentations or "position" in field.id) and unit == "m" and frame == "enu"
+                    and field.metadata.get("role") != "config"):
+                position_fields.add(field.id)
+        projector = cls(None, position_fields, labels, labels_zh, plugins=selected)
+        # Validate only activated schemas against the pinned registry. A pack's
+        # absent optional schemas do not make an unrelated domain inadmissible.
+        admit_presentation_plugins(projector._plugins, registry, document=scenario)
+        behaviour = read("behaviour.ir.json") if (base / "behaviour.ir.json").exists() else {}
         packages = behaviour.get("packages", [])
         if not isinstance(packages, list):
             raise ValueError("behaviour.ir.json: packages must be a list")
+        declarations: dict[str, Any] = {}
         for package in packages:
             document = package.get("document", {}) if isinstance(package, dict) else {}
-            declared = document.get("event_narratives")
-            if declared:
-                validate_declarations(declared)
-                _merge(package_declarations, declared)
+            if "event_narratives" in document:
+                validate_declarations(document["event_narratives"])
+                _merge(declarations, document["event_narratives"])
+        if declarations:
+            projector._override(declarations)
+        if "event_narratives" in scenario:
+            projector._override(scenario["event_narratives"])
+        projector._pin_contract()
+        return projector
 
-        declarations.update(package_declarations)
-        scenario = read("scenario.json")
-        registry = MemoryRegistry.from_data(read("runtime.registry.json"))
-        position_fields: set[str] = set()
-        presentations = {
-            item["positionField"]
-            for item in scenario.get("presentation", [])
-            if item["frame"] == "enu"
-        }
-        for field in registry.fields:
-            unit = field.metadata.get("unit")
-            frame = field.metadata.get("frame")
-            unit = unit.get("symbol") if isinstance(unit, Mapping) else unit
-            frame = frame.get("convention") if isinstance(frame, Mapping) else frame
-            if (
-                (field.id in presentations or "position" in field.id)
-                and unit == "m"
-                and frame == "enu"
-                and field.metadata.get("role") != "config"
-            ):
-                position_fields.add(field.id)
-        overrides = scenario.get("event_narratives")
-        if overrides:
-            validate_declarations(overrides)
-            for key, value in overrides.items():
-                declarations[key] = dict(value)
-        labels = {
-            e["id"]: e["label"]
-            for e in scenario.get("entities", [])
-            if isinstance(e, dict)
-            and type(e.get("id")) is str
-            and type(e.get("label")) is str
-            and e["label"]
-        }
-        labels_zh = {
-            e["id"]: e["label_zh"]
-            for e in scenario.get("entities", [])
-            if isinstance(e, dict)
-            and type(e.get("id")) is str
-            and type(e.get("label_zh")) is str
-            and e["label_zh"].strip()
-        }
-        return cls(declarations, position_fields, labels, labels_zh)
+    def _legacy_task_context(self) -> dict[str, Any]:
+        # Compatibility with the original public cursor, not domain dispatch in
+        # projection. The pack normalizer remains the sole owner of task state.
+        for normalizer, state in zip(self._normalizers, self._states):
+            if normalizer.id == "lowalt.task-context":
+                return state
+        return {"task_kinds": {}, "task_info": {}}
 
     def cursor(self) -> dict[str, Any]:
-        """Dedup/position state needed to restore this projector later."""
+        context = self._legacy_task_context()
         return {
-            "seen": sorted(self._seen),
-            "task_kinds": dict(self._task_kinds),
-            "task_info": {k: dict(v) for k, v in self._task_info.items()},
-            "positions": [
-                [*key, list(value)] for key, value in self._positions.items()
-            ],
+            "seen": sorted(self._seen), "presentation_digest": self.contract_digest,
+            "task_kinds": json_data(context["task_kinds"]),
+            "task_info": json_data(context["task_info"]),
+            "normalizers": json_data(self._states),
+            "positions": [[*key, list(value)] for key, value in self._positions.items()],
         }
 
     def restore_cursor(self, cursor: dict[str, Any]) -> None:
-        """Restore state produced by :meth:`cursor`; complements from_directory."""
-        if not isinstance(cursor, dict):
-            raise ValueError("narrative cursor: mapping required")
-        self._task_kinds = {
-            str(task): str(kind) for task, kind in cursor["task_kinds"].items()
-        }
-        self._task_info = {
-            str(task): {str(k): str(v) for k, v in info.items()}
-            for task, info in cursor.get("task_info", {}).items()
-        }
-        self._seen.clear()
+        if not isinstance(cursor, dict) or cursor.get("presentation_digest") != self.contract_digest:
+            raise ValueError("narrative cursor: presentation selection/revision changed; rebuild from committed evidence")
+        states = cursor.get("normalizers")
+        if not isinstance(states, list) or len(states) != len(self._normalizers):
+            raise ValueError("narrative cursor: invalid normalizer states")
+        self._states = json_data(states)
+        context = self._legacy_task_context()
+        for field in ("task_kinds", "task_info"):
+            if field in cursor:
+                context[field] = json_data(cursor[field])
+        self._seen = set(cursor["seen"])
         self._positions.clear()
         self._by_id.clear()
-        for message_id in cursor["seen"]:
-            self._seen.add(str(message_id))
-        for run_id, epoch, entity_id, generation, value in cursor["positions"]:
-            restored = (run_id, epoch, entity_id, int(generation))
-            self._positions[restored] = tuple(float(v) for v in value)
-            self._key_hint(restored, entity_id)
+        for run_id, epoch, identity, generation, value in cursor["positions"]:
+            key = (run_id, epoch, identity, int(generation))
+            self._positions[key] = tuple(float(member) for member in value)
+            self._key_hint(key, identity)
 
     @classmethod
     def projection_context(
-        cls, path: str | Path, cursor: dict[str, Any]
+        cls, path: str | Path, cursor: dict[str, Any], *, plugins: tuple[PresentationPlugin, ...] | None = None,
     ) -> NarrativeProjector:
-        """Restore a projector instance from a stored cursor context."""
-        projector = cls.from_directory(path)
+        projector = cls.from_directory(path, plugins=plugins)
         projector.restore_cursor(cursor)
         return projector
 
-    # -- record consumption ------------------------------------------------
-
     def consume(self, raw_record: dict[str, Any]) -> list[dict[str, Any]]:
-        """Narrate newly committed Emit messages once; dedup by message id."""
         return self.consume_decoded(decode_record(expand_record(raw_record)))
 
     def consume_decoded(self, record: dict[str, Any]) -> list[dict[str, Any]]:
-        """Share one typed record with other journal projections, without decoding twice."""
-        events: list[dict[str, Any]] = []
-        for item in record.get("items", []):
+        events = []
+        for ordinal, item in enumerate(record.get("items", [])):
             if not isinstance(item, dict):
                 continue
-            if "proposal" in item:
-                op = item["proposal"]
-                if isinstance(op, Create):
-                    key = self._key(op.ref)
-                    self._key_hint(key, op.ref.id)
-                elif isinstance(op, Remove):
-                    self._positions.pop(self._key(op.ref), None)
-                elif isinstance(op, FactWrite):
-                    if op.key[1] in {"lowalt.task_origin", "lowalt.task_destination"}:
-                        endpoint = _entity_id(thaw(op.value))
-                        if endpoint is None:
-                            raise ValueError(f"{op.key[1]}: facility identity required")
-                        self._task_info.setdefault(op.key[0].id, {})[
-                            op.key[1].removeprefix("lowalt.task_")
-                        ] = endpoint
-                    self._track_position(op)
-                elif isinstance(op, RetractFact) and op.key[1] in self._position_fields:
-                    self._positions.pop(self._key(op.key[0]), None)
-            if "message" not in item:
-                continue
-            proposal = item.get("proposal")
-            if not isinstance(proposal, Emit):
-                continue
-            message = item["message"]
-            if not isinstance(message, Message) or message.kind != "event":
-                continue
-            if message.id in self._seen:
+            op = item.get("proposal")
+            if isinstance(op, Create):
+                self._key_hint(self._key(op.ref), op.ref.id)
+            elif isinstance(op, Remove):
+                self._positions.pop(self._key(op.ref), None)
+            elif isinstance(op, FactWrite):
+                for index in self._by_field.get(op.key[1], ()):
+                    state = deepcopy(self._states[index])
+                    result = self._normalizers[index].consume(state, freeze_data({
+                        "kind": "fact", "entity": op.key[0].to_data(), "field": op.key[1],
+                        "value": json_data(thaw(op.value)),
+                        "evidence": {"journal_index": record.get("index"), "item_ordinal": ordinal},
+                    }))
+                    if result is not None:
+                        raise ValueError("presentation fact normalizer must return None")
+                    self._states[index] = json_data(state)
+                self._track_position(op)
+            elif isinstance(op, RetractFact) and op.key[1] in self._position_fields:
+                self._positions.pop(self._key(op.key[0]), None)
+            message = item.get("message")
+            if not isinstance(op, Emit) or not isinstance(message, Message) or message.kind != "event" or message.id in self._seen:
                 continue
             event = self._narrate(message)
-            # Failed interpolation must remain an error on retry, not disappear
-            # behind dedup state in this projector's next request.
-            self._seen.add(message.id)
+            self._seen.add(message.id)  # Failed interpolation remains an error on retry.
             if event is not None:
                 events.append(event)
         return events
 
-    def _key(self, ref: Any) -> tuple[str, str, str, int]:
+    @staticmethod
+    def _key(ref: Any) -> tuple[str, str, str, int]:
         return (ref.run_id, ref.epoch, ref.id, ref.generation)
 
-    def _key_hint(self, key: tuple[str, str, str, int], entity_id: str) -> None:
-        keys = self._by_id.setdefault(entity_id, [])
+    def _key_hint(self, key: tuple[str, str, str, int], identity: str) -> None:
+        keys = self._by_id.setdefault(identity, [])
         if key not in keys:
             keys.append(key)
 
     def _track_position(self, op: FactWrite) -> None:
-        value = op.value
-        entity_id = op.key[0].id
-        field = op.key[1]
-        vector: tuple[float, ...] | None = None
-        if field not in self._position_fields:
+        if op.key[1] not in self._position_fields:
             return
-        if isinstance(value, (list, tuple)):
-            members = list(value)
-            if _is_enu(value):
-                vector = tuple(float(v) for v in members)
-        elif isinstance(value, dict) and _is_enu(value.get("position")):
-            members = list(value["position"])
-            vector = tuple(float(v) for v in members)
-        del field
-        if vector is None:
+        value = op.value
+        vector = value if _is_enu(value) else value.get("position") if isinstance(value, Mapping) else None
+        if not _is_enu(vector):
             return
         key = self._key(op.key[0])
-        self._positions[key] = vector
-        self._key_hint(key, entity_id)
+        self._positions[key] = tuple(float(member) for member in vector)
+        self._key_hint(key, op.key[0].id)
 
     def _stored_position(self, value: Any) -> tuple[float, ...] | None:
-        if isinstance(value, dict) and "$ref" in value:
+        if isinstance(value, Mapping) and "$ref" in value:
             ref = value["$ref"]
-            return self._positions.get(
-                (ref["run_id"], ref["epoch"], ref["id"], ref["generation"])
-            )
-        entity_id = _entity_id(value)
-        if entity_id is None:
+            return self._positions.get((ref["run_id"], ref["epoch"], ref["id"], ref["generation"]))
+        identity = _entity_id(value)
+        if identity is None:
             return None
-        for key in reversed(self._by_id.get(entity_id, [])):
-            position = self._positions.get(key)
-            if position:
-                return position
+        for key in reversed(self._by_id.get(identity, [])):
+            if key in self._positions:
+                return self._positions[key]
         return None
 
-    # -- rendering ---------------------------------------------------------
-
     def _narrate(self, message: Message) -> dict[str, Any] | None:
-        if message.schema_id == "rescue.event":
-            return self._rescue_line(message)
         declaration = self._declarations.get(message.schema_id)
-        if declaration is None:
-            return None  # Undeclared kernel events are ignored intentionally.
-        if declaration.get("hidden"):
-            return None  # Engine bookkeeping stays in the journal only.
-        payload = thaw(message.payload)
-        if not isinstance(payload, dict):
-            raise ValueError(
-                f"narratives.{message.schema_id}: payload mapping required"
-            )
-
-        if (
-            message.schema_id in {"traffic.road.blocked", "traffic.road.cleared"}
-            and _entity_id(payload.get("incident")) is None
-            and payload.get("reason") not in {"accident", "traffic incident"}
-        ):
-            blocked = message.schema_id == "traffic.road.blocked"
-            # Cause determines wording; category and severity remain declared.
-            declaration = {
-                **declaration,
-                "template": (
-                    "Road traffic conflict detected"
-                    if blocked else "Road traffic conflict cleared"
-                ),
-                "template_zh": "道路交通冲突出现" if blocked else "道路交通冲突解除",
-                "position": "actor",
-            }
-
+        if declaration is None or declaration.get("hidden"):
+            return None  # Uninterpreted events remain available in the raw feed.
+        payload = message.payload
+        if not isinstance(payload, Mapping):
+            raise ValueError(f"narratives.{message.schema_id}: payload mapping required")
+        index = self._by_schema.get(message.schema_id)
+        state = None
+        if index is not None:
+            state = deepcopy(self._states[index])
+            normalized = json_data(self._normalizers[index].consume(state, freeze_data({
+                "kind": "event", "schema": message.schema_id, "payload": payload,
+                "evidence": {"message_id": message.id, "at_ns": str(message.at.ns)},
+            })))
+            if normalized is None:
+                self._states[index] = json_data(state)
+                return None  # Reduction retained the evidence but emitted no view.
+            if not isinstance(normalized, dict) or set(normalized) - {"payload", "variant"} or not isinstance(normalized.get("payload"), dict):
+                raise ValueError("presentation normalizer: {payload, variant?} DATA required")
+            payload = normalized["payload"]
+            if "variant" in normalized:
+                variant = normalized["variant"]
+                recipe = self._provider_declarations[message.schema_id]
+                variants = recipe.get("variants", {})
+                if type(variant) is not str or variant not in variants:
+                    raise ValueError("presentation normalizer: undeclared variant")
+                if message.schema_id not in self._overrides or variant in recipe.get("legacy_variants", ()):
+                    declaration = {**declaration, **variants[variant]}
         category = declaration["category"]
-        if message.schema_id.startswith("lowalt.task."):
-            task = _entity_id(payload.get("task"))
-            if message.schema_id == "lowalt.task.created":
-                kind = payload.get("kind")
-                if kind not in TASK_KIND_CATEGORY or task is None:
-                    raise ValueError(
-                        "lowalt.task.created: task and known kind required"
-                    )
-                self._task_kinds[task] = kind
-            if category == "mixed" and task in self._task_kinds:
-                category = TASK_KIND_CATEGORY[self._task_kinds[task]]
-
-        texts: dict[str, str] = {}
-        for language, field, output in (
-            ("en", "template", "text"), ("zh", "template_zh", "text_zh")
-        ):
-            if field not in declaration:
+        if category == "mixed" and "category_field" in declaration:
+            value = payload.get(declaration["category_field"])
+            if value is not None:
+                category = declaration.get("category_map", {}).get(_enum_key(value, f"narratives.{message.schema_id}.category"), category)
+        if category not in CATEGORIES:
+            category = "mixed"  # Unknown styles use the generic viewer-feed/v1 category.
+        texts = {}
+        for language, template_key, output in (("en", "template", "text"), ("zh", "template_zh", "text_zh")):
+            if template_key not in declaration:
                 continue
-            values: dict[str, str] = {}
-            if message.schema_id.startswith("lowalt.task."):
-                values.update(self._task_values(message.schema_id, payload, language))
-            for name, value in payload.items():
-                if (
-                    language == "zh"
-                    and (message.schema_id.startswith("lowalt.") or message.schema_id == "weather.release")
-                    and type(value) is str
-                    and name in _ENUMS_ZH
-                ):
-                    values[name] = _ENUMS_ZH[name].get(value, value)
+            values = {}
+            for name in placeholders(declaration[template_key], f"narratives.{message.schema_id}.{template_key}"):
+                selector = declaration.get("selectors", {}).get(name)
+                if selector is not None:
+                    values[name] = self._select(payload, selector, language, name, message.schema_id, template_key)
+                elif name in payload:
+                    value = payload[name]
+                    enums = self._enums.get(message.schema_id, {}).get(name)
+                    if language == "zh" and type(value) is str and enums is not None:
+                        values[name] = enums.get(value, {}).get("zh", value)
+                    else:
+                        values[name] = self._render(value, language)
                 else:
-                    values[name] = self._render(value, language)
-            for name in _fields(declaration[field]):
-                if name not in values:
-                    raise ValueError(
-                        f"narratives.{message.schema_id}.{field}: "
-                        f"missing placeholder {name}"
-                    )
-            texts[output] = declaration[field].format(**values)
-
+                    raise ValueError(f"narratives.{message.schema_id}.{template_key}: missing placeholder {name}")
+            texts[output] = declaration[template_key].format(**values)
         entities: list[str] = []
-        for name in declaration.get("entities", []):
-            if name in payload:
-                entity_id = _entity_id(payload[name])
-                if entity_id is not None and entity_id not in entities:
-                    entities.append(entity_id)
-
-        event: dict[str, Any] = {
-            "message_id": message.id,
-            "schema": message.schema_id,
-            "at_ns": str(message.at.ns),
-            "category": category,
-            "severity": declaration["severity"],
-            **texts,
-            "entities": entities,
-        }
+        if "entity_list" in declaration:
+            links = payload.get(declaration["entity_list"], [])
+            if not isinstance(links, (tuple, list)) or len(links) > 4096:
+                raise ValueError("presentation: bounded entity list required")
+        else:
+            links = [self._bound(payload, declaration, name) for name in declaration.get("entities", [])]
+        for value in links:
+            identity = _entity_id(value)
+            if identity is not None and identity not in entities:
+                entities.append(identity)
+        event = {"message_id": message.id, "schema": message.schema_id, "at_ns": str(message.at.ns),
+                 "category": category, "severity": declaration["severity"], **texts, "entities": entities}
         position = self._position(payload, declaration, entities)
         if position is not None:
             event["position"] = list(position)
+        if index is not None:
+            self._states[index] = json_data(state)
         return event
 
-    def _rescue_line(self, message: Message) -> dict[str, Any]:
-        data = json.loads(thaw(message.payload)["data_json"])
-        kind = data["kind"]
-        vehicle = data.get("vehicle")
-        actor = self.label(vehicle) if vehicle else ""
-        actor_zh = self.label(vehicle, "zh") if vehicle else ""
-        role = data.get("role")
-        role_en = {"inspect": "inspection point", "relay": "relay point", "deliver": "delivery point"}
-        role_zh = {"inspect": "复查点", "relay": "中继点", "deliver": "投送点"}
-        lines = {
-            "noticed": ("Possible rooftop rescue noticed", "发现屋顶疑似求援"),
-            "arrived": (f"{actor} reached the {role_en.get(role, 'rescue point')}", f"{actor_zh} 到达{role_zh.get(role, '救援点')}"),
-            "relay_ready": (f"{actor} is holding the relay", f"{actor_zh} 已就位并保持中继"),
-            "relay_interrupted": (f"{actor} relay was interrupted", f"{actor_zh} 中继被中断"),
-            "delivery_completed": (f"{actor} completed delivery", f"{actor_zh} 完成物资投送"),
-            "roles_released": ("Rescue roles released", "救援角色已释放"),
-            "deadline_missed": ("Rescue deadline missed", "救援已超过截止时间"),
-            "model_failed": ("Rescue decision failed", "救援决策失败"),
-            "communication_failed": ("Rescue communication failed", "救援通信失败"),
-            "communication_unavailable": ("Rescue radio is unavailable", "救援无线通信不可用"),
-            "plan_rejected": ("Rescue plan rejected", "救援方案被拒绝"),
-        }
-        entities = [data["event"]]
-        if vehicle:
-            entities.append(vehicle)
-        if kind == "plan_computed":
-            plan = data["plan"]
-            names_en = {"inspect": "inspect", "relay": "relay", "deliver": "deliver"}
-            names_zh = {"inspect": "复查", "relay": "中继", "deliver": "投送"}
-            assignments = plan["assignments"]
-            entities.extend(row["vehicle"] for row in assignments)
-            en = ", ".join(self.label(row["vehicle"]) + " " + names_en[row["role"]] for row in assignments)
-            zh = "，".join(self.label(row["vehicle"], "zh") + " " + names_zh[row["role"]] for row in assignments)
-            text, text_zh = (("Plan: " + en, "方案：" + zh) if assignments else
-                             (("Plan: no further action", "方案：无需后续行动") if plan["status"] == "feasible" else
-                              ("No feasible rescue plan", "无可行救援方案")))
-        elif kind == "observation":
-            evidence = data["evidence"]
-            meaning = {"positive": "person confirmed", "negative": "no person", "uncertain": "uncertain"}[evidence]
-            meaning_zh = {"positive": "确认有人", "negative": "无人", "uncertain": "不确定"}[evidence]
-            text, text_zh = f"{actor} observation: {meaning} (authored truth)", f"{actor_zh} 观测：{meaning_zh}（作者设定真值）"
-        elif kind == "message_delivered":
-            text, text_zh = {"report": ("Report received by command centre", "指挥中心收到复查报告"),
-                             "delivery_ack": ("Delivery acknowledgement received by command centre", "指挥中心收到投送回执")}[data["message_kind"]]
-        elif kind == "outcome":
-            text, text_zh = ("Rescue resolved successfully", "救援成功解决") if data["success"] else ("Rescue ended without success", "救援未成功")
-        elif kind == "relay_handover":
-            entities.append(data["relay"])
-            text = f"{actor} is handing over the relay to {self.label(data['relay'])}"
-            text_zh = f"{actor_zh} 正在向 {self.label(data['relay'], 'zh')} 交接中继"
-        elif kind == "execution_blocked":
-            text = f"{actor} rescue execution blocked: {data['reason']}"
-            reason_zh = _ENUMS_ZH["reason"].get(data["reason"], data["reason"])
-            text_zh = f"{actor_zh} 救援执行受阻：{reason_zh}"
-        else:
-            text, text_zh = lines[kind]
-        result = {"message_id": message.id, "schema": message.schema_id, "at_ns": str(message.at.ns),
-                  "category": "emergency", "severity": "warning" if kind in {"model_failed", "communication_failed", "deadline_missed", "plan_rejected", "relay_interrupted", "communication_unavailable", "execution_blocked"} else "info",
-                  "text": text, "text_zh": text_zh, "entities": list(dict.fromkeys(entities))}
-        position = self._position(data, {"entities": ["vehicle", "event"]}, result["entities"])
-        if position is not None:
-            result["position"] = list(position)
-        return result
+    @staticmethod
+    def _bound(payload: Mapping[str, Any], declaration: Mapping[str, Any], name: str) -> Any:
+        if declaration.get("_legacy_bindings"):
+            return payload.get(name, _MISSING)
+        selector = declaration.get("selectors", {}).get(name, {"path": [name]})
+        return _at(payload, selector["path"])
+
+    def _select(self, payload: Any, selector: Mapping[str, Any], language: str,
+                name: str, schema: str, template_key: str) -> str:
+        if selector.get("prefer_payload") and name in payload:
+            return self._render(payload[name], language)
+        value = _at(payload, selector["path"])
+        if value is _MISSING or value == "":
+            if "fallback" in selector:
+                return selector["fallback"][language]
+            if value is _MISSING:
+                raise ValueError(f"narratives.{schema}.{template_key}: missing placeholder {name}")
+        if "join" in selector:
+            if not isinstance(value, (tuple, list)) or len(value) > 4096:
+                raise ValueError(f"narratives.{schema}.{name}: bounded array required")
+            join = selector["join"]
+            template = join["template_zh" if language == "zh" else "template"]
+            return join["separator"][language].join(template.format(**{
+                field: self._select(row, child, language, field, schema, template_key)
+                for field, child in join["selectors"].items()
+            }) for row in value)
+        if "enum" in selector:
+            key = _enum_key(value, f"narratives.{schema}.{name}")
+            if key in selector["enum"]:
+                return selector["enum"][key][language]
+            if "fallback" in selector:
+                return selector["fallback"][language]
+            if type(value) is str and not selector.get("label"):
+                return value  # Unknown enum tokens are not inferred entity identities.
+        if selector.get("label"):
+            identity = _entity_id(value)
+            if identity is not None:
+                return self.label(identity, language)
+            if value != "":
+                raise ValueError(f"narratives.{schema}.{name}: identity required")
+        return self._render(value, language)
 
     def label(self, identity: str, language: str = "en") -> str:
-        """Authored zh label, finite shipped translation, English label, then id."""
         label = self._labels.get(identity, identity)
-        if language == "zh":
-            return self._labels_zh.get(identity, _chinese_label(label))
-        return label
+        if language == "zh" and identity in self._labels_zh:
+            return self._labels_zh[identity]
+        return presentation_label(label, language, {
+            "labels": self._vocabulary, "numbered_labels": self._numbered,
+            "label_groups": self._label_groups,
+        })
 
     def _render(self, value: Any, language: str = "en") -> str:
-        """Plain text for a payload member; identities/authored strings are intact."""
         if type(value) is str:
-            return (
-                self.label(value, language)
-                if value in self._labels or language == "zh" and value in self._labels_zh
-                else value
-            )
+            return self.label(value, language) if value in self._labels or language == "zh" and value in self._labels_zh else value
         identity = _entity_id(value)
         if identity is not None:
             return self.label(identity, language)
@@ -882,67 +506,25 @@ class NarrativeProjector:
             parts = [self._render(item, language) for item in value]
             separator = "、" if language == "zh" else ", "
             if len(parts) > 3:
-                extra = (
-                    f"，另有 {len(parts) - 3} 项"
-                    if language == "zh"
-                    else f" and {len(parts) - 3} more"
-                )
+                extra = f"，另有 {len(parts) - 3} 项" if language == "zh" else f" and {len(parts) - 3} more"
                 return separator.join(parts[:3]) + extra
             return separator.join(parts) if parts else ("无" if language == "zh" else "none")
-        if isinstance(value, dict):
+        if isinstance(value, Mapping):
             return "详情" if language == "zh" else "details"
         if value is None:
             return "未知" if language == "zh" else "unknown"
         return _plain(value)
 
-    def _task_values(
-        self, schema: str, payload: dict[str, Any], language: str = "en"
-    ) -> dict[str, str]:
-        """Derived placeholders {noun}, {done}, {origin}, {destination} per task."""
-        task = _entity_id(payload.get("task"))
-        if schema == "lowalt.task.created" and task is not None:
-            self._task_info[task] = {
-                "kind": str(payload.get("kind", "")),
-                "origin": _entity_id(payload.get("origin")) or "",
-                "destination": _entity_id(payload.get("destination")) or "",
-            }
-        info = self._task_info.get(task or "", {})
-        kind = info.get("kind", "")
-        chinese = language == "zh"
-        nouns, completions = (TASK_NOUN_ZH, TASK_DONE_ZH) if chinese else (TASK_NOUN, TASK_DONE)
-        return {
-            "noun": nouns.get(kind, "任务" if chinese else "task"),
-            "done": completions.get(kind, "完成任务" if chinese else "completed the task at"),
-            "origin": self.label(info["origin"], language)
-            if info.get("origin")
-            else ("取件点" if chinese else "its pickup"),
-            "destination": self.label(info["destination"], language)
-            if info.get("destination")
-            else ("目的地" if chinese else "its destination"),
-        }
-
-    def _position(
-        self,
-        payload: dict[str, Any],
-        declaration: dict[str, Any],
-        entities: list[str],
-    ) -> tuple[float, ...] | None:
-        position_field = declaration.get("position")
-        if position_field is not None and position_field in payload:
-            value = payload[position_field]
-            if _is_enu(value):
-                return tuple(float(v) for v in value)
-            return self._stored_position(value)
+    def _position(self, payload: Mapping[str, Any], declaration: Mapping[str, Any], entities: list[str]) -> tuple[float, ...] | None:
+        field = declaration.get("position")
+        value = self._bound(payload, declaration, field) if field is not None else _MISSING
+        if value is not _MISSING:
+            return tuple(float(member) for member in value) if _is_enu(value) else self._stored_position(value)
         for name in declaration.get("entities", []):
-            if name in payload:
-                stored = self._stored_position(payload[name])
-                if stored is not None:
-                    return stored
+            stored = self._stored_position(self._bound(payload, declaration, name))
+            if stored is not None:
+                return stored
         return None
-
-
-def _fields(template: str) -> list[str]:
-    return [match.group(1) for match in _PLACEHOLDER.finditer(template)]
 
 
 def _plain(value: Any) -> str:
