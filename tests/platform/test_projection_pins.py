@@ -1,0 +1,1031 @@
+"""Run-time pins distinguish matching definitions from current-code recomputation."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sqlite3
+import stat
+import threading
+from collections.abc import Iterator
+from dataclasses import FrozenInstanceError, asdict, replace
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
+from aerokernel import BindingManifest, Kernel
+from aerokernel.errors import KernelError
+from aerokernel.journal import Journal
+from aerokernel.registry import MemoryRegistry
+from aerokernel.values import canonical_json
+from fastapi.testclient import TestClient
+
+from aeroagentsim import metrics_api, presentation_api
+from aeroagentsim.metrics_api import MetricDescriptor, MetricPlugin
+from aeroagentsim.platform import RunSession
+from aeroagentsim.runs import (
+    RUN_READER_API_VERSION,
+    NoCommittedPrefix,
+    ProjectionMode,
+    ProjectionProvenance,
+    RecordedMessage,
+    RunReadError,
+    open_run,
+    projection_provenance,
+    projections,
+)
+from aeroagentsim.scenario import load_scenario
+from aeroagentsim.services import feed_index, worker
+from aeroagentsim.services.app import create_app
+from aeroagentsim.services.kpis import KPIProjector
+from aeroagentsim.services.narratives import NarrativeProjector
+from aeroagentsim.services.projector import project
+from aeroagentsim.services.storage import RunStorage
+from aeroagentsim.services.subjects import SubjectProjection
+
+
+class _Reducer:
+    version = "1"
+    input_schemas = ("aeroagentsim.metrics.",)
+    descriptors = (MetricDescriptor(
+        id="projection.samples", label="Observed physical samples", label_zh="已观测物理样本",
+        unit="count", direction=None,
+        aggregation="Count recorded physical evidence items in journal/item order.",
+        missing_data_policy="None until a matching evidence item was observed.",
+    ),)
+
+    def initial(self) -> list[int]:
+        return []
+
+    def consume(self, state: list[int], message: RecordedMessage) -> None:
+        state.append(1)
+
+    def snapshot(self, state: list[int]) -> dict[str, int | None]:
+        return {self.descriptors[0].id: len(state) if state else None}
+
+
+@pytest.fixture
+def definitions(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Reducer]:
+    reducer = _Reducer()
+    metric = MetricPlugin("projection-test", (reducer,))
+    display = presentation_api.PresentationPlugin("projection-test", {
+        "format": presentation_api.PRESENTATION_FORMAT,
+        "labels": {"Pinned label": {"en": "Pinned label", "zh": "固定标签"}},
+    })
+    monkeypatch.setattr(metrics_api, "BUILTINS", {"projection-test": lambda: metric})
+    monkeypatch.setattr(metrics_api, "entry_points", lambda **kwargs: ())
+    monkeypatch.setattr(presentation_api, "BUILTINS", {"projection-test": lambda: display})
+    monkeypatch.setattr(presentation_api, "entry_points", lambda **kwargs: ())
+    monkeypatch.delenv("AEROAGENTSIM_API_TOKEN", raising=False)
+    monkeypatch.delenv("AEROAGENTSIM_CONSOLE_URL", raising=False)
+    presentation_api.clear_presentation_plugin_cache()
+    try:
+        yield reducer
+    finally:
+        presentation_api.clear_presentation_plugin_cache()
+
+
+@pytest.fixture
+def launched(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[tuple[TestClient, Path]]:
+    document["run"]["until_ns"] = 0
+    application = create_app(tmp_path / "runs")
+
+    def start(scenario: Any, path: Path, **kwargs: Any) -> Path:
+        # Exercise actual HTTP snapshot pinning and the actual worker writer,
+        # without a child process, live pacing or background cache warmup.
+        assert (path / "presentation.snapshot.json").exists()
+        assert not (path / projections.PROJECTION_PINS_FILENAME).exists()
+        worker.execute(scenario, path, threading.Event(), threading.Event())
+        assert RunStorage(path).metadata()["status"] == "completed"
+        return path
+
+    async def wait_started(path: Path) -> dict[str, Any]:
+        return RunStorage(path).metadata()
+
+    monkeypatch.setattr(application.state.worker_registry, "start", start)
+    monkeypatch.setattr(application.state.worker_registry, "wait_started", wait_started)
+    with TestClient(application, base_url="http://localhost") as client:
+        response = client.post("/v1/runs", json={"scenario": document})
+        assert response.status_code == 201, response.text
+        yield client, tmp_path / "runs" / response.json()["id"]
+
+
+def _legacy_run(
+    path: Path, document: dict[str, Any], *, presentation_only: bool = False, ack: bool = True,
+) -> Path:
+    document["run"]["until_ns"] = 0
+    scenario = load_scenario(document)
+    storage = RunStorage(path)
+    storage.prepare(scenario)
+    if presentation_only:
+        # Model the earlier HTTP host: it recorded presentation DATA, but never
+        # viewer/KPI implementation or metric reducer pins.
+        display = presentation_api.presentation_snapshot(
+            presentation_api.discover_presentation_plugins(), controls=(),
+            registry=scenario.registry, document=scenario.document,
+        )
+        storage._atomic("presentation.snapshot.json", display)
+        storage._atomic("manifest.json", {
+            **storage.metadata(), "presentation_snapshot_digest": display["digest"],
+        })
+    with RunSession(scenario, path, prepared=True) as session:
+        session.run()
+    if ack:
+        storage.publish_prefix(*session.simulation.kernel.acknowledged_prefix)
+    assert not (path / projections.PROJECTION_PINS_FILENAME).exists()
+    return path
+
+
+def _inventory(directory: Path) -> dict[str, tuple[Any, ...]]:
+    # Reads may update atimes. Entries, identities, bytes, sizes and mtimes must
+    # remain unchanged, including the directory itself and any new SQLite files.
+    result = {}
+    for path in [directory, *sorted(directory.rglob("*"))]:
+        info = path.stat()
+        result[str(path.relative_to(directory))] = (
+            info.st_mode, info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+            path.read_bytes() if path.is_file() else None,
+        )
+    return result
+
+
+def _without_provenance(value: dict[str, Any]) -> dict[str, Any]:
+    return {key: child for key, child in value.items() if key != "projection_provenance"}
+
+
+def _assert_compact_provenance(cut: dict[str, Any], full: ProjectionProvenance) -> None:
+    def digest(definitions: dict[str, Any] | None) -> str | None:
+        if definitions is None:
+            return None
+        canonical = json.dumps(
+            definitions, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+    reference = cut["projection_provenance"]
+    assert reference == {
+        "format": full.format,
+        "mode": full.mode.value,
+        "cut_index": cut["commitIndex"],
+        "definitions": {
+            "pinned_digest": digest(full.pinned_definitions),
+            "current_digest": digest(full.current_definitions),
+        },
+    }
+    assert len(json.dumps(reference, ensure_ascii=False).encode("utf-8")) < 1024
+
+
+def test_http_launch_records_original_definition_pins(launched: tuple[TestClient, Path]) -> None:
+    client, path = launched
+    provenance = projection_provenance(path)
+    assert isinstance(provenance, ProjectionProvenance)
+    assert RUN_READER_API_VERSION == 1
+    assert provenance.format == "aeroagentsim.projection-provenance/v1"
+    assert provenance.mode is ProjectionMode.ORIGINAL
+    assert provenance.pinned_definitions == provenance.current_definitions
+    pins = json.loads((path / projections.PROJECTION_PINS_FILENAME).read_text())
+    assert pins == {
+        "format": "aeroagentsim.projection-pins/v1",
+        "definitions": provenance.pinned_definitions,
+    }
+    current = provenance.current_definitions
+    assert current["viewer_feed"] == "aeroagentsim.viewer-feed/v1"
+    assert current["kpi"] == "aeroagentsim.kpi/v1"
+    assert current["metric_reducers"][0]["reducers"][0]["version"] == "1"
+    assert current["metric_reducers"][0]["reducers"][0]["descriptors"] == [asdict(_Reducer.descriptors[0])]
+    assert current["presentation_snapshot_digest"] == RunStorage(path).metadata()["presentation_snapshot_digest"]
+    with open_run(path) as run:
+        snapshot = run.snapshot()
+        assert provenance.source_cut == {
+            "service_run_id": snapshot.header.service_run_id,
+            "kernel_run_id": snapshot.header.kernel_run_id,
+            "epoch": snapshot.header.epoch,
+            "journal_identity": list(snapshot.header.journal_identity),
+            "configuration_digest": snapshot.header.configuration_digest,
+            "registry_digest": snapshot.header.registry_digest,
+            "cut_index": snapshot.cut_index, "cut_bytes": snapshot.cut_bytes,
+        }
+    result = client.get(f"/v1/runs/{path.name}/kpis")
+    assert result.status_code == 200, result.text
+    assert result.json()["projection_provenance"] == json.loads(json.dumps(asdict(provenance)))
+    with pytest.raises(FrozenInstanceError):
+        provenance.mode = ProjectionMode.LEGACY_UNPINNED  # type: ignore[misc]
+
+
+def test_metric_revision_rebuild_exposes_recorded_and_current_identities(
+    launched: tuple[TestClient, Path], definitions: _Reducer,
+) -> None:
+    client, path = launched
+    url = f"/v1/runs/{path.name}/kpis"
+    before = client.get(url).json()
+    pin_bytes = (path / projections.PROJECTION_PINS_FILENAME).read_bytes()
+    definitions.version = "2"
+    provenance = projection_provenance(path)
+    assert provenance.mode is ProjectionMode.RECOMPUTED_CURRENT_CODE
+    assert provenance.pinned_definitions is not None
+    assert provenance.pinned_definitions["metric_reducers"][0]["reducers"][0]["version"] == "1"
+    assert provenance.current_definitions["metric_reducers"][0]["reducers"][0]["version"] == "2"
+    after = client.get(url)
+    assert after.status_code == 200, after.text
+    returned = after.json()["projection_provenance"]
+    assert returned["mode"] == "recomputed-current-code"
+    assert returned["pinned_definitions"]["metric_reducers"][0]["reducers"][0]["version"] == "1"
+    assert returned["current_definitions"]["metric_reducers"][0]["reducers"][0]["version"] == "2"
+    # A revision-only change need not change a number. It still cannot be labelled
+    # original; neither nulls nor any other v1 fields are rewritten by provenance.
+    assert _without_provenance(after.json()) == _without_provenance(before)
+    cuts = feed_index.page(path, 1, 4096)
+    assert cuts
+    for cut in cuts:
+        _assert_compact_provenance(cut, provenance)
+        reference = cut["projection_provenance"]["definitions"]
+        assert reference["pinned_digest"] != reference["current_digest"]
+    assert (path / projections.PROJECTION_PINS_FILENAME).read_bytes() == pin_bytes
+
+
+def test_descriptor_bodies_stay_out_of_cut_payloads(
+    launched: tuple[TestClient, Path], definitions: _Reducer, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, path = launched
+    before = projection_provenance(path)
+    monkeypatch.setattr(definitions, "descriptors", (
+        replace(definitions.descriptors[0], aggregation="完整 aggregation policy. " * 4096),
+    ))
+    full = projection_provenance(path)
+    assert full.mode is ProjectionMode.RECOMPUTED_CURRENT_CODE
+    assert full.pinned_definitions == before.pinned_definitions
+    assert len(json.dumps(full.current_definitions).encode("utf-8")) > 32_000
+    response = client.get(f"/v1/runs/{path.name}/commits", params={"limit": 4096})
+    assert response.status_code == 200, response.text
+    cuts = response.json()["commits"]
+    assert cuts
+    for cut in cuts:
+        _assert_compact_provenance(cut, full)
+        refs = cut["projection_provenance"]["definitions"]
+        assert refs["pinned_digest"] != refs["current_digest"]
+    result = client.get(f"/v1/runs/{path.name}/kpis")
+    assert result.status_code == 200, result.text
+    assert result.json()["projection_provenance"] == json.loads(json.dumps(asdict(full)))
+    assert all("projection_provenance" not in row for row in result.json()["series"])
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        stored = [feed_index._decode(row[0]) for row in database.execute("SELECT payload FROM cuts ORDER BY idx")]
+    assert stored == cuts
+
+
+@pytest.mark.parametrize("change", ["revision", "data"])
+def test_presentation_drift_is_diagnosed_without_bypassing_snapshot_rejection(
+    launched: tuple[TestClient, Path], monkeypatch: pytest.MonkeyPatch, change: str,
+) -> None:
+    client, path = launched
+    client.get(f"/v1/runs/{path.name}/kpis").raise_for_status()
+    original = presentation_api.discover_presentation_plugins()[0]
+    changed = replace(original, revision="2") if change == "revision" else replace(original, data={
+        "format": presentation_api.PRESENTATION_FORMAT,
+        "labels": {"Pinned label": {"en": "New meaning", "zh": "新含义"}},
+    })
+    monkeypatch.setattr(presentation_api, "BUILTINS", {"projection-test": lambda: changed})
+    presentation_api.clear_presentation_plugin_cache()
+    provenance = projection_provenance(path)
+    assert provenance.mode is ProjectionMode.RECOMPUTED_CURRENT_CODE
+    assert provenance.pinned_definitions is not None
+    assert provenance.pinned_definitions["presentation_provider_digest"] != provenance.current_definitions["presentation_provider_digest"]
+    # Stored DATA remains stored DATA: diagnosing drift does not replace it with
+    # a newly fabricated snapshot or pretend that an HTTP recomputation succeeded.
+    assert provenance.pinned_definitions["presentation_snapshot_digest"] == provenance.current_definitions["presentation_snapshot_digest"]
+    with pytest.raises(ValueError, match="changed|unavailable"):
+        client.get(f"/v1/runs/{path.name}/kpis")
+
+
+@pytest.mark.parametrize("presentation_only", [False, True])
+def test_old_runs_without_projection_pins_are_legacy(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer, presentation_only: bool,
+) -> None:
+    path = _legacy_run(tmp_path / "legacy", document, presentation_only=presentation_only)
+    provenance = projection_provenance(path)
+    assert provenance.mode is ProjectionMode.LEGACY_UNPINNED
+    assert provenance.pinned_definitions is None
+    assert provenance.source_cut is not None
+    assert (provenance.current_definitions["presentation_snapshot_digest"] is not None) == presentation_only
+    assert feed_index.kpi_result(path)["projection_provenance"]["mode"] == "legacy-unpinned"
+    cuts = feed_index.page(path)
+    assert cuts
+    for cut in cuts:
+        _assert_compact_provenance(cut, provenance)
+        assert cut["projection_provenance"]["definitions"]["pinned_digest"] is None
+    assert not (path / projections.PROJECTION_PINS_FILENAME).exists()
+
+
+def test_index_only_legacy_has_no_invented_reader_cut(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer,
+) -> None:
+    path = _legacy_run(tmp_path / "index-only", document, ack=False)
+    before = _inventory(path)
+    provenance = projection_provenance(path)
+    assert provenance.mode is ProjectionMode.LEGACY_UNPINNED
+    assert provenance.source_cut is None
+    assert _inventory(path) == before
+    assert "projection_provenance" not in feed_index.kpi_result(path)
+
+
+@pytest.mark.parametrize("with_projection_pins", [False, True])
+def test_read_only_provenance_creates_no_files_or_indexes(
+    launched: tuple[TestClient, Path], tmp_path: Path, document: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch, with_projection_pins: bool,
+) -> None:
+    # Do not name this parameter `pinned`: document depends on that session
+    # fixture, and a bool would replace its scenario before launched can use it.
+    _, modern = launched
+    path = modern if with_projection_pins else _legacy_run(tmp_path / "legacy", document)
+    (path / "index.json").unlink()
+    assert not (path / feed_index.FILENAME).exists()
+    before = _inventory(path)
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("Provenance must not project, create SQLite, or repair indexes")
+
+    monkeypatch.setattr(sqlite3, "connect", forbidden)
+    monkeypatch.setattr(RunStorage, "index", forbidden)
+    monkeypatch.setattr(worker, "_publish_projection_pins", forbidden)
+    for method in ("initial", "consume", "snapshot"):
+        monkeypatch.setattr(_Reducer, method, forbidden)
+    for _ in range(2):
+        assert projection_provenance(path).mode is (
+            ProjectionMode.ORIGINAL if with_projection_pins else ProjectionMode.LEGACY_UNPINNED
+        )
+        assert _inventory(path) == before
+
+
+@pytest.mark.parametrize("change", ["implementation", "authored"])
+def test_host_or_authored_definition_change_is_not_original(
+    launched: tuple[TestClient, Path], monkeypatch: pytest.MonkeyPatch, change: str,
+) -> None:
+    _, path = launched
+    if change == "implementation":
+        monkeypatch.setattr(projections, "_implementation_digest", lambda: "sha256:" + "f" * 64)
+    else:
+        scenario_path = path / "scenario.json"
+        scenario = json.loads(scenario_path.read_text())
+        scenario["event_narratives"] = {}
+        scenario_path.write_text(json.dumps(scenario))
+    provenance = projection_provenance(path)
+    assert provenance.mode is ProjectionMode.RECOMPUTED_CURRENT_CODE
+    assert provenance.pinned_definitions != provenance.current_definitions
+
+
+@pytest.mark.parametrize("damage", ["format", "incomplete", "ack"])
+def test_malformed_evidence_never_implies_original(
+    launched: tuple[TestClient, Path], damage: str,
+) -> None:
+    _, path = launched
+    if damage == "ack":
+        (path / "committed-prefix.json").write_text('{"bytes":0,"index":0}')
+        with pytest.raises(NoCommittedPrefix):
+            projection_provenance(path)
+    else:
+        pins_path = path / projections.PROJECTION_PINS_FILENAME
+        pins = json.loads(pins_path.read_text())
+        if damage == "format":
+            pins["format"] = "aeroagentsim.projection-pins/v999"
+        else:
+            pins["definitions"].pop("metric_reducers")
+        pins_path.write_text(json.dumps(pins))
+        with pytest.raises(ValueError, match="Projection pins"):
+            projection_provenance(path)
+
+
+def test_pin_identity_does_not_conflate_boolean_with_integer_api_version(
+    launched: tuple[TestClient, Path],
+) -> None:
+    _, path = launched
+    pins_path = path / projections.PROJECTION_PINS_FILENAME
+    pins = json.loads(pins_path.read_text())
+    pins["definitions"]["metric_reducers"][0]["api_version"] = True
+    pins_path.write_text(json.dumps(pins))
+    with pytest.raises(ValueError, match="Projection pins.*API version"):
+        projection_provenance(path)
+
+
+def test_existing_viewer_and_kpi_payloads_change_only_by_optional_provenance(
+    launched: tuple[TestClient, Path],
+) -> None:
+    client, path = launched
+    storage = RunStorage(path)
+    records = storage.records(0, 4096)
+    registry = MemoryRegistry.from_data(json.loads((path / "runtime.registry.json").read_text()))
+    document = json.loads((path / "scenario.json").read_text())
+    subjects = SubjectProjection(registry, document)
+    kpis = KPIProjector(registry, document.get("presentation", []))
+    kpis.consume(records[0])
+    narratives = NarrativeProjector.from_directory(path)
+    expected = [
+        {**project(record, subjects=subjects, kpis=kpis), "events": narratives.consume(record)}
+        for record in records[1:]
+    ]
+    response = client.get(f"/v1/runs/{path.name}/commits", params={"limit": 4096})
+    assert response.status_code == 200, response.text
+    cuts = response.json()["commits"]
+    assert cuts and [_without_provenance(cut) for cut in cuts] == expected
+    full = projection_provenance(path)
+    for cut in cuts:
+        _assert_compact_provenance(cut, full)
+        reference = cut["projection_provenance"]["definitions"]
+        assert reference["pinned_digest"] == reference["current_digest"]
+    # The stored cut payload is compact too, not merely stripped by HTTP serving.
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        rows = database.execute("SELECT payload, cut_bytes FROM cuts ORDER BY idx").fetchall()
+        assert [feed_index._decode(payload) for payload, _ in rows] == cuts
+        for cut, (_, cut_bytes) in zip(cuts, rows, strict=True):
+            entry = storage.entries[cut["commitIndex"]]
+            assert cut_bytes == entry["offset"] + entry["length"]
+        checkpoint = feed_index._decode(database.execute("SELECT data FROM checkpoint").fetchone()[0])
+        assert checkpoint["projection_provenance"] == json.loads(json.dumps(asdict(full)))
+    assert feed_index.stream_page(path, 1, 4096) == cuts
+    # Paging must not relabel a historical cut with the latest reader ACK.
+    assert feed_index.page(path, 1, 1) == cuts[:1]
+    result = client.get(f"/v1/runs/{path.name}/kpis")
+    assert result.status_code == 200, result.text
+    cursor = storage.metadata()["final_cursor"]
+    assert _without_provenance(result.json()) == {
+        "contract": "aeroagentsim.kpi/v1", "run_id": path.name,
+        "final": kpis.snapshot(),
+        "series": [{"commitIndex": cut["commitIndex"], "at_ns": cut["at"]["ns"], "kpis": cut["kpis"]}
+                   for cut in expected],
+        "results_final": True, "results_cursor": cursor, "final_commit_index": cursor - 1,
+    }
+    assert result.json()["projection_provenance"] == json.loads(json.dumps(asdict(full)))
+
+
+@pytest.mark.parametrize(("location", "invalid"), [
+    pytest.param(("implementation_digest",), None, id="unknown-implementation"),
+    pytest.param(("implementation_digest",), "sha256:not-a-digest", id="malformed-digest"),
+    pytest.param(("presentation_provider_digest",), None, id="unknown-provider"),
+    pytest.param(("presentation_snapshot_digest",), False, id="snapshot-type"),
+    pytest.param(("authored_digests",), {}, id="missing-authored-keys"),
+    pytest.param(("authored_digests", "scenario.json"), 1, id="authored-digest-type"),
+    pytest.param(("metric_reducers",), None, id="unknown-metrics"),
+    pytest.param(("metric_reducers", 0), {}, id="missing-plugin-identity"),
+    pytest.param(("metric_reducers", 0, "distribution"), [None, None], id="empty-distribution"),
+    pytest.param(("metric_reducers", 0, "entry_point"), [], id="entry-point-type"),
+    pytest.param(("metric_reducers", 0, "reducers"), None, id="unknown-reducers"),
+    pytest.param(("metric_reducers", 0, "reducers", 0), {}, id="missing-reducer-identity"),
+    pytest.param(("metric_reducers", 0, "reducers", 0, "implementation"), None, id="unknown-reducer"),
+    pytest.param(("metric_reducers", 0, "reducers", 0, "version"), None, id="unknown-revision"),
+    pytest.param(("metric_reducers", 0, "reducers", 0, "input_schemas"), [], id="missing-inputs"),
+    pytest.param(("metric_reducers", 0, "reducers", 0, "descriptors"), None, id="unknown-descriptors"),
+    pytest.param(("metric_reducers", 0, "reducers", 0, "descriptors", 0), {}, id="incomplete-descriptor"),
+    pytest.param(("metric_reducers", 0, "reducers", 0, "descriptors", 0, "direction"), "up", id="direction"),
+])
+def test_nested_malformed_pins_are_rejected_not_reported_as_drift(
+    launched: tuple[TestClient, Path], location: tuple[str | int, ...], invalid: Any,
+) -> None:
+    _, path = launched
+    # Exercise invalidation too: malformed replacement pins cannot reuse the
+    # previously cached "original" metadata, or become known historical drift.
+    assert feed_index.kpi_result(path)["projection_provenance"]["mode"] == "original"
+    pins_path = path / projections.PROJECTION_PINS_FILENAME
+    pins = json.loads(pins_path.read_text())
+    target = pins["definitions"]
+    for key in location[:-1]:
+        target = target[key]
+    target[location[-1]] = invalid
+    pins_path.write_text(json.dumps(pins))
+    with pytest.raises(ValueError, match="Projection pins"):
+        projection_provenance(path)
+    with pytest.raises(ValueError, match="Projection pins"):
+        feed_index.kpi_result(path)
+
+
+@pytest.mark.parametrize("source_name", ["journal.jsonl", "manifest.json", "committed-prefix.json"])
+def test_reader_unsupported_symlinks_preserve_service_payloads(
+    launched: tuple[TestClient, Path], source_name: str,
+) -> None:
+    client, path = launched
+    expected_cuts = [_without_provenance(cut) for cut in feed_index.page(path, 1, 4096)]
+    expected_kpis = _without_provenance(feed_index.kpi_result(path))
+    source = path / source_name
+    retained = path / (source_name + ".retained")
+    source.replace(retained)
+    source.symlink_to(retained.name)
+    with pytest.raises(RunReadError):
+        with open_run(path):
+            pass
+    with pytest.raises(RunReadError):
+        projection_provenance(path)
+    response = client.get(f"/v1/runs/{path.name}/commits", params={"limit": 4096})
+    assert response.status_code == 200, response.text
+    assert response.json()["commits"] == expected_cuts
+    response = client.get(f"/v1/runs/{path.name}/kpis")
+    assert response.status_code == 200, response.text
+    assert response.json() == {**expected_kpis, "run_id": path.name}
+    assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+    # The omission itself survives reconnects, without retrying reader admission.
+    with feed_index._LOCK:
+        feed_index._PROJECTIONS.pop(path, None)
+    assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+
+
+def test_reader_only_strict_json_admission_does_not_fail_the_feed(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer,
+) -> None:
+    path = _legacy_run(tmp_path / "service-readable", document, ack=False)
+    expected_cuts = feed_index.page(path, 1, 4096)
+    expected_kpis = feed_index.kpi_result(path)
+    # The existing service parser accepts foreign manifest metadata containing a
+    # non-finite value; the raw reader's stricter parser correctly rejects it.
+    storage = RunStorage(path)
+    manifest = storage.metadata()
+    manifest["foreign_metadata"] = float("nan")
+    (path / "manifest.json").write_text(json.dumps(manifest))
+    last = storage.entries[-1]
+    storage.publish_prefix(last["offset"] + last["length"], last["index"])
+    with pytest.raises((RunReadError, KernelError)):
+        with open_run(path):
+            pass
+    assert feed_index.page(path, 1, 4096) == expected_cuts
+    assert feed_index.kpi_result(path) == expected_kpis
+    assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+
+
+@pytest.mark.parametrize("field", ["id", "configuration_digest"])
+@pytest.mark.parametrize("evict", [False, True])
+def test_warm_manifest_identity_edits_refresh_provenance_without_replay(
+    launched: tuple[TestClient, Path], monkeypatch: pytest.MonkeyPatch,
+    field: str, evict: bool,
+) -> None:
+    _, path = launched
+    cuts = feed_index.page(path, 1, 4096)
+    before = feed_index.kpi_result(path)
+    manifest_path = path / "manifest.json"
+    original = manifest_path.read_bytes()
+    metadata = json.loads(original)
+    value = metadata[field]
+    replacement = ("x" if value[0] != "x" else "y") + value[1:]
+    # Same-length writes with restored mtimes must not reuse stale identities.
+    updated = original.replace(json.dumps(value).encode(), json.dumps(replacement).encode())
+    assert updated != original and len(updated) == len(original)
+    info = manifest_path.stat()
+    manifest_path.write_bytes(updated)
+    os.utime(manifest_path, ns=(info.st_atime_ns, info.st_mtime_ns))
+    expected = json.loads(json.dumps(asdict(projection_provenance(path))))
+    identity = "service_run_id" if field == "id" else field
+    assert expected["source_cut"][identity] == replacement
+    assert expected["source_cut"]["cut_index"] == cuts[-1]["commitIndex"]
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        stored_cuts = database.execute("SELECT * FROM cuts ORDER BY idx").fetchall()
+    if evict:
+        with feed_index._LOCK:
+            feed_index._PROJECTIONS.pop(path, None)
+            feed_index._MANIFESTS.pop(path, None)
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("A manifest identity edit replayed or re-identified projections")
+
+    monkeypatch.setattr(feed_index, "project", forbidden)
+    monkeypatch.setattr(feed_index, "projection_definitions", forbidden)
+    monkeypatch.setattr(RunStorage, "records", forbidden)
+    monkeypatch.setattr(RunStorage, "index", forbidden)
+    # Exercise the read-only SSE signature check before the updater refreshes it.
+    assert feed_index.stream_page(path, 1, 4096) == cuts
+    after = feed_index.kpi_result(path)
+    assert _without_provenance(after) == _without_provenance(before)
+    assert after["projection_provenance"] == expected
+    with sqlite3.connect(path / feed_index.FILENAME) as database:
+        assert database.execute("SELECT * FROM cuts ORDER BY idx").fetchall() == stored_cuts
+        checkpoint = feed_index._decode(database.execute("SELECT data FROM checkpoint").fetchone()[0])
+    assert checkpoint["projection_provenance"] == expected
+    assert checkpoint["next"] == cuts[-1]["commitIndex"] + 1
+    # The refreshed identities must also survive a later working-set eviction.
+    with feed_index._LOCK:
+        feed_index._PROJECTIONS.pop(path, None)
+    assert feed_index.kpi_result(path)["projection_provenance"] == expected
+
+
+@pytest.mark.parametrize(("field", "invalid"), [
+    pytest.param("kernel_run_id", "disagrees-with-journal", id="kernel-identity"),
+    pytest.param("kernel_run_id", None, id="null-kernel-identity"),
+    pytest.param("epoch", "disagrees-with-journal", id="epoch"),
+    pytest.param("epoch", None, id="null-epoch"),
+    pytest.param("foreign_metadata", float("nan"), id="strict-json"),
+])
+@pytest.mark.parametrize("evict", [False, True])
+def test_warm_manifest_admission_changes_refresh_and_repair_refs_without_replay(
+    launched: tuple[TestClient, Path], monkeypatch: pytest.MonkeyPatch,
+    field: str, invalid: Any, evict: bool,
+) -> None:
+    _, path = launched
+    cuts = feed_index.page(path, 1, 4096)
+    before = feed_index.kpi_result(path)
+    manifest_path = path / "manifest.json"
+    metadata = json.loads(manifest_path.read_text())
+    ack = (path / "committed-prefix.json").read_bytes()
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("An admission-only edit replayed or re-identified projections")
+
+    monkeypatch.setattr(feed_index, "project", forbidden)
+    monkeypatch.setattr(feed_index, "projection_definitions", forbidden)
+    monkeypatch.setattr(RunStorage, "records", forbidden)
+    monkeypatch.setattr(RunStorage, "index", forbidden)
+    for changed, supported in (({**metadata, field: invalid}, False), (metadata, True)):
+        manifest_path.write_text(json.dumps(changed))
+        assert (path / "committed-prefix.json").read_bytes() == ack
+        if supported:
+            full = projection_provenance(path)
+            assert json.loads(json.dumps(asdict(full))) == before["projection_provenance"]
+        else:
+            with pytest.raises((RunReadError, KernelError)):
+                with open_run(path):
+                    pass
+        if evict:
+            with feed_index._LOCK:
+                feed_index._PROJECTIONS.pop(path, None)
+                feed_index._MANIFESTS.pop(path, None)
+        expected_cuts = cuts if supported else [_without_provenance(cut) for cut in cuts]
+        assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+        result = feed_index.kpi_result(path)
+        assert _without_provenance(result) == _without_provenance(before)
+        if supported:
+            assert result["projection_provenance"] == before["projection_provenance"]
+        else:
+            assert "projection_provenance" not in result
+        with sqlite3.connect(path / feed_index.FILENAME) as database:
+            checkpoint_bytes = database.execute("SELECT data FROM checkpoint").fetchone()[0]
+            checkpoint = feed_index._decode(checkpoint_bytes)
+            rows = database.execute("SELECT payload, cut_bytes FROM cuts ORDER BY idx").fetchall()
+        assert [feed_index._decode(payload) for payload, _ in rows] == expected_cuts
+        assert all((cut_bytes is not None) == supported for _, cut_bytes in rows)
+        assert checkpoint["projection_provenance"] == (
+            before["projection_provenance"] if supported else None
+        )
+        assert checkpoint["next"] == cuts[-1]["commitIndex"] + 1
+        original_decode = feed_index._decode
+
+        def decode_cut(value: bytes) -> Any:
+            assert value != checkpoint_bytes, "A warm page decoded the checkpoint"
+            return original_decode(value)
+
+        with monkeypatch.context() as warm:
+            warm.setattr(feed_index, "_new_provenance", forbidden)
+            warm.setattr(feed_index, "_decode", decode_cut)
+            assert feed_index.page(path, 1, 4096) == expected_cuts
+            assert feed_index.stream_page(path, 1, 4096) == expected_cuts
+
+
+def test_legacy_index_migration_rechecks_schema_after_another_connection_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with sqlite3.connect(tmp_path / feed_index.FILENAME) as database:
+        database.execute(
+            "CREATE TABLE cuts (idx INTEGER PRIMARY KEY, at_ns TEXT NOT NULL, "
+            "payload BLOB NOT NULL, kpis TEXT NOT NULL)"
+        )
+        database.execute("INSERT INTO cuts VALUES (1, '0', ?, '{}')", (b"retained",))
+    original_connect = sqlite3.connect
+    statements: list[str] = []
+    competitors: list[sqlite3.Connection] = []
+    connections = 0
+
+    class InterleavedConnection(sqlite3.Connection):
+        def execute(self, sql: str, *args: Any, **kwargs: Any) -> Any:
+            statements.append(sql)
+            cursor = super().execute(sql, *args, **kwargs)
+            if sql == "PRAGMA table_info(cuts)" and not competitors:
+                # Both connections observe the four-column schema. Finish the
+                # competing migration before returning our now-stale first read.
+                stale = cursor.fetchall()
+                assert "cut_bytes" not in {row[1] for row in stale}
+                competitors.append(feed_index._connect(tmp_path))
+                return iter(stale)
+            return cursor
+
+    def connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        nonlocal connections
+        connections += 1
+        if connections == 1:
+            kwargs["factory"] = InterleavedConnection
+        return original_connect(*args, **kwargs)
+
+    monkeypatch.setattr(feed_index.sqlite3, "connect", connect)
+    migrated = None
+    try:
+        migrated = feed_index._connect(tmp_path)
+        assert connections == 2
+        assert statements.count("PRAGMA table_info(cuts)") == 2
+        first = statements.index("PRAGMA table_info(cuts)")
+        second = statements.index("PRAGMA table_info(cuts)", first + 1)
+        assert first < statements.index("BEGIN IMMEDIATE") < second
+        assert "ALTER TABLE cuts ADD COLUMN cut_bytes INTEGER" not in statements
+        for connection in (migrated, *competitors):
+            assert not connection.in_transaction
+            assert "cut_bytes" in {row[1] for row in connection.execute("PRAGMA table_info(cuts)")}
+            assert connection.execute("SELECT * FROM cuts").fetchall() == [
+                (1, "0", b"retained", "{}", None),
+            ]
+            # Migration commits before the updater starts its own write transaction.
+            connection.execute("BEGIN IMMEDIATE")
+            connection.rollback()
+    finally:
+        if migrated is not None:
+            migrated.close()
+        for connection in competitors:
+            connection.close()
+
+
+def test_warm_live_pages_reuse_offsets_header_and_definition_content(
+    tmp_path: Path, definitions: _Reducer, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from aeroagentsim.runs import reader
+
+    path = tmp_path / "live"
+    path.mkdir()
+    registry = MemoryRegistry(())
+    (path / "scenario.json").write_bytes(canonical_json({"id": "live", "registry": {"messages": []}}))
+    (path / "runtime.registry.json").write_bytes(canonical_json(registry.to_data()))
+    storage = RunStorage(path)
+    storage._atomic("manifest.json", {"id": path.name, "status": "waiting_for_input"})
+    kernel = Kernel(journal=Journal(path / "journal.jsonl"))
+    kernel.bind(registry, BindingManifest("projection-live", "0"), ())
+    try:
+        kernel.start()
+        storage.index()
+        initial_index = (path / "index.json").read_bytes()
+        worker._publish_projection_pins(path, projections.projection_definitions(path))
+        for ns in range(1, 13):
+            kernel.run_until(ns)
+        storage.publish_prefix(*kernel.acknowledged_prefix)
+        full = projection_provenance(path)
+
+        constructions: list[Path] = []
+        scans: list[int] = []
+        admissions: list[None] = []
+        definition_reads: list[Path] = []
+        original_init = RunStorage.__init__
+        original_index = RunStorage.index
+        original_admit = reader._admit_header
+        original_definitions = feed_index.projection_definitions
+
+        def construct(self: RunStorage, directory: Path) -> None:
+            constructions.append(directory)
+            original_init(self, directory)
+
+        def scan(self: RunStorage, **kwargs: Any) -> None:
+            scans.append(self.offset)
+            original_index(self, **kwargs)
+
+        def admit(header: dict[str, Any]) -> str:
+            admissions.append(None)
+            return original_admit(header)
+
+        def identify(directory: Path, **kwargs: Any) -> dict[str, Any]:
+            definition_reads.append(directory)
+            return original_definitions(directory, **kwargs)
+
+        monkeypatch.setattr(RunStorage, "__init__", construct)
+        monkeypatch.setattr(RunStorage, "index", scan)
+        monkeypatch.setattr(reader, "_admit_header", admit)
+        monkeypatch.setattr(feed_index, "projection_definitions", identify)
+        cuts = feed_index.page(path, 1, 4096)
+        assert len(cuts) >= 9
+        assert all(cut["projection_provenance"]["mode"] == "original" for cut in cuts)
+        assert len(constructions) == len(scans) == len(admissions) == len(definition_reads) == 1
+
+        def no_rehash(*args: Any, **kwargs: Any) -> Any:
+            raise AssertionError("Retained definitions were hashed again")
+
+        monkeypatch.setattr(feed_index, "_definitions_digest", no_rehash)
+        for start in (1, 4, 7):
+            expected = cuts[start - 1:start + 2]
+            assert feed_index.page(path, start, 3) == expected
+            assert feed_index.stream_page(path, start, 3) == expected
+        # Ordinary status/foreign metadata rewrites do not re-admit the header,
+        # reconstruct storage, or rehash definitions despite changing file bytes.
+        storage._atomic("manifest.json", {
+            **storage.metadata(), "status": "running", "foreign_metadata": {"note": "finite"},
+        })
+        assert feed_index.page(path, 1, 3) == cuts[:3]
+        assert feed_index.stream_page(path, 1, 3) == cuts[:3]
+        assert len(constructions) == len(scans) == len(admissions) == len(definition_reads) == 1
+        assert feed_index.kpi_result(path)["projection_provenance"] == json.loads(json.dumps(asdict(full)))
+        for cut in cuts:
+            _assert_compact_provenance(cut, full)
+        assert len(scans) == len(admissions) == len(definition_reads) == 1
+
+        old_bytes, old_index = kernel.acknowledged_prefix
+        for ns in range(13, 25):
+            kernel.run_until(ns)
+        storage.publish_prefix(*kernel.acknowledged_prefix)
+        grown = feed_index.page(path, old_index + 1, 4096)
+        assert grown and grown[0]["commitIndex"] == old_index + 1
+        # Only the new tail is indexed, from the retained byte cursor. Neither
+        # ACK growth nor paging that tail reconstructs old offsets or the header.
+        assert scans[1:] == [old_bytes]
+        assert len(admissions) == len(definition_reads) == 1
+        assert (path / "index.json").read_bytes() == initial_index
+        for cut in grown:
+            _assert_compact_provenance(cut, full)
+        latest = feed_index.kpi_result(path)["projection_provenance"]["source_cut"]
+        assert latest["cut_index"] == grown[-1]["commitIndex"]
+        assert old_bytes < latest["cut_bytes"] == kernel.acknowledged_prefix[0]
+        # SQLite carries the metadata even when the in-memory working set is
+        # lost; the ready SSE path needs no storage or header admission at all.
+        with feed_index._LOCK:
+            feed_index._PROJECTIONS.pop(path, None)
+        with sqlite3.connect(path / feed_index.FILENAME) as database:
+            checkpoint_bytes = database.execute("SELECT data FROM checkpoint").fetchone()[0]
+        original_decode = feed_index._decode
+
+        def decode_cut(value: bytes) -> Any:
+            assert value != checkpoint_bytes, "A warm page decoded the checkpoint"
+            return original_decode(value)
+
+        with monkeypatch.context() as warm:
+            warm.setattr(feed_index, "_decode", decode_cut)
+            assert feed_index.page(path, 1, 3) == cuts[:3]
+            assert feed_index.stream_page(path, 1, 3) == cuts[:3]
+
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            raise AssertionError("A cached SSE page reconstructed source metadata")
+
+        with monkeypatch.context() as reconnect:
+            reconnect.setattr(RunStorage, "__init__", forbidden)
+            reconnect.setattr(reader, "_admit_header", forbidden)
+            assert feed_index.stream_page(path, 1, 3) == cuts[:3]
+        # Resume after eviction from persisted definition digests, without hashing
+        # the descriptor trees or re-admitting the unchanged reader header.
+        admission_count = len(admissions)
+        for ns in range(25, 29):
+            kernel.run_until(ns)
+        storage.publish_prefix(*kernel.acknowledged_prefix)
+        resumed = feed_index.page(path, latest["cut_index"] + 1, 4096)
+        assert resumed
+        for cut in resumed:
+            _assert_compact_provenance(cut, full)
+        assert len(admissions) == admission_count
+    finally:
+        kernel.close()
+
+
+@pytest.mark.parametrize("change", ["replacement", "ack", "truncation"])
+def test_cached_provenance_checks_source_identity_and_ack_bounds(
+    launched: tuple[TestClient, Path], change: str,
+) -> None:
+    _, path = launched
+    cuts = feed_index.page(path, 1, 4096)
+    journal = path / "journal.jsonl"
+    if change == "replacement":
+        old_identity = feed_index.kpi_result(path)["projection_provenance"]["source_cut"]["journal_identity"]
+        replacement = path / "replacement.jsonl"
+        replacement.write_bytes(journal.read_bytes())
+        replacement.replace(journal)
+        after = feed_index.stream_page(path, 1, 4096)
+        identity = [journal.stat().st_dev, journal.stat().st_ino]
+        assert identity != old_identity
+        assert after == cuts  # Compact refs exclude run-local source identities.
+        assert feed_index.kpi_result(path)["projection_provenance"]["source_cut"]["journal_identity"] == identity
+    elif change == "ack":
+        storage = RunStorage(path)
+        first = storage.entries[cuts[0]["commitIndex"]]
+        storage.publish_prefix(first["offset"] + first["length"], first["index"])
+        assert feed_index.stream_page(path, 1, 4096) == cuts[:1]
+        assert feed_index.page(path, 1, 4096) == cuts[:1]
+    else:
+        with journal.open("r+b") as stream:
+            stream.truncate(journal.stat().st_size - 1)
+        with pytest.raises(ValueError, match="shorter|beyond"):
+            feed_index.stream_page(path, 1, 4096)
+
+
+@pytest.mark.parametrize("durability", ["flush", "fsync"])
+def test_pins_are_file_and_directory_synced_before_first_world_ack(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer,
+    monkeypatch: pytest.MonkeyPatch, durability: str,
+) -> None:
+    document["run"]["until_ns"] = 0
+    document["outputs"]["durability"] = durability
+    scenario = load_scenario(document)
+    path = tmp_path / "durable"
+    RunStorage(path).prepare(scenario)
+    events: list[str] = []
+    original_fsync, original_link, original_append = os.fsync, os.link, Journal.append
+
+    def fsync(descriptor: int) -> None:
+        original_fsync(descriptor)
+        info = os.fstat(descriptor)
+        if stat.S_ISDIR(info.st_mode):
+            assert (path / projections.PROJECTION_PINS_FILENAME).is_file()
+            events.append("directory-fsync")
+        elif info.st_ino != (path / "journal.jsonl").stat().st_ino:
+            events.append("file-fsync")
+
+    def install(source: Any, target: Any) -> None:
+        assert events == ["file-fsync"]
+        assert json.loads(Path(source).read_text())["format"] == projections.PROJECTION_PINS_FORMAT
+        assert Path(target) == path / projections.PROJECTION_PINS_FILENAME
+        original_link(source, target)
+        events.append("install")
+
+    def append(self: Journal, record: dict[str, Any], **kwargs: Any) -> bytes:
+        if record["type"] != "header":
+            assert events[:3] == ["file-fsync", "install", "directory-fsync"]
+            if "world" not in events:
+                events.append("world")
+        return original_append(self, record, **kwargs)
+
+    monkeypatch.setattr(worker.os, "fsync", fsync)
+    monkeypatch.setattr(worker.os, "link", install)
+    monkeypatch.setattr(Journal, "append", append)
+    worker.execute(scenario, path, threading.Event(), threading.Event())
+    assert RunStorage(path).metadata()["status"] == "completed"
+    assert events == ["file-fsync", "install", "directory-fsync", "world"]
+    assert not list(path.glob(".projection-pins-*"))
+
+
+@pytest.mark.parametrize("failure", ["file", "install", "directory"])
+def test_pin_publication_failure_prevents_world_ack(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer,
+    monkeypatch: pytest.MonkeyPatch, failure: str,
+) -> None:
+    document["run"]["until_ns"] = 0
+    document["outputs"]["durability"] = "fsync"
+    scenario = load_scenario(document)
+    path = tmp_path / "failed-pins"
+    RunStorage(path).prepare(scenario)
+    started: list[None] = []
+    records: list[str] = []
+    original_fsync, original_link = os.fsync, os.link
+    original_start, original_append = RunSession.start, Journal.append
+
+    def fsync(descriptor: int) -> None:
+        info = os.fstat(descriptor)
+        point = "directory" if stat.S_ISDIR(info.st_mode) else "file"
+        is_journal = not stat.S_ISDIR(info.st_mode) and info.st_ino == (path / "journal.jsonl").stat().st_ino
+        if not is_journal and failure == point:
+            raise OSError("injected pin durability failure")
+        original_fsync(descriptor)
+
+    def install(source: Any, target: Any) -> None:
+        if failure == "install":
+            raise OSError("injected pin durability failure")
+        original_link(source, target)
+
+    def start(self: RunSession) -> Any:
+        started.append(None)
+        return original_start(self)
+
+    def append(self: Journal, record: dict[str, Any], **kwargs: Any) -> bytes:
+        records.append(record["type"])
+        return original_append(self, record, **kwargs)
+
+    monkeypatch.setattr(worker.os, "fsync", fsync)
+    monkeypatch.setattr(worker.os, "link", install)
+    monkeypatch.setattr(RunSession, "start", start)
+    monkeypatch.setattr(Journal, "append", append)
+    worker.execute(scenario, path, threading.Event(), threading.Event())
+    metadata = RunStorage(path).metadata()
+    assert metadata["status"] == "faulted"
+    assert "injected pin durability failure" in metadata["error"]
+    assert not started and records == ["header"]
+    assert not list(path.glob(".projection-pins-*"))
+
+
+def test_durable_pin_publication_never_replaces_existing_evidence(
+    launched: tuple[TestClient, Path],
+) -> None:
+    _, path = launched
+    pin = path / projections.PROJECTION_PINS_FILENAME
+    before, identity = pin.read_bytes(), pin.stat().st_ino
+    with pytest.raises(FileExistsError):
+        worker._publish_projection_pins(path, projections.projection_definitions(path))
+    assert pin.read_bytes() == before and pin.stat().st_ino == identity
+    assert not list(path.glob(".projection-pins-*"))
+
+
+def test_summary_kpi_bytes_ignore_run_local_provenance_and_pin_presence(
+    tmp_path: Path, document: dict[str, Any], definitions: _Reducer,
+) -> None:
+    document["run"]["until_ns"] = 0
+    scenario = load_scenario(document)
+    paths = []
+    for name, factor in (("max", 0), ("paced", 5)):
+        path = tmp_path / name
+        RunStorage(path).prepare(scenario)
+        worker.execute(scenario, path, threading.Event(), threading.Event(), speed=SimpleNamespace(value=factor))
+        assert RunStorage(path).metadata()["status"] == "completed"
+        paths.append(path)
+    headless = tmp_path / "headless"
+    with RunSession(scenario, headless) as session:
+        session.run()
+    paths.append(headless)
+    assert len({(path / "journal.jsonl").read_bytes() for path in paths}) == 1
+    summaries = [feed_index.kpi_result(path, include_series=False) for path in paths]
+    assert all("projection_provenance" not in result for result in summaries)
+    assert len({canonical_json(result) for result in summaries}) == 1
+    # Full responses still expose run-local identities and honest pin modes.
+    assert all(feed_index.kpi_result(path)["projection_provenance"]["mode"] == "original"
+               for path in paths[:2])
+    assert "projection_provenance" not in feed_index.kpi_result(headless)

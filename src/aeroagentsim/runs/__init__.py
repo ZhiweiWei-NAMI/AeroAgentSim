@@ -8,12 +8,15 @@ from .errors import (
     RunReplaced,
     UnsupportedRunFormat,
 )
+from .projections import ProjectionMode, ProjectionProvenance, projection_provenance
 from .reader import Run, iter_record_messages, open_run
 
 __all__ = [
     "RUN_READER_API_VERSION",
     "CorruptRecord",
     "NoCommittedPrefix",
+    "ProjectionMode",
+    "ProjectionProvenance",
     "RecordedMessage",
     "Run",
     "RunHeader",
@@ -23,4 +26,5 @@ __all__ = [
     "UnsupportedRunFormat",
     "iter_record_messages",
     "open_run",
+    "projection_provenance",
 ]

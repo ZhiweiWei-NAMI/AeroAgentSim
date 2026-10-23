@@ -54,6 +54,7 @@ and these arrays:
 | `chainInstances?` | Behaviour extension (below). |
 | `kpis` | Cumulative measured KPI map `{name: {value, unit, label}}` at this committed cut. |
 | `events` | Business narratives `{at_ns, category, severity, text, entities: [ids], position?: [e,n,u]}` generated from committed event emissions. |
+| `projection_provenance?` | Compact definition-digest reference and mode for this commit (below); no descriptor bodies or run-local identities. |
 
 Lossless numbers: integers or floats at or above 2⁵³ in magnitude travel as
 `{"$integer": "..."}` / `{"$number": "..."}` tags (optionally wrapped in
@@ -94,6 +95,92 @@ Template placeholders must name real payload fields; malformed declared
 business events are errors, not invented success messages. See
 [templates](../guides/templates.md) for an authoring example.
 
+## Optional projection provenance
+
+REST/SSE commit objects and the top-level `/v1/runs/{id}/kpis` response may carry
+`projection_provenance`, with `format: "aeroagentsim.projection-provenance/v1"`.
+Existing viewer-feed/v1 and KPI/v1 fields, numerical definitions, nulls and finality
+semantics are unchanged. KPI series rows and the viewer header are unchanged.
+Summary-only `kpi_result(..., include_series=False)` results (including run-list
+summaries) omit provenance: these remain byte-stable numerical payloads across
+identical service/headless journals, independent of run-local IDs, inodes, and pin
+presence. The full KPI endpoint and the read-only diagnostic expose provenance.
+
+Each REST/SSE commit carries only this compact reference (under 1 KiB), not the
+full definition records or descriptor bodies:
+
+```json
+{
+  "projection_provenance": {
+    "format": "aeroagentsim.projection-provenance/v1",
+    "mode": "original",
+    "cut_index": 5,
+    "definitions": {
+      "pinned_digest": "sha256:<64 lowercase hex digits>",
+      "current_digest": "sha256:<64 lowercase hex digits>"
+    }
+  }
+}
+```
+
+`cut_index` is this commit's inclusive journal index, not the latest live ACK.
+Each digest hashes the **full** corresponding definition tree, including reducer
+descriptors: SHA-256 of UTF-8 JSON with recursively sorted keys, no whitespace
+separators (`separators=(",", ":")`), unescaped Unicode (`ensure_ascii=False`), and
+non-finite numbers rejected (`allow_nan=False`). `pinned_digest` is `null` for an
+absent pin, never a hash of an invented empty definition. Run IDs, epoch, inode,
+paths, byte offsets and other source/environment identities are not in the cut
+reference.
+
+The full DTO remains available once at the top level of a full KPI response and
+from `aeroagentsim.runs.projections.projection_provenance(directory)` (also exported
+from `aeroagentsim.runs`). It contains `format`, `mode`, `source_cut`,
+`pinned_definitions` and `current_definitions`, including descriptors. Hashing its
+two definition records as above matches the compact references for those definitions.
+The source uses the [public reader's identities](run-reader.md): service and kernel
+run IDs, epoch, local journal identity, recorded configuration/registry digests,
+inclusive `cut_index` and `cut_bytes`. The KPI DTO identifies its final projected
+prefix, not a later live ACK; the read-only diagnostic captures its own reader ACK.
+Index-only runs without a reader ACK and service-readable sources the public
+reader cannot admit (for example symlinked journals, manifests or ACK sidecars)
+omit this optional response field rather than invent a cut or fail a previously
+readable feed. Reader v1 admission itself is unchanged. Malformed projection pins
+are rejected, not interpreted as known definition drift.
+
+| `mode` | Meaning |
+| --- | --- |
+| `original` | A complete run-time projection pin exists and matches the identities used for this projection. |
+| `recomputed-current-code` | A complete run-time pin exists, but the projected definitions differ. Both recorded and current identities remain visible. |
+| `legacy-unpinned` | No projection pin exists. The reference's `pinned_digest` and the full DTO's `pinned_definitions` are `null`; current definitions are not evidence of historical meaning. |
+
+New service worker executions durably publish `projection-pins.json` before
+starting the session, after its authored artifacts exist. A unique temporary file
+is flushed/fsynced, atomically installed without replacing an existing pin, and
+its directory fsynced before the first world-state ACK; publication failure aborts
+execution. This ordering applies even with journal `flush` durability.
+
+The pin records viewer-feed/v1 and KPI/v1 identities, a content digest of host
+projection/interpreter code, metric reducer descriptors/revisions and contribution
+identities, authored input digests, and the
+presentation snapshot digest (when present) plus provider digest. HTTP launch
+already records `presentation.snapshot.json`; its recorded provider selection is
+preserved. Older runs, including those with only presentation pins, are not
+backfilled. Headless `RunSession`/`Simulation` paths do not acquire projection pins
+through this service-only writer.
+
+A matching pin proves matching **recorded identities**, not an archived historical
+executable, authentication, all transitive dependency versions, run success, or
+byte-identical retained results. Reducer implementations still rely on honest
+revision/distribution changes. Cache invalidation alone never proves `original`.
+Missing measurements stay `null`; recorded links are not causal labels.
+
+The read-only `projection_provenance(directory)` diagnostic can report changed
+presentation provider identities without projecting any numbers. This does **not**
+bypass presentation snapshot admission: service feeds still reject missing or
+changed pinned providers rather than silently substituting newer DATA. Its
+`recomputed-current-code` mode describes a definition mismatch, not proof that a
+recomputation succeeded. See the [DTO reference](run-reader.md#projectionprovenance).
+
 ## Behaviour extensions
 
 `predicateTruth` rows: `{contextId, predicateId, profile, roles, status:
@@ -131,5 +218,23 @@ REST commit paging and SSE reconnects use `viewer-index.sqlite3` beside each
 run. This rebuildable index stores projected cuts and one transactionally
 consistent checkpoint for lifecycle subjects, KPIs and narratives. A seek
 reads indexed cuts directly; newly committed records extend the retained
-prefix. Changes to pinned declarations or projection code invalidate the
-cache. Journal and registry data remain authoritative.
+prefix. Definition identities and reader admission/omission are computed once
+per source/definition signature. Full provenance is retained in the checkpoint,
+not duplicated in cut rows; each cut payload stores only the compact reference.
+The index retains byte bounds separately for internal ACK checks. Full-definition
+digests are computed once on admission and retained with the checkpoint. All are
+published transactionally. Warm pages reuse indexed bytes without decoding the
+checkpoint, hashing full definitions again, reconstructing storage offsets or
+reparsing the journal header for metadata. Source identity and ACK bounds
+are still checked, as are presentation admission and authored-content changes.
+Changes to pinned declarations or projection code invalidate the cache. Journal
+and registry data remain authoritative.
+
+**Pre-existing limitation:** service feed reads are not source-read-only. REST
+paging, KPI evaluation and SSE's cold-cache fallback can create this SQLite file
+and its `-wal`/`-shm` sidecars **inside the source run**, including archived runs;
+they require a writable cache location there. This PR does not relocate or redesign
+the feed cache. The file-free guarantee belongs to the standalone
+`projection_provenance(directory)` diagnostic (and the core reader), not these
+service endpoints. Use that diagnostic when inspecting source evidence without
+creating derived files.

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import gc
+import os
+import tempfile
 import threading
 import time
 from collections.abc import Callable
@@ -20,6 +22,33 @@ from aeroagentsim.scenario import Scenario
 from aeroagentsim.scenario.loader import contract, integer, text
 
 from .storage import RunStorage
+
+
+def _publish_projection_pins(directory: Path, definitions: dict[str, Any]) -> None:
+    """Durably install new evidence without ever replacing an earlier pin."""
+    from aerokernel.values import canonical_json
+
+    from aeroagentsim.runs.projections import PROJECTION_PINS_FILENAME, PROJECTION_PINS_FORMAT
+
+    descriptor, name = tempfile.mkstemp(prefix=".projection-pins-", dir=directory)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(canonical_json({
+                "format": PROJECTION_PINS_FORMAT, "definitions": definitions,
+            }))
+            stream.flush()
+            os.fsync(stream.fileno())
+        # A same-filesystem hard link atomically publishes complete bytes and
+        # fails if another owner has already installed a pin (unlike replace()).
+        os.link(temporary, directory / PROJECTION_PINS_FILENAME)
+    finally:
+        temporary.unlink()
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 class HostPacer:
@@ -348,10 +377,28 @@ def execute(
                 return
 
     try:
+        from aeroagentsim.runs.projections import PROJECTION_PINS_FILENAME, projection_definitions
+
+        # Only a new execution owns this pin point. Never backfill a pre-existing
+        # journal or replace evidence recorded by an earlier host invocation.
+        pin_projection = all(
+            not source.exists() and not source.is_symlink()
+            for source in (directory / "journal.jsonl", directory / PROJECTION_PINS_FILENAME)
+        )
         session = RunSession(scenario, directory, prepared=True)
         # Share its incremental offsets. A second writer would rescan the large
         # header and entire WAL again when acknowledging Stop.
         storage = session.storage
+        if pin_projection:
+            from aeroagentsim.presentations import presentation_selection
+
+            selected, _ = presentation_selection(directory)
+            # File and directory fsync must finish before start() can ACK any
+            # world state, even if journal durability is only flush. Failure
+            # aborts execution; cleanup may publish the header, never a world cut.
+            _publish_projection_pins(
+                directory, projection_definitions(directory, presentation_plugins=selected),
+            )
         session.start()
         publish_committed(force=True)
         if ingress is not None:
