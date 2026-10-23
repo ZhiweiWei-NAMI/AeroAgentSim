@@ -275,7 +275,10 @@ def listing_workload(root: Path, count: int, args: argparse.Namespace,
         storage = build_run(root / f"run-{index:06d}", args.listing_records, args)
         feed_index.update(storage.directory)
     app = create_app(root)
-    endpoint = next(route.endpoint for route in app.routes if route.path == "/v1/runs")
+    endpoint = next(
+        route.endpoint for route in app.routes
+        if route.path == "/v1/runs" and "GET" in getattr(route, "methods", ())
+    )
     result["workload"] = {"runs": count, "record_target_per_run": args.listing_records}
     for include_kpis in (False, True):
         endpoint(include_kpis=include_kpis)

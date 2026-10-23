@@ -29,7 +29,7 @@ from aeroagentsim.runs import RecordedMessage
 from aeroagentsim.services import feed_index, storage
 from aeroagentsim.services.app import create_app
 from aeroagentsim.services.kpis import KPIProjector, project_run
-from tools.bench.projection_costs import build_run
+from tools.bench.projection_costs import build_run, listing_workload
 
 
 def message(index: int, schema: str, payload: dict[str, Any]) -> RecordedMessage:
@@ -424,3 +424,14 @@ def test_shared_offset_entries_retain_mutable_sequence_operations() -> None:
     assert entries == expected
     entries[:] = expected[:1]
     assert entries == expected[:1]
+
+
+def test_bench_listing_probe_measures_both_listing_modes(tmp_path: Path) -> None:
+    """The listing probe calls the GET route, not POST /v1/runs."""
+    args = argparse.Namespace(listing_records=8, repeat=1, provenance="lean", durability="flush")
+    result: dict[str, Any] = {"samples": []}
+    listing_workload(tmp_path / "runs", 2, args, result)
+    modes = [sample["outcome"]["include_kpis"] for sample in result["samples"]]
+    assert modes == [False, True]
+    assert all(sample["outcome"]["returned_runs"] == 2 for sample in result["samples"])
+
