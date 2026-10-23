@@ -201,6 +201,13 @@ class ModelCatalog:
         try:
             factory = cast("ModelFactory", discovery.resolve(plugin, selected_only=True))
         except DuplicateEntryPointError as exc:
+            # Nested discovery in a loader must retain its native exception.
+            if (
+                exc.conflict.group != "aeroagentsim.models"
+                or exc.conflict.name != plugin
+                or not any(exc.conflict is conflict for conflict in discovery.conflicts)
+            ):
+                raise
             raise ValueError(
                 f"duplicate aeroagentsim.models entry point {plugin!r}"
             ) from exc

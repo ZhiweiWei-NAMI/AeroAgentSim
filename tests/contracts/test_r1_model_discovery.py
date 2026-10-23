@@ -204,6 +204,35 @@ def test_broken_selected_replacement_fails_closed_with_unchanged_error(
     assert loads == ["linear"]
 
 
+@pytest.mark.parametrize("group", ["example.dependencies", "aeroagentsim.models"])
+@pytest.mark.parametrize("name", ["dependency", "external"])
+def test_selected_loader_preserves_nested_discovery_duplicate_error(
+    monkeypatch: pytest.MonkeyPatch, group: str, name: str,
+) -> None:
+    nested_loads: list[Any] = []
+    nested = discover(
+        group, {}, load=False,
+        entries=(
+            _entry(name, loads=nested_loads, distribution="first-dependency"),
+            _entry(name, loads=nested_loads, distribution="second-dependency"),
+        ),
+    )
+    failure = DuplicateEntryPointError(nested.conflicts[0])
+    message = str(failure)
+    loads: list[Any] = []
+    queries = _install(monkeypatch, _entry("external", loads=loads, error=failure))
+    catalog = models.ModelCatalog()
+    with pytest.raises(DuplicateEntryPointError) as error:
+        catalog.build("external", _build())
+    assert error.value is failure
+    assert type(error.value) is DuplicateEntryPointError
+    assert str(error.value) == message
+    assert error.value.conflict is nested.conflicts[0]
+    assert catalog.conflicts == ()
+    assert queries == ["aeroagentsim.models"] and loads == ["external"]
+    assert nested_loads == []
+
+
 @pytest.mark.parametrize("value", [None, 1, True, object()])
 def test_nonfactory_preserves_native_type_error_without_builtin_fallback(
     monkeypatch: pytest.MonkeyPatch, value: Any,
