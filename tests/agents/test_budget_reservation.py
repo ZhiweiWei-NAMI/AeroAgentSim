@@ -223,11 +223,57 @@ def test_graph_failed_or_unknown_usage_does_not_restore_allowance(
     assert len(provider.requests) == 1
 
 
-@pytest.mark.parametrize("code", ["HTTP_STATUS", "TRANSPORT"])
-def test_unknown_transport_usage_cannot_fund_another_request(
-    graph_budget: dict[str, Any], code: str
+@pytest.mark.parametrize("max_retries", [1, 2])
+@pytest.mark.parametrize("recovers", [False, True], ids=["exhausted", "recovered"])
+def test_http_rejection_releases_reservation_for_configured_retries(
+    graph_budget: dict[str, Any], max_retries: int, recovers: bool
 ) -> None:
-    provider = FakeProvider([{"error": {"code": code, "message": "offline fault"}}])
+    graph_budget["max_retries"] = max_retries
+    rejection = {
+        "error": {"code": "HTTP_STATUS", "message": "HTTP 401: authentication rejected"}
+    }
+    provider = FakeProvider(
+        [rejection] * max_retries + [completion(3) if recovers else rejection]
+    )
+    client = JournalClient(provider, provider.model, graph_budget)
+
+    async def run(target: JournalClient) -> None:
+        if recovers:
+            result = await target.ask_json(
+                "first", "Return JSON", {}, lambda value: None
+            )
+            assert result == {}
+        else:
+            with pytest.raises(ProviderError, match="HTTP_STATUS"):
+                await target.ask_json("first", "Return JSON", {}, lambda value: None)
+        target.verify()
+
+    asyncio.run(run(client))
+    assert len(provider.requests) == max_retries + 1
+    assert [request["max_tokens"] for request in provider.requests] == [10] * (
+        max_retries + 1
+    )
+    assert [row["attempt"] for row in client.records] == list(range(max_retries + 1))
+    expected_failures = ["HTTP_STATUS"] * max_retries + [
+        None if recovers else "HTTP_STATUS"
+    ]
+    assert [row["failure_code"] for row in client.records] == expected_failures
+    rejected_rows = client.records[:-1] if recovers else client.records
+    assert all("response" not in row for row in rejected_rows)
+    assert client._reserved_tokens == 0
+    assert client._spent_tokens == (3 if recovers else 0)
+    offline = JournalClient(None, provider.model, graph_budget, replay=client.records)
+    asyncio.run(run(offline))
+    assert offline.records == client.records
+    assert len(provider.requests) == max_retries + 1
+
+
+def test_unknown_transport_usage_cannot_fund_another_request(
+    graph_budget: dict[str, Any],
+) -> None:
+    provider = FakeProvider(
+        [{"error": {"code": "TRANSPORT", "message": "connection lost after send"}}]
+    )
     client = JournalClient(provider, provider.model, graph_budget)
 
     async def run() -> None:
@@ -236,8 +282,31 @@ def test_unknown_transport_usage_cannot_fund_another_request(
 
     asyncio.run(run())
     assert len(provider.requests) == 1
-    assert [row["failure_code"] for row in client.records] == [code, "TOKEN_BUDGET"]
+    assert [row["failure_code"] for row in client.records] == ["TRANSPORT", "TOKEN_BUDGET"]
     assert "response" not in client.records[0]
+    assert client._reserved_tokens == 10
+
+
+def test_timeout_after_send_keeps_conservative_reservation(
+    graph_budget: dict[str, Any],
+) -> None:
+    provider = FakeProvider(
+        [{"error": {"code": "WALL_TIMEOUT", "message": "timed out after sending request"}}]
+    )
+    client = JournalClient(provider, provider.model, graph_budget)
+
+    async def run() -> None:
+        with pytest.raises(ProviderError, match="WALL_TIMEOUT"):
+            await client.complete("first", MESSAGES)
+        with pytest.raises(ProviderError, match="TOKEN_BUDGET"):
+            await client.complete("first", MESSAGES, attempt=1)
+
+    asyncio.run(run())
+    assert len(provider.requests) == 1
+    assert [row["failure_code"] for row in client.records] == ["WALL_TIMEOUT", "TOKEN_BUDGET"]
+    assert "response" not in client.records[0]
+    assert client._reserved_tokens == 10
+    assert client._spent_tokens == 0
 
 
 @pytest.mark.parametrize("code", ["HTTP_STATUS", "TRANSPORT"])

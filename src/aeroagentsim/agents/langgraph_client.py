@@ -373,13 +373,13 @@ class JournalClient:
                     if type(used) is int and used >= 0:
                         self._reserved_tokens -= reserved
                         self._spent_tokens += used
-                    elif (
+                    elif "response" not in row and (
                         isinstance(self._provider, ScriptedProvider)
-                        and "response" not in row
+                        or row.get("error", {}).get("code") == "HTTP_STATUS"
                     ):
-                        # A script fault performs no inference. Preserve scripted
-                        # transport retries without treating unknown live usage
-                        # (or a scripted response with missing usage) as zero.
+                        # HTTP rejection (or a script fault) returned no completion.
+                        # Release for retries; timeouts/transport faults and replies
+                        # with missing usage may have spent tokens.
                         self._reserved_tokens -= reserved
                     # Unknown usage is not zero. Keep its reservation, including
                     # after cancellation: an I/O worker may still be running.
