@@ -23,8 +23,9 @@ records](../decisions/README.md).
 | 3 | Agent-execution view, the #17 salvage (native primitives, browser depth, build knobs) and the installed-wheel packaging gate. | Done |
 | 4 | Runtime ownership and evidence: exception-safe sessions, one journal admission routine, kernel growth measurement (no budgets yet), bounded experiments with comparison evidence, a browser experiment journey, one frontend transport policy, dock agent observation with non-causal link wording, and bilingual parity tests. | Done |
 | 5 | Shared extension discovery and admission, assistant operation families, bounded service lifecycle and remote-serving policy. | Done |
-| 6 | Presentations and effective controls, preparation contract / scenario v2. | In progress |
-| Next | Reproducible projections, evidence-consumer migration, moving algorithms/models/catalog onto the shared discovery helper. | Planned |
+| 6 | Presentations and effective controls, preparation contract / scenario v2. | Done |
+| 7 | Moving algorithms, the algorithm catalog and assistant operations onto the shared discovery helper; in-repo evidence consumers on the public run reader; agent token budgets reserved before sending. | In progress |
+| Next | Reproducible projections with pinned definitions; external evidence consumers (AeroRescue episodes). | Planned |
 | Later | Registry overlays, algorithm capability metadata, kernel growth budgets (after measurements), and the owner-led AeroRescue extraction. | Later |
 
 Each family lands as a contract, an implementation and acceptance evidence in
@@ -42,8 +43,8 @@ small PRs.
 | Comparison evidence | Bounded experiments and per-row cut, definition and compatibility metadata. | Available ([reference](../reference/comparison-evidence.md)) | Add definition revisions to metrics so more comparisons can be known-compatible instead of unknown. |
 | Shared extension admission | One discovery helper and admission rules for every family. | Available ([reference](../reference/extension-admission.md)) | Migrate the remaining discovery sites (algorithms, models, algorithm catalog) where semantics match; report families that diverge. |
 | Assistant operation families — `aeroagentsim.assistant_operations` v1 | Package semantic operations, parameter schemas, prerequisites and expectations together, while the host keeps staging, diff display, consent and validation. | Available — API v1 ([contract](../reference/assistant-operations.md)) | Contribute an operation family for a new domain; it should compile without any host switch. |
-| Presentations and effective controls — `aeroagentsim.presentations` v1 | Localized labels, field and enum mappings, narrative templates and finite display primitives, plus the effective value of an applied knob. | In progress | Start from the existing pose/narrative bindings and the flood-rescue marker/region case. No remote JavaScript or executable renderers. |
-| Preparation contract and scenario v2 — `aeroagentsim.scenario/v2` | Opt-in v2 admission and deterministic final-seed preparation while v1 documents remain readable. | In progress | Write v1 compatibility fixtures and repeatable same-seed/different-seed preparation tests. |
+| Presentations and effective controls — `aeroagentsim.presentations` v1 | Localized labels, field and enum mappings, narrative templates and finite display primitives, plus the effective value of an applied knob. | Available — API v1 ([contract](../reference/presentation-plugins.md)) | Add a presentation provider for a new domain: data only, bilingual, no remote JavaScript or executable renderers. Report controls as `Unavailable` rather than guessing. |
+| Preparation contract and scenario v2 — `aeroagentsim.preparers` v1, `aeroagentsim.scenario/v2` | Opt-in v2 admission and deterministic final-seed preparation while v1 documents remain readable. | Available — API v1, opt-in v2 ([contract](../reference/preparation-plugins.md)) | Write a deterministic preparer for your domain; add same-seed/different-seed tests. v1 documents keep their legacy preparation. |
 | Registry overlays — `aeroagentsim.registry_overlays` | Compose declared registry overlays with explicit ordering, dependency checks and conflict rejection. | Later (P2) | Bring a second packaged domain that needs reusable composition. Until then use explicit snapshots or inline descriptors. |
 
 Statuses describe code in `main`. "In progress" means work is under review,
