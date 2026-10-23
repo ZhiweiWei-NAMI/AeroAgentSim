@@ -1,5 +1,5 @@
 import {expect, it} from 'vitest';
-import {decodeAlgorithms, decodeComparison, decodeTemplates} from './api-decode';
+import {decodeAlgorithms, decodeComparison, decodeKpis, decodeTemplates} from './api-decode';
 import {validateBusinessEvents, validateKpiValues} from './validation';
 import {businessProjection} from './projection';
 import {emptyCommit} from '../behaviours/extension-fixture';
@@ -45,4 +45,31 @@ it('retains Chinese business narratives through committed-cut projection without
   expect(event.text).toBe('A parcel arrived.');
   expect(() => validateBusinessEvents([{...event, text_zh: {text: 'bad'}}])).toThrow('Expected text');
   expect(validateKpiValues({tasks_completed: {value: null, unit: 'count', label: 'Delivered', label_zh: '已送达'}}).tasks_completed.value).toBeNull();
+});
+
+it.each(['higher', 'lower', null])('preserves additive KPI descriptor fields in final, series and comparison rows (%s)', direction => {
+  const row = {value: null, unit: 'm', label: 'Measured distance', label_zh: '已测距离', direction,
+    aggregation: 'Sum observed segments.', missing_data_policy: 'None before a segment; zero is measured.'};
+  const values = {'external.distance': row};
+  const legacy = {value: 0, unit: 'count', label: 'Legacy count'};
+  const payload = {run_id: 'r-1', final: {...values, legacy}, series: [{at_ns: '10', kpis: values}]};
+  const before = JSON.stringify(payload);
+  const decoded = decodeKpis(payload);
+  expect(decoded.final).toEqual(payload.final);
+  expect(decoded.series[0].kpis).toEqual(values);
+  expect(decoded.final.legacy).not.toHaveProperty('direction');
+  expect(decodeComparison({runs: [{id: 'r-1', title: 'Run', knobs: {}, algorithms: {}, kpis: values}]}).runs[0].kpis).toEqual(values);
+  expect(JSON.stringify(payload)).toBe(before);
+});
+
+it.each([
+  {label_zh: false}, {aggregation: {}}, {missing_data_policy: null},
+  {direction: 'up'}, {direction: 0}, {direction: ['higher']},
+])('rejects malformed descriptor fields rather than exposing them as UI copy: %j', fields => {
+  expect(() => validateKpiValues({external: {value: 0, unit: 'm', label: 'Distance', ...fields}})).toThrow();
+});
+
+it.each(['min', 'max', 'neutral'])('retains the legacy direction alias %s without rewriting it', direction => {
+  const row = {value: 0, unit: 'm', label: 'Distance', direction};
+  expect(validateKpiValues({external: row})).toEqual({external: row});
 });

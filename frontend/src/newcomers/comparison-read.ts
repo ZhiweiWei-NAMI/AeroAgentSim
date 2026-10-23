@@ -1,5 +1,6 @@
 import type { ComparisonRun } from './api';
 import { decodeComparison } from './api-decode';
+import { hasMetricDescriptor, metricDirection } from './metric-help';
 
 /** What the service's result cursor/finality evidence allows us to claim. */
 export type RunResultState = 'final' | 'provisional' | 'unknown';
@@ -30,9 +31,9 @@ export interface ComparisonRead {
 
 export interface MetricDirectionRead {
   direction: MetricDirection;
-  /** At least one run declared a direction, or a known fallback exists. */
+  /** Every present row agrees on a non-neutral direction, or a legacy fallback exists. */
   defined: boolean;
-  /** Every declared direction agrees (false when min/max are mixed). */
+  /** Present rows agree, including explicit neutral/unknown directions. */
   consistent: boolean;
 }
 
@@ -170,17 +171,18 @@ export function finalCursors(read: ComparisonRead): number[] {
 }
 
 /**
- * Best-value emphasis needs one agreed direction. Mixed min/max declarations
- * are inconsistent; no declaration falls back to the known descriptive table.
+ * Best-value emphasis needs an agreed direction for every present row. A null
+ * or omitted descriptor direction is neutral, not permission to use an ID guess.
+ * The historical table applies only when all rows lack descriptor metadata.
  */
 export function resolveMetricDirection(runs: ComparisonRun[], id: string, known: Record<string, MetricDirection> = {}): MetricDirectionRead {
-  const declared = runs.flatMap(run => {
-    const direction = run.kpis[id]?.direction;
-    return direction ? [direction] : [];
-  });
-  const unique = [...new Set(declared)];
-  if (unique.length > 1) return { direction: 'neutral', defined: false, consistent: false };
-  if (unique.length === 1) return { direction: unique[0], defined: true, consistent: true };
+  const rows = runs.flatMap(run => run.kpis[id] ? [run.kpis[id]] : []);
+  if (rows.some(hasMetricDescriptor)) {
+    const unique = [...new Set(rows.map(metricDirection))];
+    if (unique.length > 1) return { direction: 'neutral', defined: false, consistent: false };
+    const direction = unique[0] ?? 'neutral';
+    return { direction, defined: direction !== 'neutral', consistent: true };
+  }
   const fallback = known[id] ?? 'neutral';
   return { direction: fallback, defined: fallback !== 'neutral', consistent: true };
 }

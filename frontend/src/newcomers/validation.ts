@@ -5,9 +5,11 @@ function text(value:unknown):asserts value is string{if(typeof value!=='string')
 export function validateKpiValues(value:unknown):KpiValues{
  const values=record(value);
  for(const metric of Object.values(values)){
-  const row=record(metric);text(row.unit);text(row.label);if(row.label_zh!==undefined)text(row.label_zh);
+  const row=record(metric);text(row.unit);text(row.label);
+  for(const key of ['label_zh','aggregation','missing_data_policy'])if(row[key]!==undefined)text(row[key]);
   if(row.value!==null&&(typeof row.value!=='number'||!Number.isFinite(row.value)))throw Error(`Invalid result for ${row.label}.`);
-  if(row.direction!==undefined&&!['min','max','neutral'].includes(String(row.direction)))throw Error('Invalid result direction.');
+  // Keep descriptor null distinct from an absent legacy direction; accept old aliases too.
+  if(row.direction!==undefined&&row.direction!==null&&(typeof row.direction!=='string'||!['higher','lower','min','max','neutral'].includes(row.direction)))throw Error('Invalid result direction.');
  }
  return values as unknown as KpiValues;
 }

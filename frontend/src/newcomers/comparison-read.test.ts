@@ -159,3 +159,27 @@ it('only allows best-value emphasis for one agreed direction', () => {
   expect(resolveMetricDirection([run('a'), run('b')], 'custom_metric'))
     .toEqual({ direction: 'neutral', defined: false, consistent: true });
 });
+
+it.each([
+  ['higher', 'max'], ['lower', 'min'],
+] as const)('normalizes descriptor direction %s without requiring a known metric ID', (direction, expected) => {
+  const row = {value: 3, unit: 'm', label: 'External metric', direction};
+  expect(resolveMetricDirection([run('a', {external: row}), run('b', {external: {...row, value: 0}})], 'external'))
+    .toEqual({direction: expected, defined: true, consistent: true});
+});
+
+it.each([null, undefined])('never replaces an unknown descriptor direction (%s) with a builtin ID guess', direction => {
+  const row = {value: 3, unit: 'kJ', label: 'Energy', label_zh: '能量', direction};
+  expect(resolveMetricDirection([run('a', {energy_used_kj: row}), run('b', {energy_used_kj: row})], 'energy_used_kj', {energy_used_kj: 'min'}))
+    .toEqual({direction: 'neutral', defined: false, consistent: true});
+});
+
+it('treats neutral, missing and conflicting directions as disagreement, not an implicit vote', () => {
+  const row = {value: 3, unit: 'kJ', label: 'Energy', direction: 'lower' as const};
+  for (const other of [{...row, direction: null}, {...row, direction: undefined}, {...row, direction: 'higher' as const}]) {
+    expect(resolveMetricDirection([run('a', {energy_used_kj: row}), run('b', {energy_used_kj: other})], 'energy_used_kj'))
+      .toEqual({direction: 'neutral', defined: false, consistent: false});
+  }
+  expect(resolveMetricDirection([run('a', {energy_used_kj: row}), run('b', {energy_used_kj: {...row, direction: 'min'}})], 'energy_used_kj'))
+    .toEqual({direction: 'min', defined: true, consistent: true});
+});

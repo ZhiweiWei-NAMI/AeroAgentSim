@@ -1,7 +1,36 @@
 import { translate } from '../i18n/translate';
+import type { KpiValue } from './api';
 
-/** Only explanations for metric ids the service actually publishes, never invented help. */
-function explanations(locale: string): Record<string, string> {
+export type MetricMetadata = Omit<KpiValue, 'value'>;
+
+/** Even a partial descriptor blocks ID-based guesses; explicit null is meaningful. */
+export function hasMetricDescriptor(row?: MetricMetadata): boolean {
+  return !!row && (row.label_zh !== undefined || row.direction !== undefined ||
+    row.aggregation !== undefined || row.missing_data_policy !== undefined);
+}
+
+/** Normalize the declared direction, never infer one from a label, unit or value. */
+export function metricDirection(row?: MetricMetadata): 'min' | 'max' | 'neutral' {
+  if (row?.direction === 'higher' || row?.direction === 'max') return 'max';
+  if (row?.direction === 'lower' || row?.direction === 'min') return 'min';
+  return 'neutral';
+}
+
+/**
+ * LEGACY FALLBACK ONLY: these ID tables serve rows without descriptor fields
+ * (and older ID-only callers). Descriptor data always takes precedence, even
+ * for a builtin ID replaced by an installed provider. Do not add plugin IDs here.
+ */
+export const LEGACY_METRIC_DIRECTIONS: Record<string, 'min' | 'max' | 'neutral'> = {
+  tasks_completed: 'max', tasks_created: 'neutral',
+  mean_task_latency_s: 'min', p95_task_latency_s: 'min',
+  energy_used_kj: 'min', distance_flown_km: 'neutral',
+  separation_conflicts: 'min', geofence_violations: 'min', weather_holds: 'min',
+  rescue_success: 'max', rescue_time_to_confirmation_s: 'min', rescue_time_to_delivery_s: 'min',
+};
+
+/** Legacy help for runs that predate descriptor metadata. */
+function legacyExplanations(locale: string): Record<string, string> {
   const t = (key: string) => translate(locale, key);
   return {
     tasks_created: t('How many tasks the scenario generated in total during the run.'),
@@ -37,12 +66,20 @@ function explanations(locale: string): Record<string, string> {
   };
 }
 
-export function metricHelp(id: string, locale = 'en-US'): string | undefined {
-  return explanations(locale)[id];
+/** Descriptor prose is opaque plugin text, not a shared translation-catalog key. */
+export function metricHelp(id: string, locale = 'en-US', row?: MetricMetadata): string | undefined {
+  if (hasMetricDescriptor(row)) {
+    const zh = locale === 'zh-CN';
+    return [
+      row?.aggregation ? `${zh ? '汇总方式：' : 'Aggregation: '}${row.aggregation}` : undefined,
+      row?.missing_data_policy ? `${zh ? '缺失数据：' : 'Missing data: '}${row.missing_data_policy}` : undefined,
+    ].filter(Boolean).join('\n') || undefined;
+  }
+  return legacyExplanations(locale)[id];
 }
 
-/** Declared units for known metric ids, so a metric keeps its SI unit before its first value arrives. */
-const METRIC_UNITS: Record<string, string> = {
+/** Legacy units only; descriptor rows supply their own unit before the first sample. */
+const LEGACY_METRIC_UNITS: Record<string, string> = {
   tasks_created: 'count', tasks_assigned: 'count', tasks_completed: 'count', tasks_failed: 'count',
   completion_rate: 'ratio', mean_task_latency_s: 's', p95_task_latency_s: 's',
   medical_mean_task_latency_s: 's', medical_p95_task_latency_s: 's', on_time_rate: 'ratio',
@@ -56,24 +93,32 @@ const METRIC_UNITS: Record<string, string> = {
   rescue_bus_messages: 'count', rescue_bus_bytes: 'B', rescue_model_calls: 'count',
 };
 
-/** Known metric unit from the id alone; `count` is a dimensionless tally the value formatter drops. */
-export function metricUnit(id: string): string | undefined {
-  return METRIC_UNITS[id];
+/** An explicit descriptor unit (including an empty unit) is never replaced by an ID guess. */
+export function metricUnit(id: string, row?: MetricMetadata): string | undefined {
+  if (hasMetricDescriptor(row)) return row?.unit;
+  return row?.unit || LEGACY_METRIC_UNITS[id];
 }
 
-/** Boolean-like KPIs read as a word: rescue_success is 0/1 on the wire but Yes/No for people. */
-export function metricValueText(id: string, value: number | null, unit: string, locale = 'en-US'): string {
+/** Descriptor values are numeric; the old Yes/No special case is legacy-only. */
+export function metricValueText(id: string, value: number | null, unit: string, locale = 'en-US', row?: MetricMetadata): string {
   if (value === null || !Number.isFinite(value)) return '—';
-  if (id === 'rescue_success') return translate(locale, value ? 'Yes' : 'No');
+  if (!hasMetricDescriptor(row) && id === 'rescue_success') return translate(locale, value ? 'Yes' : 'No');
   if (unit === 'count') unit = '';
   const abs = Math.abs(value);
   const digits = Number.isInteger(value) ? 0 : abs >= 1000 ? 0 : abs >= 10 ? 1 : 2;
   return `${value.toFixed(digits)}${unit ? ` ${unit}` : ''}`;
 }
 
-/** Known ids have readable bilingual labels even before a KPI value arrives. */
-export function metricLabel(id: string, label: string, locale = 'en-US', labelZh?: string): string {
+/** Prefer the row's active-locale label; the string signature remains for legacy callers. */
+export function metricLabel(id: string, label: string | MetricMetadata, locale = 'en-US', labelZh?: string): string {
+  if (typeof label !== 'string') {
+    const row = label;
+    if (hasMetricDescriptor(row)) return locale === 'zh-CN' && row.label_zh?.trim() ? row.label_zh : row.label;
+    labelZh = row.label_zh;
+    label = row.label;
+  }
   if (locale === 'zh-CN' && labelZh?.trim()) return labelZh;
+  // Legacy bilingual labels only; never translate or humanize descriptor text.
   const t = (key: string) => translate(locale, key);
   const labels: Record<string, string> = {
     tasks_created: t('Tasks created'), tasks_assigned: t('Tasks assigned'),
