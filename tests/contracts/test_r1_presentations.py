@@ -977,6 +977,67 @@ def test_normalizer_descriptors_are_detached_frozen_and_preserve_implementation(
     assert projector.consume(_encoded_event("external.raw", {"envelope": {"reading": "measured"}}))[0]["text"] == "Value: measured"
 
 
+@pytest.mark.parametrize("mutation_timing", ["construction", "first-launch"])
+def test_replaced_normalizer_schemas_are_detached_before_plugin_and_launch_admission(
+    mutation_timing: str,
+) -> None:
+    provider = PresentationPlugin("external", _data(narratives={"external.raw": _simple_recipe("reading")}),
+                                  normalizers=(_NestedNormalizer(),))
+    mutable_schemas = presentation_api.json_data(provider.normalizers[0].output_schemas)
+    schema = mutable_schemas["external.raw"]
+    schema["required"].append("reading")
+    expected_schemas = copy.deepcopy(mutable_schemas)
+    frozen = replace(provider.normalizers[0], output_schemas=mutable_schemas)
+
+    def mutate_originals() -> None:
+        mutable_schemas["injected"] = _record_schema({})
+        schema["members"]["reading"]["type"] = "number"
+        schema["members"]["extra"] = {"type": "boolean"}
+        schema["required"].append("missing")
+
+    if mutation_timing == "construction":
+        mutate_originals()
+    assert presentation_api.json_data(frozen.output_schemas) == expected_schemas
+    derived = replace(provider, normalizers=(frozen,))
+    assert derived.normalizers[0] is frozen
+    first_launch = presentation_api.presentation_snapshot((derived,), registry=_registry(), document={})
+    first_digest = presentation_api.presentation_plugin_digest((derived,))
+    if mutation_timing == "first-launch":
+        mutate_originals()
+
+    assert presentation_api.json_data(frozen.output_schemas) == expected_schemas
+    with pytest.raises(TypeError):
+        frozen.output_schemas["injected"] = {}
+    with pytest.raises(TypeError):
+        frozen.output_schemas["external.raw"]["members"]["reading"]["type"] = "number"
+    with pytest.raises(TypeError):
+        frozen.output_schemas["external.raw"]["required"][0] = "missing"
+    subsequent_launch = presentation_api.presentation_snapshot((derived,), registry=_registry(), document={})
+    assert subsequent_launch == first_launch
+    assert presentation_api.presentation_plugin_digest((derived,)) == first_digest
+    presentation_api.validate_presentation_snapshot(subsequent_launch)
+    assert presentation_api.verify_presentation_snapshot(first_launch, (derived,)) == (derived,)
+    projector = NarrativeProjector(plugins=(derived,))
+    row = projector.consume(_encoded_event("external.raw", {"envelope": {"reading": "measured"}}))[0]
+    assert row["text"] == "Value: measured"
+
+
+def test_replaced_normalizer_input_containers_are_detached_and_frozen() -> None:
+    provider = PresentationPlugin("external", _data(narratives={"external.raw": _simple_recipe("reading")}),
+                                  normalizers=(_NestedNormalizer(),))
+    input_schemas = ["external.raw"]
+    fact_fields = ["external.position"]
+    frozen = replace(provider.normalizers[0], input_schemas=input_schemas, fact_fields=fact_fields)
+    input_schemas.clear()
+    fact_fields.append("external.orientation")
+    assert frozen.input_schemas == ("external.raw",)
+    assert frozen.fact_fields == ("external.position",)
+    with pytest.raises(TypeError):
+        frozen.input_schemas[0] = "changed"
+    with pytest.raises(TypeError):
+        frozen.fact_fields[0] = "changed"
+
+
 # External providers reach the service through discovery, without host schema switches.
 
 

@@ -312,6 +312,11 @@ class _FrozenNormalizer:
     initial: Callable[[], Any]
     consume: Callable[[Any, Mapping[str, Any]], Mapping[str, Any] | None]
 
+    def __post_init__(self) -> None:
+        # Own every DATA container, including inputs supplied by dataclasses.replace.
+        for name in ("input_schemas", "fact_fields", "output_schemas"):
+            object.__setattr__(self, name, freeze_data(json_data(getattr(self, name))))
+
 
 @dataclass(frozen=True)
 class PresentationPlugin:
@@ -365,7 +370,7 @@ class PresentationPlugin:
                     id=normalizer.id, version=normalizer.version,
                     implementation=f"{type(normalizer).__module__}:{type(normalizer).__qualname__}",
                     input_schemas=tuple(normalizer.input_schemas), fact_fields=tuple(normalizer.fact_fields),
-                    output_schemas=freeze_data(json_data(normalizer.output_schemas)),
+                    output_schemas=normalizer.output_schemas,
                     initial=normalizer.initial, consume=normalizer.consume,
                 )
             schema_registry = _normalized_registry(normalizer.output_schemas)
