@@ -8,9 +8,10 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 
-from aeroagentsim.algorithms import BUILTINS, METHODS
+from aeroagentsim.algorithms import BUILTINS, METHODS, _algorithm_discovery
 from aeroagentsim.algorithms.consumers import slot_consumers
 from aeroagentsim.algorithms.metadata import BUILTIN_COPY_ZH
+from aeroagentsim.extensions.discovery import DuplicateEntryPointError
 
 ENTRY_POINT_GROUP = "aeroagentsim.algorithms"
 
@@ -73,22 +74,29 @@ def discover_algorithm_catalog() -> dict[str, list[dict[str, Any]]]:
     Unqualified classes advertise the actual protocol methods they implement.
     Discovery errors fail the catalog request; incomplete catalogs are not success.
     """
-    installed = list(metadata.entry_points(group=ENTRY_POINT_GROUP))
-    entries = {entry.name: entry for entry in installed}
-    if len(entries) != len(installed):
-        raise ValueError("Duplicate aeroagentsim.algorithms entry point names")
+    installed = tuple(metadata.entry_points(group=ENTRY_POINT_GROUP))
+    try:
+        discovery = _algorithm_discovery(installed)
+    except DuplicateEntryPointError as exc:
+        raise ValueError("Duplicate aeroagentsim.algorithms entry point names") from exc
+    # Empty slot-qualified IDs are catalog-only errors; runtime accepts these aliases.
+    # Validate the entire catalog before loading even an unrelated provider.
+    for name in discovery.names:
+        prefix, separator, suffix = name.partition(".")
+        if separator and prefix in BUILTINS and not suffix:
+            raise ValueError(f"Algorithm entry point {name!r} has no id")
     classified: dict[str, dict[str, tuple[str, Any]]] = {slot: {} for slot in BUILTINS}
+    # Preserve inspection/error order; rows remain sorted within each slot.
     for entry in installed:
-        prefix, separator, suffix = entry.name.partition(".")
+        name = entry.name
+        prefix, separator, suffix = name.partition(".")
         try:
-            factory = entry.load()
+            factory = discovery.resolve(name)
         except Exception as error:
             raise ValueError(
-                f"Cannot load algorithm entry point {entry.name!r}: {type(error).__name__}"
+                f"Cannot load algorithm entry point {name!r}: {type(error).__name__}"
             ) from error
         if separator and prefix in BUILTINS:
-            if not suffix:
-                raise ValueError(f"Algorithm entry point {entry.name!r} has no id")
             slots, identity = [prefix], suffix
         else:
             slots = [
@@ -96,15 +104,15 @@ def discover_algorithm_catalog() -> dict[str, list[dict[str, Any]]]:
                 for slot, method in METHODS.items()
                 if callable(getattr(factory, method, None))
             ]
-            identity = entry.name
+            identity = name
             if not slots:
                 raise ValueError(
-                    f"Entry point {entry.name!r} needs a slot-qualified name or an algorithm protocol method"
+                    f"Entry point {name!r} needs a slot-qualified name or an algorithm protocol method"
                 )
         for slot in slots:
             previous = classified[slot].get(identity)
-            if previous is None or entry.name == f"{slot}.{identity}":
-                classified[slot][identity] = (entry.name, factory)
+            if previous is None or name == f"{slot}.{identity}":
+                classified[slot][identity] = (name, factory)
     consumers = slot_consumers()
     catalog: dict[str, list[dict[str, Any]]] = {}
     for slot, builtins in BUILTINS.items():

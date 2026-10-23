@@ -12,6 +12,12 @@ from importlib.metadata import entry_points
 from types import MappingProxyType
 from typing import Any
 
+from aeroagentsim.extensions.discovery import (
+    DuplicateEntryPointError,
+    discover,
+    validate_name,
+)
+
 ASSISTANT_API_VERSION = 1
 ENTRY_POINT_GROUP = "aeroagentsim.assistant_operations"
 MAX_EXPECTATIONS = 4096
@@ -409,35 +415,45 @@ BUILTINS = {
 }
 
 
-def _plugin(name: str, value: Any, origin: str) -> AssistantOperationPlugin:
-    if not isinstance(value, AssistantOperationPlugin) and callable(value):
-        try:
-            value = value()
-        except TypeError as exc:
-            raise TypeError(f"{origin} {name!r}: zero-argument assistant plugin factory failed: {exc}") from exc
-    if not isinstance(value, AssistantOperationPlugin):
-        raise TypeError(f"{origin} {name!r}: expected an AssistantOperationPlugin or a zero-argument callable returning one")
-    if value.name != name:
-        raise ValueError(f"{origin} {name!r}: plugin name {value.name!r} does not match")
-    # Recheck admission even for descriptors produced by unusual factories.
-    value.__post_init__()
-    return value
-
-
 def discover_assistant_plugins() -> tuple[AssistantOperationPlugin, ...]:
     """Fail closed on duplicate installations, then replace whole builtin providers."""
-    installed = {}
-    for entry in entry_points(group=ENTRY_POINT_GROUP):
-        if entry.name in installed:
-            raise ValueError(f"Duplicate {ENTRY_POINT_GROUP} entry point name: {entry.name!r}")
-        installed[entry.name] = entry
-    for name in set(BUILTINS) | set(installed):
-        if not isinstance(name, str) or not re.fullmatch(_NAME, name):
-            raise ValueError(f"assistant entry point {name!r}: invalid plugin name")
+    discovery = discover(
+        ENTRY_POINT_GROUP, BUILTINS, expected_type=AssistantOperationPlugin,
+        api_version=ASSISTANT_API_VERSION, name_of=lambda plugin: plugin.name,
+        factory_label="assistant plugin", entries=entry_points(group=ENTRY_POINT_GROUP),
+        load=False,
+    )
+    try:
+        discovery.require_unique()
+    except DuplicateEntryPointError as exc:
+        raise ValueError(
+            f"Duplicate {ENTRY_POINT_GROUP} entry point name: {exc.conflict.name!r}"
+        ) from exc
+    for name in discovery.names:
+        try:
+            validate_name(name, label="assistant entry point")
+        except ValueError as exc:
+            raise ValueError(f"assistant entry point {name!r}: invalid plugin name") from exc
     plugins, owners = [], {}
-    for name in sorted(set(BUILTINS) | set(installed)):
-        value = installed[name].load() if name in installed else BUILTINS[name]
-        plugin = _plugin(name, value, ENTRY_POINT_GROUP + " entry point" if name in installed else "builtin assistant plugin")
+    for name in discovery.names:
+        try:
+            plugin = discovery.resolve(name)
+        except TypeError as exc:
+            # Preserve the legacy "an AssistantOperationPlugin" diagnostic at
+            # this boundary without rewriting unrelated loader/factory failures.
+            for origin in (f"{ENTRY_POINT_GROUP} entry point", "builtin assistant plugin"):
+                message = (
+                    f"{origin} {name!r}: expected a AssistantOperationPlugin "
+                    "or a zero-argument callable returning one"
+                )
+                if type(exc) is TypeError and exc.args == (message,):
+                    raise TypeError(
+                        message.replace(": expected a ", ": expected an ", 1)
+                    ) from exc
+            raise
+        # Recheck the full operation contract, beyond the helper's name/version
+        # admission, even for descriptors produced by unusual factories.
+        plugin.__post_init__()
         for operation in plugin.operations:
             if operation.id in owners:
                 raise ValueError(f"Conflicting assistant operation id {operation.id!r}: {owners[operation.id]!r} and {name!r}")

@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from importlib import import_module
 from importlib.metadata import entry_points
 from typing import Any
+
+from aeroagentsim.extensions.discovery import (
+    DiscoveryResult,
+    DuplicateEntryPointError,
+    discover,
+    validate_name,
+)
 
 BUILTINS = {
     "allocation": {
@@ -34,16 +42,35 @@ METHODS = {
 }
 
 
+def _algorithm_discovery(entries: Iterable[Any]) -> DiscoveryResult[Any]:
+    """Admit legacy names without importing or invoking configured factories.
+
+    Slot precedence and protocol checks belong to the callers, not descriptor
+    admission. In particular, catalog inspection must not construct algorithms,
+    and its slot-qualified ID restriction must not reject legacy runtime aliases.
+    """
+    discovery = discover(
+        "aeroagentsim.algorithms", {}, entries=entries, load=False,
+        expected_type=object, factory_label=None, name_pattern=None,
+    )
+    discovery.require_unique()
+    for name in discovery.names:
+        validate_name(name, label="aeroagentsim.algorithms entry point", pattern=None)
+    return discovery
+
+
 def load_algorithm(slot: str, name: str, config: dict[str, Any] | None = None) -> Any:
     if slot not in BUILTINS:
         raise ValueError(f"unknown algorithm slot {slot!r}")
-    installed = entry_points(group="aeroagentsim.algorithms")
-    entries = {e.name: e for e in installed}
-    if len(entries) != len(installed):
-        raise ValueError("duplicate aeroagentsim.algorithms entry point names")
-    entry = entries.get(f"{slot}.{name}", entries.get(name))
-    if entry is not None:
-        factory = entry.load()
+    try:
+        discovery = _algorithm_discovery(entry_points(group="aeroagentsim.algorithms"))
+    except DuplicateEntryPointError as exc:
+        raise ValueError("duplicate aeroagentsim.algorithms entry point names") from exc
+    qualified = f"{slot}.{name}"
+    if qualified in discovery.names:
+        factory = discovery.resolve(qualified)
+    elif name in discovery.names:
+        factory = discovery.resolve(name)
     elif ":" in name:
         module, identity = name.split(":", 1)
         factory = getattr(import_module(module), identity)
