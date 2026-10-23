@@ -40,6 +40,7 @@ from aeroagentsim.packs.metrics import compute, metrics
 from aeroagentsim.platform import RunSession, Simulation
 from aeroagentsim.runs import RunReadError, open_run
 from aeroagentsim.services.projector import project
+from aeroagentsim.services.storage import RunStorage
 from tests.observations.test_capture import png
 from tests.runs.test_reader import (
     COMMAND,
@@ -496,6 +497,11 @@ def write_event_run(
     (directory / "manifest.json").write_text(json.dumps({
         "id": directory.name, "status": "completed", "final_cursor": index + 1,
     }))
+    (directory / "runtime.registry.json").write_bytes(canonical_json(registry.to_data()))
+    (directory / "scenario.json").write_text(json.dumps({
+        **configuration["scenario"], "registry": {},
+    }))
+    RunStorage(directory).index()
     return directory
 
 
@@ -642,9 +648,11 @@ def test_pack_metrics_match_independent_legacy_golden(
     # excluded by the new reader, and tested separately, not called equivalence.
 
 
+@pytest.mark.parametrize("acknowledged", [True, False], ids=["ack", "no-ack"])
 @pytest.mark.parametrize("provenance,codec", FORMATS)
 def test_default_graph_decisions_present_original_model_call_without_alias_emissions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, provenance: str, codec: str,
+    acknowledged: bool,
 ) -> None:
     data = {
         "identity": {"node": "planner", "call_index": 0},
@@ -658,6 +666,12 @@ def test_default_graph_decisions_present_original_model_call_without_alias_emiss
             "phase": "model_call", "data_json": json.dumps(data),
         })]}, provenance=provenance, codec=codec,
     )
+    prefix = json.loads((directory / "committed-prefix.json").read_text())
+    if not acknowledged:
+        (directory / "committed-prefix.json").unlink()
+        monkeypatch.setattr(
+            report, "open_run", lambda *a, **k: pytest.fail("no-ACK export opened reader"),
+        )
     forbid_live(monkeypatch)
     before = inventory(directory)
     for use_cli in (False, True):
@@ -671,8 +685,16 @@ def test_default_graph_decisions_present_original_model_call_without_alias_emiss
         assert timeline.count("| event `aas.langgraph.record`:") == 1
         assert "aas.agent.record" not in text and "/console/" not in text
         assert '"model_call": 1' in decisions
+        assert '"prompt":' not in decisions and '"response": 1' not in decisions
         assert "one per original message" in decisions
-        assert "### Cut " in decisions and ": aas.langgraph.record" in decisions
+        assert decisions.count("### Cut ") == 1
+        assert ": aas.langgraph.record" in decisions
+        if not acknowledged:
+            evidence = {
+                "reader_api_version": None, "acknowledged": False,
+                "cut_index": prefix["index"], "redaction": "none",
+            }
+            assert f"| source_evidence | `{report.cell(evidence)}` |" in text
         assert "Recorded phase data:" in decisions
         assert json.dumps(data, indent=2, ensure_ascii=False) in decisions
         assert "model call totals are unavailable" not in decisions
@@ -748,6 +770,23 @@ def test_equal_payload_emissions_survive_and_delivery_or_publication_copies_do_n
     assert result["inspection"]["targets"]["point"]["mean_revisit_s"] is None
     assert result["logistics"]["mean_delivery_time_s"] is None
     assert result["logistics"]["utilization"] is None
+    assert inventory(directory) == before
+
+
+def test_unacknowledged_report_deduplicates_original_ids_across_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    directory, _ = diagnostic_run(tmp_path / "diagnostic")
+    # Rebuild the service index after this diagnostic rewrites its journal.
+    (directory / "index.json").unlink()
+    RunStorage(directory).index()
+    (directory / "committed-prefix.json").unlink()
+    forbid_live(monkeypatch)
+    before = inventory(directory)
+    text = report.export_report(directory, tmp_path / "report").read_text()
+    # Two equal-payload original IDs survive; the delivery-only ID, fan-out
+    # copies and the later publication of original-first do not add rows.
+    assert text.count("| event `fixture.inspection`:") == 2
     assert inventory(directory) == before
 
 

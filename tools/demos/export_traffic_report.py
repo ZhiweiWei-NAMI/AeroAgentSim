@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from aeroagentsim.observations.artifacts import ArtifactStore
-from aeroagentsim.runs import RunReadError, open_run
+from aeroagentsim.runs import RunReadError, iter_record_messages, open_run
 from aeroagentsim.services.projector import lossless, project
 from aeroagentsim.services.storage import RunStorage
 from aeroagentsim.services.subjects import projection_context
@@ -98,13 +98,40 @@ def _indexed_report_source(
             "report requires a finished run with an immutable recorded prefix"
         )
     subjects = projection_context(run, 1)
+    headers = storage.records(0, 1)
+    if not headers:
+        raise ValueError("run has no committed journal records to report")
+    header = headers[0]
+    binding = header.get("manifest", {})
+    partitions = frozenset(row["fields"]["id"] for row in header.get("partitions", []))
+    seen: set[str] = set()
     commits: list[dict[str, Any]] = []
     cursor = 1
     while batch := storage.records(cursor, 4096):
         for offset, record in enumerate(batch):
             if record["index"] != cursor + offset:
                 raise ValueError("report journal has a gap or unordered indexed prefix")
-            commits.append(project(record, subjects=subjects))
+            commit = project(record, subjects=subjects)
+            # Retain non-message presentation, but select the same canonical
+            # originals as the ACK-backed reader, never console/delivery copies.
+            commit["messages"] = []
+            for message in iter_record_messages(
+                record, partitions=partitions,
+                ingress_source=binding.get("ingress_source"),
+                control_source=binding.get("control_source"),
+            ):
+                if message.message_id in seen:
+                    continue
+                seen.add(message.message_id)
+                if message.kind in {"command", "event"}:
+                    commit["messages"].append({
+                        "id": message.message_id,
+                        "kind": message.kind,
+                        "schemaId": message.schema_id,
+                        "payload": lossless(message.payload),
+                        "source_cursor": list(message.cursor),
+                    })
+            commits.append(commit)
         cursor = batch[-1]["index"] + 1
     if not commits:
         raise ValueError("run has no committed journal records to report")
