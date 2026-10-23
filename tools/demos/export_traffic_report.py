@@ -6,14 +6,19 @@ import argparse
 import json
 import shutil
 import subprocess
-from collections import Counter
+from collections import Counter, defaultdict
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from aeroagentsim.observations.artifacts import ArtifactStore
-from aeroagentsim.services.projector import project
+from aeroagentsim.runs import RunReadError, iter_record_messages, open_run
+from aeroagentsim.services.projector import lossless, project
 from aeroagentsim.services.storage import RunStorage
 from aeroagentsim.services.subjects import projection_context
+
+
+DEFAULT_DECISION_SCHEMAS = ("aas.agent.record", "aas.langgraph.record")
 
 
 def cell(value: Any) -> str:
@@ -24,15 +29,68 @@ def cell(value: Any) -> str:
     )
 
 
-def export_report(
+def _reader_report_source(
     run: Path,
-    output: Path,
-    *,
-    decision_schemas: tuple[str, ...] = ("aas.agent.record",),
-) -> Path:
-    run, output = run.resolve(), output.resolve()
-    if output == run or output.is_relative_to(run):
-        raise ValueError("report output must be outside the immutable source run")
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
+    with open_run(run) as source:
+        snapshot = source.snapshot()
+        # Reader v1 has no service status/final cursor or full-manifest capability.
+        manifest = json.loads((run / "manifest.json").read_text())
+        if manifest["status"] not in {"completed", "stopped", "faulted", "interrupted"}:
+            raise ValueError(
+                "report requires a finished run with an immutable recorded prefix"
+            )
+        cursor = manifest["final_cursor"]
+        if type(cursor) is not int or cursor != snapshot.cut_index + 1:
+            raise ValueError("run ACK does not cover the manifest final cursor")
+        originals: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for message in snapshot.iter_messages():
+            if message.kind in {"command", "event"}:
+                originals[message.cursor[0]].append(
+                    {
+                        "id": message.message_id,
+                        "kind": message.kind,
+                        "schemaId": message.schema_id,
+                        "payload": lossless(message.payload),
+                        "source_cursor": list(message.cursor),
+                    }
+                )
+        commits = []
+        for record in snapshot.iter_records(start=1):
+            # Reader v1 has no fact/receipt projection. Retain the existing
+            # formatter, but never let its deliveries or console aliases supply
+            # messages: only the public reader selects original identities.
+            commit = project(
+                {
+                    **record,
+                    "items": [
+                        {
+                            key: value
+                            for key, value in item.items()
+                            if key != "message" or not isinstance(value, dict)
+                        }
+                        for item in record["items"]
+                    ],
+                }
+            )
+            commit["messages"] = originals[record["index"]]
+            commits.append(commit)
+        if not commits:
+            raise ValueError("run has no committed journal records to report")
+        evidence = {
+            "reader_api_version": snapshot.api_version,
+            "cut_index": snapshot.cut_index,
+            "cut_bytes": snapshot.cut_bytes,
+            "header": asdict(snapshot.header),
+            "redaction": "none",
+        }
+    return manifest, commits, evidence
+
+
+def _indexed_report_source(
+    run: Path,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
+    """Keep main's evidence checks for historical runs without an ACK."""
     storage = RunStorage(run)
     manifest = storage.metadata()
     if manifest["status"] not in {"completed", "stopped", "faulted", "interrupted"}:
@@ -40,18 +98,70 @@ def export_report(
             "report requires a finished run with an immutable recorded prefix"
         )
     subjects = projection_context(run, 1)
+    headers = storage.records(0, 1)
+    if not headers:
+        raise ValueError("run has no committed journal records to report")
+    header = headers[0]
+    binding = header.get("manifest", {})
+    partitions = frozenset(row["fields"]["id"] for row in header.get("partitions", []))
+    seen: set[str] = set()
     commits: list[dict[str, Any]] = []
     cursor = 1
     while batch := storage.records(cursor, 4096):
         for offset, record in enumerate(batch):
             if record["index"] != cursor + offset:
                 raise ValueError("report journal has a gap or unordered indexed prefix")
-            commits.append(project(record, subjects=subjects))
+            commit = project(record, subjects=subjects)
+            # Retain non-message presentation, but select the same canonical
+            # originals as the ACK-backed reader, never console/delivery copies.
+            commit["messages"] = []
+            for message in iter_record_messages(
+                record, partitions=partitions,
+                ingress_source=binding.get("ingress_source"),
+                control_source=binding.get("control_source"),
+            ):
+                if message.message_id in seen:
+                    continue
+                seen.add(message.message_id)
+                if message.kind in {"command", "event"}:
+                    commit["messages"].append({
+                        "id": message.message_id,
+                        "kind": message.kind,
+                        "schemaId": message.schema_id,
+                        "payload": lossless(message.payload),
+                        "source_cursor": list(message.cursor),
+                    })
+            commits.append(commit)
         cursor = batch[-1]["index"] + 1
     if not commits:
         raise ValueError("run has no committed journal records to report")
     if cursor != manifest["final_cursor"]:
         raise ValueError("run index does not cover the manifest final cursor")
+    return manifest, commits, {
+        "reader_api_version": None,
+        "acknowledged": False,
+        "cut_index": cursor - 1,
+        "redaction": "none",
+    }
+
+
+def export_report(
+    run: Path,
+    output: Path,
+    *,
+    decision_schemas: tuple[str, ...] = DEFAULT_DECISION_SCHEMAS,
+) -> Path:
+    run, output = run.resolve(), output.resolve()
+    if output == run or output.is_relative_to(run):
+        raise ValueError("report output must be outside the immutable source run")
+    ack = run / "committed-prefix.json"
+    # Invalid published ACKs (including broken symlinks) must fail in the reader,
+    # never authorize fallback to a larger indexed or merely visible prefix.
+    load = (
+        _reader_report_source if ack.exists() or ack.is_symlink()
+        else _indexed_report_source
+    )
+    manifest, commits, evidence = load(run)
     output.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Traffic accident run report",
@@ -65,7 +175,8 @@ def export_report(
         "| --- | --- |",
     ]
     lines.extend(
-        f"| {key} | `{cell(value)}` |" for key, value in sorted(manifest.items())
+        f"| {key} | `{cell(value)}` |"
+        for key, value in sorted({**manifest, "source_evidence": evidence}.items())
     )
     lines.extend(
         [
@@ -113,8 +224,10 @@ def export_report(
     if not messages and not receipts:
         lines.append("No messages or receipts are recorded in this prefix.")
     lines.extend(["", "## Decisions and model records", ""])
-    # Schema selection is explicit; the timeline retains all messages, including
-    # contracts this exporter has not been configured to categorize.
+    # Graph records already carry phase/data_json, just like agent records.
+    # Present those originals directly: a model_call is one recorded phase, not
+    # the projector's derived prompt + response aliases or two extra emissions.
+    # Explicit schema overrides still select only the requested contracts.
     decisions = [
         message for message in messages if message["schemaId"] in decision_schemas
     ]
@@ -132,7 +245,7 @@ def export_report(
         if phases:
             lines.extend(
                 [
-                    "Recorded phase counts (response records are not inferred model attempts):",
+                    "Recorded phase counts (one per original message; response records are not inferred model attempts):",
                     "",
                     "```json",
                     json.dumps(dict(phases), sort_keys=True, indent=2),
@@ -183,6 +296,7 @@ def export_report(
             "",
         ]
     )
+    # Reader v1 has no stored-artifact metadata/blob capability.
     store = ArtifactStore(run)
     artifacts = store.list()
     if not artifacts:
@@ -253,7 +367,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output,
             decision_schemas=tuple(args.decision_schema)
             if args.decision_schema is not None
-            else ("aas.agent.record",),
+            else DEFAULT_DECISION_SCHEMAS,
         )
         print(target)
         if args.docx or args.pdf:
@@ -291,6 +405,7 @@ def main(argv: list[str] | None = None) -> int:
         ValueError,
         KeyError,
         OSError,
+        RunReadError,
         RuntimeError,
         subprocess.SubprocessError,
     ) as exc:
