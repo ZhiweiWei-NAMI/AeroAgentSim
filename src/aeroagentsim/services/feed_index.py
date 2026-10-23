@@ -16,15 +16,18 @@ from collections import OrderedDict
 from contextlib import closing
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from stat import S_IFMT
 from typing import Any
 
+from aerokernel.errors import KernelError
 from aerokernel.registry import MemoryRegistry
 
-from ..presentation_api import PresentationPlugin
+from ..presentation_api import PresentationPlugin, presentation_plugin_digest
 from ..presentations import presentation_selection
-from ..runs import open_run
+from ..runs import RunReadError, open_run
 from ..runs.projections import (
     PROJECTION_PINS_FILENAME,
+    _IMPLEMENTATION_FILES,
     _provenance_for_cut,
     projection_definitions,
 )
@@ -50,11 +53,15 @@ class _Projection:
     kpis: KPIProjector
     narratives: NarrativeProjector
     storage: RunStorage
+    provenance: dict[str, Any] | None
 
 
 # A bounded working set, never the source of truth. The committed SQLite blob
 # must match before reusing a cursor, including after another process updates it.
 _PROJECTIONS: OrderedDict[Path, _Projection] = OrderedDict()
+# Definition content is expensive (host sources and registry); validate the cheap
+# signature on every request, then compute these identities once per signature.
+_DEFINITIONS: OrderedDict[Path, tuple[list[Any], dict[str, Any]]] = OrderedDict()
 
 
 def _retain(path: Path, projection: _Projection) -> None:
@@ -74,36 +81,61 @@ def _signature(
     path: Path, *, plugins: tuple[PresentationPlugin, ...] | None = None,
 ) -> list[Any]:
     from aeroagentsim import metrics_api
-    from aeroagentsim.runs import reader as run_reader
 
     authored = [path / "scenario.json"]
     if (path / "behaviour.ir.json").exists():
         authored.append(path / "behaviour.ir.json")
     files = [*authored, path / "runtime.registry.json"]
-    files.extend(
-        Path(__file__).with_name(name + ".py")
-        for name in ("feed_index", "projector", "subjects", "kpis", "narratives")
-    )
-    files.extend((Path(metrics_api.__file__), Path(run_reader.__file__)))
-    # Share the definition identity with run pins and the read-only diagnostic.
-    # This includes every eligible metric provider (even before its first input),
-    # the pinned presentation snapshot/provider digest and authored content hashes.
-    # Selection still rejects changed/missing pinned presentation dependencies.
-    plugins, _ = presentation_selection(path, plugins)
-    result: list[Any] = [FORMAT, ["definitions", projection_definitions(
-        path, presentation_plugins=plugins,
-    )]]
+    base = Path(__file__).resolve().parents[1]
+    files.extend(base / name for name in _IMPLEMENTATION_FILES)
+    metric_plugins = metrics_api.discover_metric_plugins()
+    result: list[Any] = [FORMAT, ["metrics", metrics_api.metric_plugin_fingerprint(metric_plugins)]]
+    # Preserve presentation admission and exact authored-content checks on hits;
+    # stats alone miss equal-length edits with restored mtimes.
+    plugins, snapshot = presentation_selection(path, plugins)
+    result.append(["narratives", snapshot["digest"] if snapshot is not None
+                   else presentation_plugin_digest(plugins)])
+    result.append(["authored", [
+        [str(file), hashlib.sha256(file.read_bytes()).hexdigest()] for file in authored
+    ]])
     pins = path / PROJECTION_PINS_FILENAME
     result.append(["projection-pins", hashlib.sha256(pins.read_bytes()).hexdigest()
                    if pins.exists() else None])
     for file in files:
         stat = file.stat()
-        result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino])
+        result.append([str(file), stat.st_size, stat.st_mtime_ns, stat.st_ino,
+                       stat.st_dev, stat.st_ctime_ns])
     journal = path / "journal.jsonl"
     if journal.exists():
         stat = journal.stat()
         result.append([str(journal), stat.st_dev, stat.st_ino])
-    return result
+    # Reader-only container restrictions must not narrow service admission. If a
+    # container changes (including introduction/removal of an ACK or symlink),
+    # invalidate any retained admission/omission. ACK coordinates are deliberately
+    # excluded: append-only growth must not re-admit the header or replay offsets.
+    info = path.stat()
+    containers: list[Any] = [[info.st_dev, info.st_ino]]
+    for name, bound in (("journal.jsonl", None), ("manifest.json", 8 * 1024 * 1024),
+                        ("committed-prefix.json", 4096)):
+        source = path / name
+        try:
+            info = source.lstat()
+            containers.append([name, S_IFMT(info.st_mode),
+                               bound is not None and info.st_size > bound])
+        except FileNotFoundError:
+            containers.append([name, None])
+    result.append(["provenance-source", containers])
+    with _LOCK:
+        cached = _DEFINITIONS.get(path)
+        if cached is None or cached[0] != result:
+            definitions = projection_definitions(path, presentation_plugins=plugins)
+            _DEFINITIONS[path] = (result, definitions)
+        else:
+            definitions = cached[1]
+        _DEFINITIONS.move_to_end(path)
+        while len(_DEFINITIONS) > 4:
+            _DEFINITIONS.popitem(last=False)
+    return [*result, ["definitions", definitions]]
 
 
 def _connect(path: Path) -> sqlite3.Connection:
@@ -284,6 +316,11 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             cursor = 1
             database.execute("DELETE FROM cuts")
             database.execute("DELETE FROM checkpoint")
+        provenance = (
+            cached.provenance if valid and cached is not None
+            else state.get("projection_provenance") if valid
+            else _new_provenance(path, signature, storage)
+        )
         target = min(target, requested_target, cursor + 64)
         while cursor < target:
             records = storage.records(cursor, min(256, target - cursor))
@@ -296,12 +333,25 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                 records = retry_storage.records(cursor, min(256, target - cursor))
                 if not records:
                     raise ValueError("Viewer index: retained WAL prefix is missing")
+                storage = retry_storage
             for record in records:
                 if record["index"] != cursor:
                     raise ValueError("Viewer index: non-contiguous committed prefix")
                 record = projection_record(record)
                 cut = project(record, subjects=subjects, kpis=kpis)
                 cut["events"] = narratives.consume(record)
+                if provenance is not None:
+                    entry = storage.entries[cursor]
+                    if entry["index"] != cursor:
+                        raise ValueError("Projection provenance: offset index differs from projected cut")
+                    provenance = {
+                        **provenance,
+                        "source_cut": {
+                            **provenance["source_cut"], "cut_index": cursor,
+                            "cut_bytes": entry["offset"] + entry["length"],
+                        },
+                    }
+                    cut["projection_provenance"] = provenance
                 database.execute(
                     "INSERT INTO cuts VALUES (?, ?, ?, ?)",
                     (
@@ -320,6 +370,7 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                 "kpis": kpis.cursor(),
                 "narratives": narratives.cursor(),
                 "final": kpis.snapshot(),
+                "projection_provenance": provenance,
             }
         )
         database.execute(
@@ -331,56 +382,37 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                          (cursor, json.dumps(signature, separators=(",", ":"))))
         database.commit()
         _retain(
-            path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives, storage)
+            path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives, storage, provenance)
         )
         return cursor >= requested_target
 
 
-def _provenances(
-    path: Path, signature: list[Any], indices: list[int],
-) -> dict[int, dict[str, Any]]:
-    """Attach reader identities to actual projected cuts, not the latest ACK.
+def _new_provenance(
+    path: Path, signature: list[Any], storage: RunStorage,
+) -> dict[str, Any] | None:
+    """Admit once per signature; publish metadata with cuts in their transaction.
 
-    Definitions come from the published checkpoint, never a later discovery that
-    could mislabel cached numbers. Only offsets are refreshed, in memory. Legacy
-    index-only service runs retain their payloads without inventing a reader cut.
+    Reuse the updater's incremental offsets. Warm REST/SSE/KPI reads never open a
+    second storage or reparse the header merely to attach optional metadata.
+    Service-readable sources outside reader v1 admission retain their old payloads.
     """
-    if not indices or committed_prefix(path) is None:
-        return {}
+    if committed_prefix(path) is None or not storage.entries:
+        return None
+    try:
+        with open_run(path) as run:
+            header = run.header
+    except (RunReadError, KernelError):
+        # Strict manifest JSON/budget admission can also raise kernel decode
+        # errors. This try covers reader admission only, never pin validation.
+        return None
     definitions = next(item[1] for item in signature if item[0] == "definitions")
-    storage = RunStorage(path)
-    storage.refresh_committed()
-    with open_run(path) as run:
-        entry = storage.entries[indices[0]]
-        provenance = _provenance_for_cut(
-            path, run.header, entry["index"], entry["offset"] + entry["length"], definitions,
-        )
+    entry = storage.entries[0]
+    provenance = _provenance_for_cut(
+        path, header, entry["index"], entry["offset"] + entry["length"], definitions,
+    )
     payload = asdict(provenance)
     payload["mode"] = provenance.mode.value
-    result = {}
-    for index in indices:
-        entry = storage.entries[index]
-        if entry["index"] != index:
-            raise ValueError("Projection provenance: offset index differs from projected cut")
-        result[index] = {
-            **payload,
-            "source_cut": {
-                **payload["source_cut"], "cut_index": index,
-                "cut_bytes": entry["offset"] + entry["length"],
-            },
-        }
-    return result
-
-
-def _with_provenance(
-    path: Path, records: list[dict[str, Any]], signature: list[Any],
-) -> list[dict[str, Any]]:
-    provenances = _provenances(path, signature, [record["commitIndex"] for record in records])
-    return [
-        {**record, "projection_provenance": provenances[record["commitIndex"]]}
-        if record["commitIndex"] in provenances else record
-        for record in records
-    ]
+    return payload
 
 
 def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, Any]]:
@@ -413,8 +445,12 @@ def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, A
                         (max(1, start), prefix["index"], limit),
                     )
                 ]
-                if records:
-                    return _with_provenance(path, records, checkpoint["signature"])
+                if records and (path / "journal.jsonl").stat().st_size >= prefix["bytes"]:
+                    if all(
+                        record.get("projection_provenance", {}).get("source_cut", {}).get("cut_bytes", 0)
+                        <= prefix["bytes"] for record in records
+                    ):
+                        return records
     return page(path, start, limit)
 
 
@@ -431,8 +467,7 @@ def page(path: Path, start: int = 1, limit: int = 256) -> list[dict[str, Any]]:
                 (max(1, start), limit),
             )
         ]
-        row = database.execute("SELECT signature FROM projection_progress WHERE id=1").fetchone()
-        return _with_provenance(path, records, json.loads(row[0])) if row is not None else records
+        return records
 
 
 def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
@@ -454,8 +489,10 @@ def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
             if include_series
             else []
         )
-        index = checkpoint["next"] - 1
-        provenance = _provenances(path, checkpoint["signature"], [index]).get(index)
+        # Summary-only results are deterministic numerical payloads shared by
+        # service and headless hosts. Keep run-local reader identities/pin modes
+        # outside this legacy byte-stable view; full KPI responses expose them.
+        provenance = checkpoint.get("projection_provenance") if include_series else None
         return {"contract": "aeroagentsim.kpi/v1", "final": final, "series": series,
                 **_results_state(path, RunStorage(path).metadata(), checkpoint),
                 **({"projection_provenance": provenance} if provenance is not None else {})}

@@ -151,7 +151,7 @@ recursively frozen objects. `dataclasses.asdict()` produces a serializable view;
 | `source_cut` | Reader-derived `service_run_id`, `kernel_run_id`, `epoch`, local `journal_identity` (`[device, inode]`), recorded `configuration_digest`/`registry_digest`, inclusive `cut_index` and `cut_bytes`. `None` if no ACK sidecar exists; no offset index or visible WAL is substituted. |
 | `pinned_definitions` | The complete run-time projection definition record, or `None` when absent. A presentation snapshot alone is not a complete projection pin. |
 | `current_definitions` | Identities of current host interpreters and discovered contributions, plus the authored inputs/presentation snapshot available in the run directory. No projected numbers are computed. |
-| `mode` | `ProjectionMode.ORIGINAL` (`original`) only with a matching complete pin; `RECOMPUTED_CURRENT_CODE` (`recomputed-current-code`) with a differing pin; `LEGACY_UNPINNED` (`legacy-unpinned`) without a complete pin. |
+| `mode` | `ProjectionMode.ORIGINAL` (`original`) only with a matching complete pin; `RECOMPUTED_CURRENT_CODE` (`recomputed-current-code`) with a differing complete pin; `LEGACY_UNPINNED` (`legacy-unpinned`) when the projection pin is absent. Malformed/incomplete records are rejected, not classified as drift. |
 
 Definition records contain `viewer_feed: "aeroagentsim.viewer-feed/v1"`,
 `kpi: "aeroagentsim.kpi/v1"`, `implementation_digest` (host interpreter source
@@ -162,7 +162,12 @@ reducer implementation, revision, input schemas and full descriptors),
 inputs have `None` digests, not hashes of invented empty documents. A snapshot
 digest describes the stored DATA; the provider digest describes currently available
 providers in that snapshot's recorded name/order selection. It can differ without
-replacing or rewriting the stored snapshot.
+replacing or rewriting the stored snapshot. Pins are validated recursively: reducer
+implementation/revision/input schemas and complete descriptors, contribution field
+types, SHA-256 digest formats, and the exact authored-digest keys are required.
+Only explicit absence fields (snapshot/authored inputs, entry point/distribution
+metadata, descriptor direction) may be `None`; missing reducer knowledge is not
+proof of historical definition drift.
 
 `projection_provenance(directory)` is a filesystem-read-only **metadata diagnostic**:
 it creates no sidecars, repairs no indexes and opens no SQLite databases. With an
@@ -180,11 +185,13 @@ network clients. Plugin factories are trusted Python, not a sandbox. Merely impo
 `aeroagentsim.runs` does not trigger this discovery.
 
 New service workers record `aeroagentsim.projection-pins/v1` in
-`projection-pins.json` at the new-run evidence-writing point before execution; no
-read path backfills missing pins. Earlier service runs (including presentation-only
-pins) and unintegrated headless hosts remain `legacy-unpinned`. Matching identities
-do not prove historical executable availability, all dependency revisions,
-authentication, numerical correctness or run success. Changed plugin implementations
+`projection-pins.json` at the new-run evidence-writing point before execution.
+Publication fsyncs the file, installs it atomically without replacing an existing
+pin, then fsyncs the directory before the first world-state ACK. Failure prevents
+session start. No read path backfills missing pins. Earlier service runs (including
+presentation-only pins) and unintegrated headless hosts remain `legacy-unpinned`.
+Matching identities do not prove historical executable availability, all dependency
+revisions, authentication, numerical correctness or run success. Changed plugin implementations
 without an honest revision/distribution bump cannot be detected by declared identity.
 A diagnostic mismatch does not prove successful recomputation: HTTP feeds still
 reject missing/changed pinned presentation dependencies. See

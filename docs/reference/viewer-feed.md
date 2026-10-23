@@ -101,25 +101,37 @@ REST/SSE commit objects and the top-level `/v1/runs/{id}/kpis` response may carr
 `projection_provenance`, with `format: "aeroagentsim.projection-provenance/v1"`.
 Existing viewer-feed/v1 and KPI/v1 fields, numerical definitions, nulls and finality
 semantics are unchanged. KPI series rows and the viewer header are unchanged.
+Summary-only `kpi_result(..., include_series=False)` results (including run-list
+summaries) omit provenance: these remain byte-stable numerical payloads across
+identical service/headless journals, independent of run-local IDs, inodes, and pin
+presence. The full KPI endpoint and the read-only diagnostic expose provenance.
 
 The field contains `source_cut`, `pinned_definitions`, `current_definitions` and
 `mode`. The source uses the [public reader's identities](run-reader.md): service
 and kernel run IDs, epoch, local journal identity, recorded configuration/registry
 digests, inclusive `cut_index` and `cut_bytes`. Each commit identifies its own cut;
 the KPI response identifies its final projected prefix, not a later live ACK.
-Index-only runs without a reader ACK omit this optional response field rather
-than invent a cut.
+Index-only runs without a reader ACK and service-readable sources the public
+reader cannot admit (for example symlinked journals, manifests or ACK sidecars)
+omit this optional response field rather than invent a cut or fail a previously
+readable feed. Reader v1 admission itself is unchanged. Malformed projection pins
+are rejected, not interpreted as known definition drift.
 
 | `mode` | Meaning |
 | --- | --- |
 | `original` | A complete run-time projection pin exists and matches the identities used for this projection. |
-| `recomputed-current-code` | A run-time pin exists, but the projected definitions differ. Both recorded and current identities remain visible. |
-| `legacy-unpinned` | No complete projection pin was recorded. `pinned_definitions` is `null`; current definitions are not evidence of historical meaning. |
+| `recomputed-current-code` | A complete run-time pin exists, but the projected definitions differ. Both recorded and current identities remain visible. |
+| `legacy-unpinned` | No projection pin exists. `pinned_definitions` is `null`; current definitions are not evidence of historical meaning. |
 
-New service worker executions write `projection-pins.json` before starting the
-session, after its authored artifacts exist. It records viewer-feed/v1 and KPI/v1
-identities, a content digest of host projection/interpreter code, metric reducer
-descriptors/revisions and contribution identities, authored input digests, and the
+New service worker executions durably publish `projection-pins.json` before
+starting the session, after its authored artifacts exist. A unique temporary file
+is flushed/fsynced, atomically installed without replacing an existing pin, and
+its directory fsynced before the first world-state ACK; publication failure aborts
+execution. This ordering applies even with journal `flush` durability.
+
+The pin records viewer-feed/v1 and KPI/v1 identities, a content digest of host
+projection/interpreter code, metric reducer descriptors/revisions and contribution
+identities, authored input digests, and the
 presentation snapshot digest (when present) plus provider digest. HTTP launch
 already records `presentation.snapshot.json`; its recorded provider selection is
 preserved. Older runs, including those with only presentation pins, are not
@@ -176,5 +188,19 @@ REST commit paging and SSE reconnects use `viewer-index.sqlite3` beside each
 run. This rebuildable index stores projected cuts and one transactionally
 consistent checkpoint for lifecycle subjects, KPIs and narratives. A seek
 reads indexed cuts directly; newly committed records extend the retained
-prefix. Changes to pinned declarations or projection code invalidate the
-cache. Journal and registry data remain authoritative.
+prefix. Definition identities and reader admission/omission are computed once
+per source/definition signature; provenance is published transactionally with each
+cut and the checkpoint. Warm pages reuse those bytes without reconstructing storage
+offsets or reparsing the journal header for metadata. Source identity and ACK bounds
+are still checked, as are presentation admission and authored-content changes.
+Changes to pinned declarations or projection code invalidate the cache. Journal
+and registry data remain authoritative.
+
+**Pre-existing limitation:** service feed reads are not source-read-only. REST
+paging, KPI evaluation and SSE's cold-cache fallback can create this SQLite file
+and its `-wal`/`-shm` sidecars **inside the source run**, including archived runs;
+they require a writable cache location there. This PR does not relocate or redesign
+the feed cache. The file-free guarantee belongs to the standalone
+`projection_provenance(directory)` diagnostic (and the core reader), not these
+service endpoints. Use that diagnostic when inspecting source evidence without
+creating derived files.

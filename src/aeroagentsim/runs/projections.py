@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -122,19 +123,101 @@ def projection_definitions(
     }
 
 
+def _pin_record(value: Any, keys: set[str], label: str) -> None:
+    if not isinstance(value, dict) or set(value) != keys:
+        raise ValueError(f"Projection pins: incomplete or malformed {label}")
+
+
+def _pin_text(value: Any, label: str) -> None:
+    if type(value) is not str or not value.strip():
+        raise ValueError(f"Projection pins: {label} must be nonempty text")
+
+
+def _pin_digest(value: Any, label: str, *, optional: bool = False) -> None:
+    if optional and value is None:
+        return
+    if type(value) is not str or re.fullmatch(r"sha256:[0-9a-f]{64}", value) is None:
+        raise ValueError(f"Projection pins: invalid {label} digest")
+
+
+def _validate_definitions(definitions: Any) -> None:
+    """Validate historical knowledge, not just whether two JSON trees differ."""
+    _pin_record(definitions, _DEFINITION_KEYS, "definitions")
+    for name, contract in (("viewer_feed", "aeroagentsim.viewer-feed/v1"),
+                           ("kpi", "aeroagentsim.kpi/v1")):
+        if definitions[name] != contract:
+            raise ValueError(f"Projection pins: unsupported {name} contract")
+    _pin_digest(definitions["implementation_digest"], "implementation")
+    _pin_digest(definitions["presentation_provider_digest"], "presentation provider")
+    _pin_digest(definitions["presentation_snapshot_digest"], "presentation snapshot", optional=True)
+    authored = definitions["authored_digests"]
+    _pin_record(authored, {"scenario.json", "runtime.registry.json", "behaviour.ir.json"}, "authored digests")
+    for name, digest in authored.items():
+        # These nulls explicitly mean an absent historical input, not an empty one.
+        _pin_digest(digest, name, optional=True)
+    plugins = definitions["metric_reducers"]
+    if not isinstance(plugins, list):
+        raise ValueError("Projection pins: metric_reducers must be a list")
+    names: set[str] = set()
+    metric_ids: set[str] = set()
+    for plugin in plugins:
+        _pin_record(plugin, {"name", "api_version", "entry_point", "distribution", "reducers"}, "metric plugin")
+        name = plugin["name"]
+        if type(name) is not str or re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name) is None or name in names:
+            raise ValueError("Projection pins: invalid or duplicate metric plugin name")
+        names.add(name)
+        if type(plugin["api_version"]) is not int or plugin["api_version"] < 1:
+            raise ValueError("Projection pins: metric API version must be a positive integer")
+        if plugin["entry_point"] is not None:
+            _pin_text(plugin["entry_point"], "metric entry point")
+        distribution = plugin["distribution"]
+        if distribution is not None:
+            if not isinstance(distribution, list) or len(distribution) != 2 or distribution == [None, None]:
+                raise ValueError("Projection pins: invalid metric distribution identity")
+            for part in distribution:
+                if part is not None:
+                    _pin_text(part, "metric distribution")
+        reducers = plugin["reducers"]
+        if not isinstance(reducers, list):
+            raise ValueError("Projection pins: reducers must be a list")
+        for reducer in reducers:
+            _pin_record(reducer, {"implementation", "version", "input_schemas", "descriptors"}, "metric reducer")
+            _pin_text(reducer["implementation"], "reducer implementation")
+            if re.fullmatch(r"[^:]+:[^:]+", reducer["implementation"]) is None:
+                raise ValueError("Projection pins: invalid reducer implementation identity")
+            _pin_text(reducer["version"], "reducer revision")
+            schemas = reducer["input_schemas"]
+            if not isinstance(schemas, list) or not schemas:
+                raise ValueError("Projection pins: input_schemas must be a nonempty list")
+            for schema in schemas:
+                _pin_text(schema, "input schema")
+            descriptors = reducer["descriptors"]
+            if not isinstance(descriptors, list) or not descriptors:
+                raise ValueError("Projection pins: descriptors must be a nonempty list")
+            for descriptor in descriptors:
+                text_keys = {"id", "label", "label_zh", "unit", "aggregation", "missing_data_policy"}
+                _pin_record(descriptor, text_keys | {"direction"}, "metric descriptor")
+                for key in text_keys:
+                    _pin_text(descriptor[key], f"descriptor {key}")
+                if descriptor["direction"] not in (None, "higher", "lower"):
+                    raise ValueError("Projection pins: invalid metric direction")
+                if descriptor["id"] in metric_ids:
+                    raise ValueError("Projection pins: duplicate metric descriptor id")
+                metric_ids.add(descriptor["id"])
+
+
 def _read_pins(directory: Path) -> dict[str, Any] | None:
     path = directory / PROJECTION_PINS_FILENAME
     try:
         pins = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None
-    if (
-        not isinstance(pins, dict) or set(pins) != {"format", "definitions"}
-        or pins["format"] != PROJECTION_PINS_FORMAT
-        or not isinstance(pins["definitions"], dict)
-        or set(pins["definitions"]) != _DEFINITION_KEYS
-    ):
-        raise ValueError("Projection pins: malformed record or unsupported format")
+    except (ValueError, RecursionError) as exc:
+        raise ValueError("Projection pins: invalid JSON record") from exc
+    _pin_record(pins, {"format", "definitions"}, "record")
+    if pins["format"] != PROJECTION_PINS_FORMAT:
+        raise ValueError("Projection pins: unsupported format")
+    _validate_definitions(pins["definitions"])
     # Reject non-finite JSON even if a foreign writer used permissive encoding.
     _json_bytes(pins)
     return pins["definitions"]
