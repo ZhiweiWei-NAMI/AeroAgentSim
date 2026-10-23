@@ -374,14 +374,16 @@ def test_invalid_json_retry_is_recorded_and_replayed(config: dict[str, Any]) -> 
     assert replay_graph(kernel.journal.bytes, "graph/1")["values"] == [2, 3]
 
 
-def test_parallel_io_overlaps_and_late_reply_cannot_publish(
+def test_parallel_requests_reserve_serially_and_late_reply_cannot_publish(
     config: dict[str, Any],
 ) -> None:
     class Provider:
         model = "measured"
 
         def __init__(self) -> None:
-            self.barrier = threading.Barrier(2)
+            self.lock = threading.Lock()
+            self.active = self.peak = 0
+            self.requested_tokens: list[int] = []
 
         def complete(
             self,
@@ -391,26 +393,46 @@ def test_parallel_io_overlaps_and_late_reply_cannot_publish(
             timeout_s: float,
             max_tokens: int,
         ) -> dict[str, Any]:
-            self.barrier.wait(timeout=1)
-            time.sleep(0.05 if "alpha" in messages[1]["content"] else 0.01)
-            return completion({"value": 2})
+            with self.lock:
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+                self.requested_tokens.append(max_tokens)
+            try:
+                time.sleep(0.05 if "alpha" in messages[1]["content"] else 0.01)
+                return completion({"value": 2})
+            finally:
+                with self.lock:
+                    self.active -= 1
 
-    kernel, _ = run(config, Provider())
-    rows = journal_decisions(kernel.journal.bytes)["graph/1"]
-    assert [r["data"]["identity"][1] for r in rows if r["phase"] == "model_call"] == [
-        "alpha",
-        "bravo",
-    ]
-    assert replay_graph(kernel.journal.bytes, "graph/1")["values"] == [2, 2]
+    # The former two-worker barrier required both calls to reserve the entire
+    # aggregate cap concurrently: the overbooking this change deliberately fixes.
+    # Parallel nodes now queue admission, retaining both results when usage fits.
+    provider = Provider()
+    kernel, _ = run(config, provider)
+    try:
+        rows = journal_decisions(kernel.journal.bytes)["graph/1"]
+        assert [r["data"]["identity"][1] for r in rows if r["phase"] == "model_call"] == [
+            "alpha",
+            "bravo",
+        ]
+        assert provider.peak == 1
+        assert provider.requested_tokens == [20, 18]
+        assert replay_graph(kernel.journal.bytes, "graph/1")["values"] == [2, 2]
+    finally:
+        kernel.close()
     config["budget"]["wall_timeout_s"] = 0.005
     kernel, _ = run(config, Provider())
-    before = kernel.journal.bytes
-    time.sleep(0.08)
-    assert kernel.journal.bytes == before
-    rows = journal_decisions(before)["graph/1"]
-    assert any(
-        r["phase"] == "failure" and r["data"]["code"] == "WALL_TIMEOUT" for r in rows
-    )
+    try:
+        before = kernel.journal.bytes
+        time.sleep(0.08)
+        assert kernel.journal.bytes == before
+        rows = journal_decisions(before)["graph/1"]
+        assert any(
+            r["phase"] == "failure" and r["data"]["code"] == "WALL_TIMEOUT"
+            for r in rows
+        )
+    finally:
+        kernel.close()
 
 
 def test_replay_detects_modified_request(config: dict[str, Any]) -> None:

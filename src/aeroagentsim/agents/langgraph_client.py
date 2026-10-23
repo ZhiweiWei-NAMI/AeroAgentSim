@@ -135,6 +135,9 @@ class JournalClient:
         if replay is not None and len(self._replay or {}) != len(replay):
             raise ValueError("duplicate replay call identity")
         self._used: set[tuple[int, str, str, int]] = set()
+        self._spent_tokens = 0
+        self._reserved_tokens = 0
+        self._admission = asyncio.Lock()
 
     @property
     def records(self) -> list[dict[str, Any]]:
@@ -191,6 +194,22 @@ class JournalClient:
         *,
         attempt: int = 0,
     ) -> dict[str, Any]:
+        if self._replay is not None:
+            return await self._complete(key, messages, tools, attempt=attempt)
+        # The per-call cap is also the aggregate cap: only one full remaining
+        # allowance fits at a time. Queue admissions until that call settles,
+        # then recheck every preflight bound against the original wall deadline.
+        async with self._admission:
+            return await self._complete(key, messages, tools, attempt=attempt)
+
+    async def _complete(
+        self,
+        key: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        *,
+        attempt: int,
+    ) -> dict[str, Any]:
         from langgraph.config import get_config
 
         metadata = get_config()["metadata"]
@@ -202,12 +221,29 @@ class JournalClient:
         )
         if not isinstance(key, str) or not key or identity in self._calls:
             raise ProviderError("CALL_ID", "unique nonempty key per node/step required")
+        allowance = max(
+            0, self.budget["max_tokens"] - self._spent_tokens - self._reserved_tokens
+        )
+        if self._replay is not None:
+            if identity not in self._replay:
+                raise ProviderError("REPLAY_MISMATCH", f"request changed: {identity}")
+            # Admission timing is not reproduced by zero-I/O replay. New rows
+            # retain that input; legacy rows used the full per-call cap. Still
+            # compare the entire request, including max_tokens, below.
+            allowance = self._replay[identity].get(
+                "token_allowance", self.budget["max_tokens"]
+            )
+            if (
+                type(allowance) is not int
+                or not 0 <= allowance <= self.budget["max_tokens"]
+            ):
+                raise ProviderError("REPLAY_MISMATCH", "invalid token allowance")
         request = json_copy(
             {
                 "messages": messages,
                 "tools": [] if tools is None else tools,
                 "model": self.model,
-                "max_tokens": self.budget["max_tokens"],
+                "max_tokens": min(self.budget["max_tokens"], allowance),
                 "stream": False,
             }
         )
@@ -227,15 +263,14 @@ class JournalClient:
         }
         self._calls[identity] = row
         if self._replay is not None:
-            if (
-                identity not in self._replay
-                or self._replay[identity]["request"] != request
-            ):
+            if self._replay[identity]["request"] != request:
                 raise ProviderError("REPLAY_MISMATCH", f"request changed: {identity}")
             recorded = self._replay[identity]
             self._used.add(identity)
             row.update(deepcopy(recorded))
         else:
+            row["token_allowance"] = allowance
+            reserved = 0
             started = time.monotonic()
             remaining = self._deadline - started
             row["timeout_s"] = (
@@ -255,6 +290,14 @@ class JournalClient:
                     )
                 if remaining <= 0:
                     raise ProviderError("WALL_TIMEOUT", "graph wall deadline expired")
+                if allowance <= 0:
+                    raise ProviderError(
+                        "TOKEN_BUDGET", "aggregate graph token limit exhausted"
+                    )
+                # No await between admission and reservation: parallel nodes
+                # cannot promise the same remaining tokens to two providers.
+                reserved = request["max_tokens"]
+                self._reserved_tokens += reserved
                 response = await self._exchange(
                     key,
                     request["messages"],
@@ -294,6 +337,29 @@ class JournalClient:
             except Exception as exc:  # noqa: BLE001 -- retain provider faults, never synthesize success
                 row["error"] = {"code": "PROVIDER_ERROR", "message": str(exc)}
             finally:
+                if reserved:
+                    recorded_response = row.get("response")
+                    usage = (
+                        recorded_response.get("usage")
+                        if isinstance(recorded_response, dict)
+                        else None
+                    )
+                    used = (
+                        usage.get("completion_tokens") if isinstance(usage, dict) else None
+                    )
+                    if type(used) is int and used >= 0:
+                        self._reserved_tokens -= reserved
+                        self._spent_tokens += used
+                    elif (
+                        isinstance(self._provider, ScriptedProvider)
+                        and "response" not in row
+                    ):
+                        # A script fault performs no inference. Preserve scripted
+                        # transport retries without treating unknown live usage
+                        # (or a scripted response with missing usage) as zero.
+                        self._reserved_tokens -= reserved
+                    # Unknown usage is not zero. Keep its reservation, including
+                    # after cancellation: an I/O worker may still be running.
                 row["latency_s"] = (
                     0.0
                     if isinstance(self._provider, ScriptedProvider)
