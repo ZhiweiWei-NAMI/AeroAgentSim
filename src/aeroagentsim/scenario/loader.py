@@ -103,6 +103,21 @@ def _mapping(loader: UniqueLoader, node: yaml.MappingNode) -> dict[str, Any]:
 UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
 
 
+class _SourceDumper(SafeDumper):
+    """Serialise mapping sources; integers beyond the decimal limit use YAML hex."""
+
+
+def _integer(dumper: SafeDumper, data: int) -> yaml.ScalarNode:
+    try:
+        text = str(data)
+    except ValueError:  # sys.get_int_max_str_digits(); hex is not limited
+        text = hex(data)
+    return dumper.represent_scalar("tag:yaml.org,2002:int", text)
+
+
+_SourceDumper.add_representer(int, _integer)
+
+
 def obj(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ScenarioError(f"{path}: expected a mapping")
@@ -365,7 +380,7 @@ def load_scenario(
     try:
         if isinstance(source, dict):
             document = source
-            source_text = yaml.dump(source, Dumper=SafeDumper, sort_keys=True)
+            source_text = yaml.dump(source, Dumper=_SourceDumper, sort_keys=True)
             directory = Path.cwd() if base is None else base
         else:
             path = Path(source).resolve()
