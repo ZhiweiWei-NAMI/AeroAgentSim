@@ -669,10 +669,17 @@ def create_app(
         return {"workspace_id": draft["id"], "derived_from": draft["derived_from"]}
 
     @app.get("/v1/runs/{run_id}/kpis")
-    def run_kpis(run_id: str) -> dict[str, Any]:
-        from .feed_index import kpi_result as project_run
+    def run_kpis(
+        run_id: str,
+        series_from: int | None = Query(None, ge=0),
+        series_limit: int | None = Query(None, ge=1, le=4096),
+    ) -> dict[str, Any]:
+        from .kpis import project_run
 
-        return {**project_run(directory(run_id)), "run_id": run_id}
+        return {
+            **project_run(directory(run_id), series_from=series_from, series_limit=series_limit),
+            "run_id": run_id,
+        }
 
     @app.get("/v1/plugins")
     def plugins() -> dict[str, Any]:

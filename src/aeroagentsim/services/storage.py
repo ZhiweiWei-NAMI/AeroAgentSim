@@ -5,10 +5,13 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import operator
 from bisect import bisect_left
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, overload
 
 from aerokernel.compact import expand_record
 from aerokernel.journal_codec import decode_frame
@@ -22,9 +25,89 @@ if TYPE_CHECKING:
 @lru_cache(maxsize=16)
 def _read_index(
     path: Path, identity: tuple[int, int, int, int]
-) -> list[dict[str, int]]:
-    """Cache only immutable atomic index versions; WAL records stay authoritative."""
-    return json.loads(path.read_text())  # type: ignore[no-any-return]
+) -> tuple[Mapping[str, int], ...]:
+    """Share immutable atomic index versions; WAL records stay authoritative."""
+    return tuple(MappingProxyType(row) for row in json.loads(path.read_text()))
+
+
+class _OffsetEntries(MutableSequence[dict[str, int]]):
+    """A shared immutable prefix with reader-private rows and an append-only tail.
+
+    Most readers inspect only the last row. Detach each accessed row lazily to
+    retain the historical mutable entries interface without copying the entire
+    prefix per RunStorage. Appends never modify or recopy the shared prefix.
+    """
+
+    def __init__(self, shared: tuple[Mapping[str, int], ...]) -> None:
+        self._shared = shared
+        self._private: dict[int, dict[str, int]] = {}
+        self._tail: list[dict[str, int]] = []
+
+    def __len__(self) -> int:
+        return len(self._shared) + len(self._tail)
+
+    def _position(self, index: int) -> int:
+        index = operator.index(index)
+        if index < 0:
+            index += len(self)
+        if not 0 <= index < len(self):
+            raise IndexError("Offset entry index out of range")
+        return index
+
+    def _detach_row(self, index: int) -> dict[str, int]:
+        return dict(self._shared[index])
+
+    @overload
+    def __getitem__(self, index: int) -> dict[str, int]: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[dict[str, int]]: ...
+
+    def __getitem__(self, index: int | slice) -> dict[str, int] | list[dict[str, int]]:
+        if isinstance(index, slice):
+            return [self[position] for position in range(*index.indices(len(self)))]
+        index = self._position(index)
+        if index >= len(self._shared):
+            return self._tail[index - len(self._shared)]
+        if index not in self._private:
+            self._private[index] = self._detach_row(index)
+        return self._private[index]
+
+    def _materialize(self) -> list[dict[str, int]]:
+        # Arbitrary structural edits are rare writer operations, not read setup.
+        rows = list(self)
+        self._shared, self._private, self._tail = (), {}, rows
+        return rows
+
+    @overload
+    def __setitem__(self, index: int, value: dict[str, int]) -> None: ...
+
+    @overload
+    def __setitem__(self, index: slice, value: Iterable[dict[str, int]]) -> None: ...
+
+    def __setitem__(self, index: Any, value: Any) -> None:
+        if isinstance(index, slice):
+            self._materialize()[index] = value
+        else:
+            position = self._position(index)
+            if position < len(self._shared):
+                self._private[position] = value
+            else:
+                self._tail[position - len(self._shared)] = value
+
+    def __delitem__(self, index: int | slice) -> None:
+        del self._materialize()[index]
+
+    def insert(self, index: int, value: dict[str, int]) -> None:
+        self._materialize().insert(index, value)
+
+    def append(self, value: dict[str, int]) -> None:
+        self._tail.append(value)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Sequence):
+            return NotImplemented
+        return len(self) == len(other) and all(a == b for a, b in zip(self, other))
 
 
 @lru_cache(maxsize=16)
@@ -76,20 +159,17 @@ class RunStorage:
     def __init__(self, directory: Path) -> None:
         self.directory = directory
         self.offset = 0
-        self.entries: list[dict[str, int]] = []
+        self.entries: MutableSequence[dict[str, int]] = []
         self._live_snapshot = False
         self._published_prefix: tuple[int, int] | None = None
         index = directory / "index.json"
         if index.exists():
             info = index.stat()
-            # Readers share the decoded atomic version, while a writer owns its
-            # list and rows: appending/rebuilding cannot mutate another reader.
-            self.entries = [
-                dict(entry)
-                for entry in _read_index(
-                    index, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
-                )
-            ]
+            # Construction retains a shared immutable version, not an O(N) copy.
+            # Accessed rows and appended offsets belong only to this reader.
+            self.entries = _OffsetEntries(_read_index(
+                index, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+            ))
             if self.entries:
                 last = self.entries[-1]
                 self.offset = last["offset"] + last["length"]
@@ -120,6 +200,8 @@ class RunStorage:
     def _atomic(self, name: str, value: Any) -> None:
         target = self.directory / name
         temporary = self.directory / (name + ".writing")
+        if isinstance(value, _OffsetEntries):
+            value = list(value)
         temporary.write_bytes(canonical_json(value))
         temporary.replace(target)
 
@@ -233,6 +315,7 @@ class RunStorage:
         index = self.directory / "index.json"
         if not index.exists():
             raise FileNotFoundError(f"Run index missing: {index}")
+        entries: Sequence[Mapping[str, int]]
         if self._live_snapshot:
             entries = self.entries
         else:

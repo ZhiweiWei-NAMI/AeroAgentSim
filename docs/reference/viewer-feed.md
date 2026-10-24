@@ -79,6 +79,31 @@ cursors include the earlier journal prefix, so reconnecting does not reset
 metrics. `/v1/runs/{id}/kpis` exposes final values for the available prefix and
 their time series; `/v1/runs` includes the same summary.
 
+**KPI series paging (opt-in).**
+`GET /v1/runs/{id}/kpis?series_from=N&series_limit=M` bounds only the returned
+`series`, using an indexed SQL range/limit rather than decoding the full series
+and slicing it afterward:
+
+| Query parameter | Meaning / default |
+| --- | --- |
+| `series_from` | Inclusive journal `commitIndex`, not a row offset or timestamp. A nonnegative integer; `0` starts at the first non-header record (`1`). Omitted: start at `1`. |
+| `series_limit` | Integer from `1` through `4096`. Omitted: no series-row limit. |
+
+With both parameters omitted, the existing complete-series response is unchanged;
+using only `series_from` returns the entire remaining suffix. Each row still has
+`commitIndex`, `at_ns` and `kpis`. Continue at the last returned `commitIndex + 1`;
+a start beyond the projected prefix returns an empty `series`. Invalid parameter
+values return HTTP 422. No continuation field or envelope version is added.
+
+Paging does **not** change `final`, `results_final`, `results_cursor`,
+`final_commit_index` or optional top-level `projection_provenance`: these describe
+the full available projected prefix, not the selected series window. Checkpoint
+and series rows are read in the same SQLite transaction. Concatenated pages equal
+the complete series at an unchanged source/definition cut; a live run can advance
+between separate requests. Paging bounds series decoding/response size, not cold
+projection backfill, growing checkpoint state or run listings. Summary-only
+Python calls (`include_series=False`) retain their existing byte-stable shape.
+
 KPI v1 rows retain `value`, `unit` and `label` unchanged. When backed by a
 [metric descriptor](metrics-plugins.md#service-comparison-and-cli-shapes), they
 add `label_zh` (Chinese label), `direction` (`"higher"`, `"lower"` or JSON `null`),
