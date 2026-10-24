@@ -86,11 +86,6 @@ def test_committed_time_never_leads_wall_budget(tmp_path: Path, factor: float) -
         started = time.perf_counter()
         active["started"].set()
         heads = [0]
-        # Simulated time that elapsed between the two samples observing each new
-        # head. A descheduled poller can miss intermediate publications; that
-        # sampling delay must not be blamed on the worker's publication cadence.
-        windows: list[float] = []
-        previous = started
         deadline = started + (2.25 if factor == 0.05 else 2 / factor + 1)
         while time.perf_counter() < deadline:
             # Completion is published after its committed prefix. Observe it
@@ -102,17 +97,23 @@ def test_committed_time_never_leads_wall_budget(tmp_path: Path, factor: float) -
             assert head / 1e9 <= (observed - started) * factor
             if head != heads[-1]:
                 heads.append(head)
-                windows.append((observed - previous) * factor * 1e9)
-            previous = observed
             if status == "completed":
                 break
             time.sleep(0.005)
         assert len(heads) > 1, "Low-speed motion must publish before the 10 s run limit"
         if factor <= 1:
-            assert all(
-                0 < b - a <= 100_000_000 + window
-                for a, b, window in zip(heads, heads[1:], windows)
+            # Sub-second granularity is a property of the committed journal, not
+            # of wall-clock sampling: a descheduled worker legitimately commits
+            # several 100 ms steps at once when it catches up with the budget.
+            final = active["head"]()
+            instants = sorted(
+                {0} | {
+                    record["instant"]["fields"]["ns"]
+                    for record in active["storage"].records(0, 1_000_000)
+                }
             )
+            assert instants[-1] == final >= heads[-1]
+            assert all(0 < b - a <= 100_000_000 for a, b in zip(instants, instants[1:]))
         if factor == 0.05:
             assert heads[-1] == 100_000_000
         else:
