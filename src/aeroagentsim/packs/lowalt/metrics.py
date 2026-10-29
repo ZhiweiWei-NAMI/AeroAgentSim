@@ -57,16 +57,19 @@ _RESCUE_AGGREGATION = {
     "rescue_radio_packets": "Count distinct rescue packet IDs sent.",
     "rescue_radio_delivered": "Count distinct rescue packet IDs delivered.",
     "rescue_radio_bytes": "Sum sizes of distinct rescue packet IDs sent.",
-    "rescue_bus_messages": "Count partition-emitted rescue.* messages, including commands.",
-    "rescue_bus_bytes": "Sum UTF-8 byte lengths of rescue.* data_json strings.",
+    "rescue_bus_messages": "Count partition-emitted legacy rescue JSON protocol messages, including commands.",
+    "rescue_bus_bytes": "Sum UTF-8 byte lengths of legacy rescue JSON protocol data_json strings.",
     "rescue_model_calls": "Count model_call graph records whose decision_id starts rescue_.",
 }
 
 
+RESCUE_JSON_SCHEMAS = ('rescue.local.request', 'rescue.bid', 'rescue.center.request', 'rescue.plan', 'rescue.event', 'rescue.transport.hop', 'rescue.transport.send', 'rescue.transport.delivered', 'rescue.transport.failed')
+
+
 class RescueReducer(LegacyReducer):
-    version = "2"
+    version = "3"
     state_type = RescueState
-    input_schemas = ("rescue.", "adapters.ns3.send", "adapters.ns3.delivery", "aas.langgraph.record")
+    input_schemas = (*RESCUE_JSON_SCHEMAS, "adapters.ns3.send", "adapters.ns3.delivery", "aas.langgraph.record")
     descriptors = tuple(
         descriptor(
             name, unit, label, label.split(" / ", 1)[1], _RESCUE_AGGREGATION[name],
@@ -87,7 +90,7 @@ class RescueReducer(LegacyReducer):
         values = state.rescue_values
         if schema is None:
             return
-        if schema.startswith("rescue."):
+        if schema in RESCUE_JSON_SCHEMAS:
             state.rescue_seen = True
             encoded = payload["data_json"]
             data = json.loads(encoded)
