@@ -92,6 +92,7 @@ frontend/yarn-error.log*
 
 # --- Local tooling ---
 .clinerules
+.vite/
 runs/
 .pytest_tmp/
 containers/*/standalone/**/*metrics*.json
