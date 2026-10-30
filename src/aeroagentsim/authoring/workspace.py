@@ -95,6 +95,28 @@ def issue_location(scenario: dict[str, Any], path: str, message: str) -> dict[st
         parts: list[str] = []
         node: Any = scenario
         while tokens:
+            if (
+                parts == ["entities"]
+                and isinstance(node, list)
+                and not tokens[0].isdigit()
+            ):
+                # Match entity IDs (including dotted IDs like incident.01) to their list index.
+                matched = next(
+                    (
+                        (size, idx)
+                        for size in range(len(tokens), 0, -1)
+                        for idx, item in enumerate(node)
+                        if isinstance(item, dict)
+                        and item.get("id") == ".".join(tokens[:size])
+                    ),
+                    None,
+                )
+                if matched is not None:
+                    size, idx = matched
+                    del tokens[:size]
+                    parts.append(str(idx))
+                    node = node[idx]
+                    continue
             # Match keys in the actual draft: lowalt.site_capacity is one field, not two.
             length = next((size for size in range(len(tokens), 0, -1) if isinstance(node, dict) and ".".join(tokens[:size]) in node), 1)
             part = ".".join(tokens[:length])

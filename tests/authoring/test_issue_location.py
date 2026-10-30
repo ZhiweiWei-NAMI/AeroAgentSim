@@ -26,3 +26,23 @@ def test_wire_pointers_preserve_escaped_field_ids_and_entity_identity():
 def test_unlocated_errors_are_not_assigned_an_invented_field():
     assert issue_location({}, '$', 'The registry digest does not match') == {}
     assert issue_location({}, '$.chains.traffic.incident_report.trigger', 'invalid trigger') == {}
+
+
+def test_entity_id_and_indexed_registry_type_locations():
+    scenario = {'entities': [{'id': 'facility-1', 'facts': {'aas.studio.position_enu_m': [0, 0]}}],
+                'registry': {'types': [{'id': 'x:Root', 'parents': []}]}}
+    assert issue_location(
+        scenario, '$', 'entities.facility-1.facts.aas.studio.position_enu_m: VALUE_SCHEMA'
+    ) == {
+        'path': '/entities/0/facts/aas.studio.position_enu_m',
+        'section': 'objects',
+        'entity_id': 'facility-1',
+        'field': 'aas.studio.position_enu_m',
+    }
+    assert issue_location(
+        scenario, '$', 'registry.types[0].parents: x:Root: local extension types must inherit'
+    ) == {
+        'path': '/registry/types/0/parents',
+        'section': 'objects',
+    }
+

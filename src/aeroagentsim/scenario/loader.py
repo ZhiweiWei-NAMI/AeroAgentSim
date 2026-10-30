@@ -278,7 +278,7 @@ def load_registry(
     fields = list(compiled.registry.fields)
     messages = list(compiled.registry.messages)
     local_types: list[TypeDescriptor] = []
-    for item in seq(registry_spec.get("types", []), "registry.types"):
+    for index, item in enumerate(seq(registry_spec.get("types", []), "registry.types")):
         item = contract(item, "registry.types[]", {"id", "parents", "abstract"})
         if type(item["abstract"]) is not bool:
             raise ScenarioError("registry.types[].abstract: explicit bool required")
@@ -289,19 +289,18 @@ def load_registry(
         # disconnected self-written root into an AeroGraph scenario.
         if not descriptor.parents:
             raise ScenarioError(
-                f"registry.types.{descriptor.id}: local extension types must "
+                f"registry.types[{index}].parents: {descriptor.id}: local extension types must "
                 "inherit from the compiled AeroGraph hierarchy / "
                 f"本地扩展类型 {descriptor.id} 必须继承自已编译的 AeroGraph 本体类型体系"
             )
         local_types.append(descriptor)
         types.append(descriptor)
     known = compiled_type_ids | {descriptor.id for descriptor in local_types}
-    local_by_id = {descriptor.id: descriptor for descriptor in local_types}
-    for descriptor in local_types:
+    for index, descriptor in enumerate(local_types):
         for parent in descriptor.parents:
             if parent not in known:
                 raise ScenarioError(
-                    f"registry.types.{descriptor.id}: parent {parent!r} is not "
+                    f"registry.types[{index}].parents: {descriptor.id}: parent {parent!r} is not "
                     "in the compiled AeroGraph hierarchy / "
                     f"本地扩展类型 {descriptor.id} 的父类型 {parent!r} 不在已编译的 AeroGraph 类型体系中"
                 )
@@ -315,12 +314,12 @@ def load_registry(
             ):
                 rooted.add(descriptor.id)
                 progress = True
-    for descriptor in local_types:
-        if descriptor.id not in rooted or descriptor.id in local_by_id and any(
+    for index, descriptor in enumerate(local_types):
+        if descriptor.id not in rooted or any(
             parent not in rooted for parent in descriptor.parents
         ):
             raise ScenarioError(
-                f"registry.types.{descriptor.id}: local extension types must "
+                f"registry.types[{index}].parents: {descriptor.id}: local extension types must "
                 "inherit acyclically from the compiled AeroGraph hierarchy / "
                 f"本地扩展类型 {descriptor.id} 必须无环地继承自已编译的 AeroGraph 类型体系"
             )
@@ -405,6 +404,8 @@ def load_registry(
         for direction, declared in (
             native["cardinality"].items() if native is not None else []
         ):
+            if direction not in ("targets_per_source", "sources_per_target"):
+                continue
             chosen = item[direction]
             if chosen != {"minimum": declared["min"], "maximum": declared["max"]}:
                 raise ScenarioError(

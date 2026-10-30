@@ -106,7 +106,9 @@ def install_components(document: dict[str, Any], *, directory: Path) -> None:
             if row["id"] not in known:
                 types.append(copy.deepcopy(row))
                 details = snapshot.setdefault("details", {})
-                details.setdefault("effective_fields", {})[row["id"]] = fragment["details"]["effective_fields"][row["id"]]
+                frag_effective = fragment.get("details", {}).get("effective_fields", {})
+                if row["id"] in frag_effective:
+                    details.setdefault("effective_fields", {})[row["id"]] = copy.deepcopy(frag_effective[row["id"]])
                 raw_types = fragment.get("details", {}).get("raw_types", {})
                 if row["id"] in raw_types:
                     details.setdefault("raw_types", {})[row["id"]] = copy.deepcopy(raw_types[row["id"]])

@@ -76,9 +76,13 @@ def merge_traffic(document: dict[str, Any], destination: Path) -> None:
         )
     details = snapshot.setdefault("details", {})
     portable_details = portable.get("details", {})
-    details.setdefault("effective_fields", {}).update(
-        portable_details.get("effective_fields", {})
-    )
+    effective = details.setdefault("effective_fields", {})
+    for tid, fids in portable_details.get("effective_fields", {}).items():
+        merged = list(effective.get(tid, ()))
+        for fid in fids:
+            if fid not in merged:
+                merged.append(fid)
+        effective[tid] = merged
     details.setdefault("raw_types", {}).update(
         portable_details.get("raw_types", {})
     )
@@ -88,6 +92,8 @@ def merge_traffic(document: dict[str, Any], destination: Path) -> None:
         descriptors.setdefault(group, {}).update(
             portable_descriptors.get(group, {})
         )
+    if "types" in details.get("statistics", {}):
+        details["statistics"]["types"] = len(snapshot["registry"]["types"])
     snapshot.pop("snapshot_id", None)
     (destination / "registry.snapshot.json").write_text(
         json.dumps(snapshot, indent=2) + "\n"

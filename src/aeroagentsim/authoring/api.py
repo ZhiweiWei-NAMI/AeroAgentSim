@@ -117,7 +117,8 @@ def create_router(
         from aeroagentsim.assistant.operations import operation_catalogue
 
         return [{"op": spec["name"], "topic": spec["topic"], "label": spec["description"],
-                 "label_zh": spec["description_zh"], "schema": spec["parameters"], "example": spec["example"]}
+                 "label_zh": spec["description_zh"], "schema": spec["parameters"],
+                 **({"example": spec["example"]} if "example" in spec else {})}
                 for spec in operation_catalogue()]
 
     @router.post("/workspaces/{identifier}/operations")

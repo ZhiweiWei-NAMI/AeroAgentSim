@@ -107,3 +107,19 @@ def test_disconnected_local_cycle_is_rejected() -> None:
             base=Path("."),
         )
 
+
+def test_install_lowalt_components_on_narrow_snapshot(tmp_path: Path) -> None:
+    import yaml
+
+    from aeroagentsim.packs.lowalt.template import install_components
+
+    snapshot = tmp_path / "registry.snapshot.json"
+    snapshot.write_bytes(BEHAVIOURS.read_bytes())
+    document = yaml.safe_load(Path("scenarios/behaviours/minimal.yaml").read_text())
+    document["registry"]["snapshot"] = "registry.snapshot.json"
+    document.setdefault("presentation", [])
+    install_components(document, directory=tmp_path)
+    _, registry = load_registry(document["registry"], base=tmp_path)
+    assert registry.is_a("lowalt:UAV", "oo:UAV")
+
+

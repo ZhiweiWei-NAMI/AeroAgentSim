@@ -69,7 +69,7 @@ export function ComponentsSection({ api, project, draft, edit, focus, zh, L, onP
     <h4>{L('Traffic', '交通')}</h4>
     <TrafficBlock draft={draft} edit={edit} focus={focus} L={L} />
     {config && <><h4>{L('Incidents', '事件')}</h4><IncidentsBlock config={config} duration_s={nsToS((draft.run as Record<string, unknown> | undefined)?.until_ns)} L={L} {...opProps} /></>}
-    <details open={focus?.startsWith('/engines/') || focus?.startsWith('/bindings/')}><summary>{L('Advanced', '高级')}</summary>
+    <details open={focus === '/engines' || focus === '/bindings' || focus?.startsWith('/engines/') || focus?.startsWith('/bindings/')}><summary>{L('Advanced', '高级')}</summary>
       {Object.entries((draft.engines ?? {}) as Record<string, any>).map(([name, engine]) => <details key={name} open={focus === pointer('engines', name) || focus?.startsWith(pointer('engines', name) + '/')}>
         <summary><b>{name}</b> <span className="wb-tag wb-mono">{engine.plugin}</span>
           {engine.plugin === KINEMATIC && <> <span className="wb-tag">{L('replaces Gazebo', '替代 Gazebo')}</span></>}
