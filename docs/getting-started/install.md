@@ -48,7 +48,7 @@ For live agents, install `python -m pip install -e '.[server,agents]'` and follo
 
 ## Included data
 
-The committed registry snapshot provides the demo's types, ancestry, fields and relations. No AeroGraph checkout is needed. With access to a full checkout, set `AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph` to enable its broader catalog; see [AeroGraph](../concepts/aerograph.md).
+The committed registry snapshots are compiled from AeroGraph (`aerograph-compiler/1` with verified source-descriptor provenance; hand-written or stub snapshots without AeroGraph provenance are rejected at load time). All local scenario type extensions inherit acyclically from the compiled AeroGraph hierarchy. Set `AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph` to compile new slices or browse the full source ontology in Studio; see [AeroGraph](../concepts/aerograph.md).
 
 The demo includes OSM-derived roads and building footprints rendered as procedural geometry, with [attribution](../../scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt). `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` optionally selects a separately supplied high-detail pack. It is available as a separate download; see the optional detailed city instructions below and [Asset notes](../../ASSETS.md).
 

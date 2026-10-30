@@ -135,19 +135,32 @@ flowchart LR
     J --> V["3D city · graph · KPIs · replay"]
 ```
 
-- **One clock.** Domain plugins and agents coordinate through one discrete-event runtime.
+- **One clock.** Domain plugins and agents coordinate through one discrete-event runtime (`aerokernel`).
 - **One writer per fact.** Algorithms propose actions; the owning engine executes commands and commits state.
+- **High-speed scheduler replacing Gazebo, with optional external PX4 / Gazebo.** By default, the built-in `AeroKernel + kinematic` engine computes flight trajectories analytically at discrete event steps, directly replacing Gazebo to achieve 10×–20×+ real-time speedup (`pacing: fast`). In the Workbench (`Configure → Components` or `Scenario controls`), you can optionally switch the flight physics backend to `px4_gazebo` to connect an external lockstep PX4 SITL + Gazebo container service.
 - **Replay from the record.** Inspect recorded state and agent decisions without rerunning physics, cameras or model calls.
-- **Typed by AeroGraph.** Define entities, relations and rules by type; shipped snapshots work without an AeroGraph checkout.
+- **Strictly typed by AeroGraph.** Every scenario registry must be compiled from AeroGraph (`aerograph-compiler/1` with verified source-descriptor provenance; hand-written or stub snapshots are rejected). Scenarios and plugins may extend the ontology via local `registry.types` / `fields` / `messages` overlays provided all local types acyclically inherit from the compiled AeroGraph hierarchy.
 
-[Architecture](docs/concepts/architecture.md) · [Scenario plugins](docs/guides/scenario-plugins.md) · [Engine plugins and native simulators](docs/guides/plugins.md) · [Design notes](docs/design-notes.md)
+[Architecture](docs/concepts/architecture.md) · [AeroGraph registries](docs/concepts/aerograph.md) · [Scenario plugins](docs/guides/scenario-plugins.md) · [Engine plugins and native simulators](docs/guides/plugins.md) · [Design notes](docs/design-notes.md)
 
-## Add your own scenario plugin
+## Multi-scenario plugin architecture (end-to-end)
 
-Package templates and named knob hooks in a `ScenarioPlugin`, discovered through `aeroagentsim.scenarios`.
+AeroAgentSim provides **8 Python entry-point extension families** Admission-checked via `aeroagentsim.extensions.discover`:
+
+| Entry-point group | Contract / API | What a plugin contributes |
+| :--- | :--- | :--- |
+| `aeroagentsim.scenarios` | `ScenarioPlugin` (`API_VERSION = 1`) | Scenario templates (`TemplateSource`) and deterministic knob hooks (`ApplyHook`) |
+| `aeroagentsim.engines` | `build(EngineBuild) -> Engine` | Runtime domain, agent or native simulator engines (`kinematic`, `lowalt_tasks`, `px4_gazebo`, `sumo`, `ns3`, …) |
+| `aeroagentsim.algorithms` | 4 slot protocols | `allocation`, `path_planning`, `conflict_resolution` and `charging` algorithms |
+| `aeroagentsim.models` | `ConsumptionModel` | Deterministic energy consumption models (`linear`, `wind`) |
+| `aeroagentsim.metrics` | `MetricPlugin` (`API_VERSION = 1`) | Recorded-message KPI reducers and bilingual descriptors |
+| `aeroagentsim.presentations` | `PresentationPlugin` (`API_VERSION = 1`) | Bilingual labels, narrative templates, poses and effective-control readers (`CONTROL_READERS`) |
+| `aeroagentsim.preparers` | `PreparerPlugin` (`API_VERSION = 1`) | Deterministic seed-bound preparation for `aeroagentsim.scenario/v2` |
+| `aeroagentsim.assistant_operations` | `AssistantOperationPlugin` (`API_VERSION = 1`) | Namespaced natural-language assistant operations, schemas and prerequisites |
+
+Package templates and named knob hooks in a `ScenarioPlugin`, discovered through `aeroagentsim.scenarios` (see [`examples/plugins/aeroagentsim-example-scenario`](examples/plugins/aeroagentsim-example-scenario/README.md) and `aeroagentsim plugins`).
 Built-in scenarios use the same contract; external packages need no platform changes to contribute templates and knob hooks.
-The v1 contract does not register presentation/renderer providers, assistant operation families or registry overlays; those remain planned extension points, and declarative `presentation`/`event_narratives` bindings plus template controls are the supported route.
-Start with the [scenario plugin guide](docs/guides/scenario-plugins.md) and [plugin contracts](docs/reference/plugin-contracts.md).
+Start with the [scenario plugin guide](docs/guides/scenario-plugins.md), [extension admission](docs/reference/extension-admission.md) and [plugin contracts](docs/reference/plugin-contracts.md).
 
 ## Where things live
 

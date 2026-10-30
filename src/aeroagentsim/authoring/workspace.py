@@ -132,8 +132,12 @@ def validate_configuration(document: dict[str, Any], *, base: Path, directory: P
 
 def validation_failure(document: dict[str, Any], error: Exception) -> dict[str, Any]:
     authored: BaseException = error
-    while authored.__cause__ is not None and not hasattr(authored, "path"):
-        authored = authored.__cause__
+    cursor: BaseException | None = error
+    while cursor is not None:
+        if hasattr(cursor, "path"):
+            authored = cursor
+            break
+        cursor = cursor.__cause__
     path = getattr(authored, "path", "$")
     return {
         "valid": False,

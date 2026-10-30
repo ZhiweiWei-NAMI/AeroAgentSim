@@ -24,12 +24,12 @@ def record(members: dict[str, Any]) -> dict[str, Any]:
 
 
 def main() -> None:
-    # Ship an explicitly empty AeroGraph slice: the e1:* types below are local
-    # extensions, never a disconnected hand-written registry root.
+    # Ship an AeroGraph slice so the e1:* types below are local
+    # extensions rooted in oo:ModelObject, never a disconnected registry root.
     snapshot = compile_registry(
         configured_ontology(),
         Selection(("oo:ModelObject",), (), ()),
-        Policy(excluded_ids=("oo:ModelObject",)),
+        Policy(),
     )
     snapshot.write_snapshot(ROOT / "authored-registry.json")
     scalar = {"type": "number"}
@@ -179,7 +179,7 @@ def main() -> None:
                         "offset_ns": -10 * SECOND,
                     }
                 )
-                types.append({"id": "e1:Aircraft", "parents": [], "abstract": False})
+                types.append({"id": "e1:Aircraft", "parents": ["oo:ModelObject"], "abstract": False})
                 entities.append({"id": "aircraft", "type": "e1:Aircraft", "facts": {}})
                 for semantic, schema in px4_fields.items():
                     metadata = {
@@ -206,7 +206,7 @@ def main() -> None:
                 lifecycle.append({"controller": engine_id, "type": "e1:Aircraft"})
             if backend == "sumo":
                 for kind, type_id in sumo_types.items():
-                    types.append({"id": type_id, "parents": [], "abstract": False})
+                    types.append({"id": type_id, "parents": ["oo:ModelObject"], "abstract": False})
                     for semantic, schema in sumo_schemas[kind].items():
                         fields.append(
                             {

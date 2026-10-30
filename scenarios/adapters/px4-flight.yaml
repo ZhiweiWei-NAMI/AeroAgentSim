@@ -4,7 +4,8 @@ registry:
   snapshot: authored-registry.json
   types:
   - id: e1:Aircraft
-    parents: []
+    parents:
+    - oo:ModelObject
     abstract: false
   fields:
   - id: e1.px4.position
@@ -147,7 +148,731 @@ registry:
           minimum: 0
       required: []
       extra: false
+  - id: adapters.px4_gazebo.arm_cancel_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.capture_poll_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        after_sim_ns:
+          type: integer
+          minimum: -1
+      required:
+      - entity
+      - after_sim_ns
+      extra: false
+    result_schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - succeeded
+          - pending
+          - unavailable
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            run_id:
+              type: string
+              min_length: 1
+            uav_id:
+              type: string
+              min_length: 1
+            sensor_id:
+              type: string
+              min_length: 1
+            frame_id:
+              type: string
+              min_length: 1
+            source:
+              type: string
+              enum:
+              - gazebo_transport
+            source_clock:
+              type: string
+              enum:
+              - gazebo_sim
+            source_topic:
+              type: string
+              min_length: 1
+            native_frame_id:
+              type: string
+              min_length: 1
+            source_time:
+              type: integer
+              minimum: 0
+            clock_epoch:
+              type: string
+              min_length: 1
+            observed_at:
+              type: integer
+              minimum: 0
+            depth_observed_at:
+              type: integer
+              minimum: 0
+            available_sim_ns:
+              type: integer
+              minimum: 0
+            received_wall_time:
+              type: integer
+              minimum: 0
+            coordinate_frame:
+              type: string
+              enum:
+              - camera_optical
+            calibration:
+              type: record
+              members:
+                K:
+                  type: vector
+                  length: 9
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                width:
+                  type: integer
+                  minimum: 1
+                  maximum: 4096
+                height:
+                  type: integer
+                  minimum: 1
+                  maximum: 4096
+                distortion:
+                  type: array
+                  items:
+                    type: number
+                  max_length: 16
+                distortion_model:
+                  type: string
+                  enum:
+                  - plumb_bob
+                  - rational_polynomial
+                  - equidistant
+                camera_info_source_ns:
+                  type: integer
+                  minimum: 0
+                native_frame_id:
+                  type: string
+                  min_length: 1
+                source_topic:
+                  type: string
+                  min_length: 1
+                horizontal_fov_deg:
+                  type: number
+                  minimum: 0
+                  maximum: 180
+                vertical_fov_deg:
+                  type: number
+                  minimum: 0
+                  maximum: 180
+                fov_source:
+                  type: string
+                  min_length: 1
+                registered_rgb_depth:
+                  type: boolean
+                  enum:
+                  - true
+                version:
+                  type: string
+                  min_length: 1
+                depth_convention:
+                  type: string
+                  enum:
+                  - optical_z
+                depth_min_m:
+                  type: number
+                  minimum: 0
+                depth_max_m:
+                  type: number
+                  minimum: 0
+                invalid_depth_rule:
+                  type: string
+                  min_length: 1
+                T_body_frd_from_camera_optical:
+                  type: matrix
+                  rows: 4
+                  columns: 4
+                  items:
+                    type: number
+                extrinsic_source:
+                  type: string
+                  min_length: 1
+              required:
+              - K
+              - width
+              - height
+              - distortion
+              - distortion_model
+              - camera_info_source_ns
+              - native_frame_id
+              - source_topic
+              - horizontal_fov_deg
+              - vertical_fov_deg
+              - fov_source
+              - registered_rgb_depth
+              - version
+              - depth_convention
+              - depth_min_m
+              - depth_max_m
+              - invalid_depth_rule
+              - T_body_frd_from_camera_optical
+              - extrinsic_source
+              extra: false
+            vehicle_estimate:
+              type: record
+              members:
+                status:
+                  type: string
+                  enum:
+                  - available
+                  - unavailable
+                source:
+                  type: string
+                  enum:
+                  - PX4_MavlinkDirect
+                run_id:
+                  type: string
+                  min_length: 1
+                uav_id:
+                  type: string
+                  min_length: 1
+                clock_epoch:
+                  type: string
+                  min_length: 1
+                source_sim_ns:
+                  type: integer
+                  minimum: 0
+                  nullable: true
+                available_sim_ns:
+                  type: integer
+                  minimum: 0
+                reason:
+                  type: string
+                  min_length: 1
+                position_enu_m:
+                  type: vector
+                  length: 3
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                velocity_enu_m_s:
+                  type: vector
+                  length: 3
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                attitude_body_frd_to_world_enu_xyzw:
+                  type: vector
+                  length: 4
+                  items:
+                    type: number
+                    minimum: -1.0
+                    maximum: 1.0
+                attitude_source_sim_ns:
+                  type: integer
+                  minimum: 0
+                source_clock:
+                  type: string
+                  min_length: 1
+                clock_map:
+                  type: record
+                  members:
+                    source_anchor_ns:
+                      type: integer
+                      minimum: 0
+                    native_anchor_ns:
+                      type: integer
+                      minimum: 0
+                    method:
+                      type: string
+                      min_length: 1
+                    uncertainty_ns:
+                      type: integer
+                      minimum: 0
+                      nullable: true
+                    source_resolution_ns:
+                      type: integer
+                      minimum: 1
+                    mapping_assumption:
+                      type: string
+                      min_length: 1
+                    clock_epoch:
+                      type: string
+                      min_length: 1
+                    source_clock:
+                      type: string
+                      min_length: 1
+                    residual_ns:
+                      type: integer
+                      minimum: -1000000
+                      maximum: 1000000
+                      nullable: true
+                  required:
+                  - source_anchor_ns
+                  - native_anchor_ns
+                  - method
+                  - uncertainty_ns
+                  - source_resolution_ns
+                  - mapping_assumption
+                  - clock_epoch
+                  - source_clock
+                  - residual_ns
+                  extra: false
+                origin_version:
+                  type: string
+                  min_length: 1
+                local_ned_origin_world_enu_m:
+                  type: vector
+                  length: 3
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                height_datum:
+                  type: string
+                  enum:
+                  - amsl
+                origin_source:
+                  type: string
+                  enum:
+                  - GPS_GLOBAL_ORIGIN
+                source_messages:
+                  type: array
+                  items:
+                    type: record
+                    members:
+                      message_name:
+                        type: string
+                        enum:
+                        - LOCAL_POSITION_NED
+                        - ATTITUDE_QUATERNION
+                      fields:
+                        type: record
+                        members:
+                          time_boot_ms:
+                            type: integer
+                            minimum: 0
+                          x:
+                            type: number
+                          y:
+                            type: number
+                          z:
+                            type: number
+                          vx:
+                            type: number
+                          vy:
+                            type: number
+                          vz:
+                            type: number
+                          q1:
+                            type: number
+                          q2:
+                            type: number
+                          q3:
+                            type: number
+                          q4:
+                            type: number
+                        required:
+                        - time_boot_ms
+                        extra: false
+                      px4_instance:
+                        type: integer
+                        minimum: 0
+                      system_id:
+                        type: integer
+                        minimum: 1
+                        maximum: 255
+                      component_id:
+                        type: integer
+                        enum:
+                        - 1
+                      received_wall_time:
+                        type: integer
+                        minimum: 0
+                      available_native_ns:
+                        type: integer
+                        minimum: 0
+                      clock_epoch:
+                        type: string
+                        min_length: 1
+                      run_id:
+                        type: string
+                        min_length: 1
+                      source_ns:
+                        type: integer
+                        minimum: 0
+                    required:
+                    - message_name
+                    - fields
+                    - px4_instance
+                    - system_id
+                    - component_id
+                    - received_wall_time
+                    - available_native_ns
+                    - clock_epoch
+                    - run_id
+                    - source_ns
+                    extra: false
+                  min_length: 2
+                  max_length: 2
+                horizontal_sigma_m:
+                  type: number
+                  minimum: 0
+                  nullable: true
+              required:
+              - status
+              - source
+              - run_id
+              - uav_id
+              - clock_epoch
+              - source_sim_ns
+              - available_sim_ns
+              extra: false
+            localization_status:
+              type: string
+              enum:
+              - available
+              - unavailable
+            localization_reason:
+              type: string
+              min_length: 1
+              nullable: true
+            rgb_sha256:
+              type: string
+              min_length: 64
+              max_length: 64
+            sensing_model:
+              type: string
+              enum:
+              - gazebo_geometric_rgbd
+            physical_ranging:
+              type: boolean
+              enum:
+              - false
+          required:
+          - run_id
+          - uav_id
+          - sensor_id
+          - frame_id
+          - source
+          - source_clock
+          - source_topic
+          - native_frame_id
+          - source_time
+          - clock_epoch
+          - observed_at
+          - depth_observed_at
+          - available_sim_ns
+          - received_wall_time
+          - coordinate_frame
+          - calibration
+          - vehicle_estimate
+          - localization_status
+          - localization_reason
+          - rgb_sha256
+          - sensing_model
+          - physical_ranging
+          extra: false
+        blobs:
+          type: record
+          members:
+            rgb:
+              type: record
+              members:
+                bytes:
+                  type: integer
+                  minimum: 1
+                  maximum: 67108864
+                sha256:
+                  type: string
+                  min_length: 64
+                  max_length: 64
+                encoding:
+                  type: string
+                  enum:
+                  - png
+                  - zlib-float32-le-metres
+              required:
+              - bytes
+              - sha256
+              - encoding
+              extra: false
+            depth:
+              type: record
+              members:
+                bytes:
+                  type: integer
+                  minimum: 1
+                  maximum: 67108864
+                sha256:
+                  type: string
+                  min_length: 64
+                  max_length: 64
+                encoding:
+                  type: string
+                  enum:
+                  - png
+                  - zlib-float32-le-metres
+              required:
+              - bytes
+              - sha256
+              - encoding
+              extra: false
+          required:
+          - rgb
+          - depth
+          extra: false
+        available_ns:
+          type: integer
+          minimum: 0
+        kernel_command_id:
+          type: string
+          min_length: 1
+      required:
+      - status
+      - available_ns
+      - kernel_command_id
+      extra: false
+  - id: adapters.px4_gazebo.capture_read_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        frame_id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - rgb
+          - depth
+        offset:
+          type: integer
+          minimum: 0
+        max_bytes:
+          type: integer
+          minimum: 1
+          maximum: 262144
+      required:
+      - entity
+      - frame_id
+      - kind
+      - offset
+      - max_bytes
+      extra: false
+    result_schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - succeeded
+          - pending
+          - unavailable
+        reason:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        frame_id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - rgb
+          - depth
+        offset:
+          type: integer
+          minimum: 0
+        total_bytes:
+          type: integer
+          minimum: 1
+          maximum: 67108864
+        data_base64:
+          type: string
+          max_length: 349528
+        eof:
+          type: boolean
+        available_ns:
+          type: integer
+          minimum: 0
+        kernel_command_id:
+          type: string
+          min_length: 1
+      required:
+      - status
+      - available_ns
+      - kernel_command_id
+      extra: false
   - id: adapters.px4_gazebo.disarm
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.disarm_cancel_v1
     kind: command
     schema:
       type: record
@@ -312,7 +1037,172 @@ registry:
           minimum: 0
       required: []
       extra: false
+  - id: adapters.px4_gazebo.goto_cancel_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        position_enu:
+          type: vector
+          length: 3
+          items:
+            type: number
+            minimum: -1.0e+300
+            maximum: 1.0e+300
+        yaw_deg:
+          type: number
+      required:
+      - entity
+      - position_enu
+      - yaw_deg
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
   - id: adapters.px4_gazebo.hold
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.hold_cancel_v1
     kind: command
     schema:
       type: record
@@ -466,6 +1356,308 @@ registry:
           minimum: 0
       required: []
       extra: false
+  - id: adapters.px4_gazebo.land_cancel_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.payload_release_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        package_id:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      - package_id
+      extra: false
+    result_schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - succeeded
+          - rejected
+        reason:
+          type: string
+          min_length: 1
+        ack:
+          type: record
+          members:
+            status:
+              type: string
+              enum:
+              - accepted
+              - rejected
+              - unavailable
+              - failed
+            command_id:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            package_id:
+              type: string
+              min_length: 1
+            sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+          required:
+          - status
+          - command_id
+          - vehicle
+          - package_id
+          - sim_ns
+          extra: false
+        receipt:
+          type: record
+          members:
+            command_id:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            package_id:
+              type: string
+              min_length: 1
+            receiver_id:
+              type: string
+              min_length: 1
+            receipt_id:
+              type: string
+              min_length: 1
+            source:
+              type: string
+              enum:
+              - gazebo_contact_sensor
+            source_topic:
+              type: string
+              min_length: 1
+            clock_epoch:
+              type: string
+              min_length: 1
+            source_clock:
+              type: string
+              enum:
+              - gazebo_sim
+            episode_origin_ns:
+              type: integer
+              minimum: 0
+            contact_start_ns:
+              type: integer
+              minimum: 0
+            contact_end_ns:
+              type: integer
+              minimum: 0
+            contact_start_sim_ns:
+              type: integer
+              minimum: 0
+            contact_end_sim_ns:
+              type: integer
+              minimum: 0
+            contact_duration_ns:
+              type: integer
+              minimum: 0
+          required:
+          - command_id
+          - vehicle
+          - package_id
+          - receiver_id
+          - receipt_id
+          - source
+          - source_topic
+          - clock_epoch
+          - source_clock
+          - episode_origin_ns
+          - contact_start_ns
+          - contact_end_ns
+          - contact_start_sim_ns
+          - contact_end_sim_ns
+          - contact_duration_ns
+          extra: false
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - status
+      extra: false
+  - id: adapters.px4_gazebo.payload_status_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        package_id:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      - package_id
+      extra: false
+    result_schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - succeeded
+          - rejected
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            vehicle:
+              type: string
+              min_length: 1
+            package_id:
+              type: string
+              min_length: 1
+            clock_epoch:
+              type: string
+              min_length: 1
+            status:
+              type: string
+              enum:
+              - attached
+              - detached
+              - unavailable
+            released:
+              type: boolean
+            source:
+              type: string
+              enum:
+              - gazebo_detachable_joint
+            source_clock:
+              type: string
+              enum:
+              - episode_sim
+              - null
+              nullable: true
+            source_time_ns:
+              type: integer
+              minimum: 0
+              nullable: true
+            observed_sim_ns:
+              type: integer
+              minimum: 0
+            command_id:
+              type: string
+              min_length: 1
+              nullable: true
+            reason:
+              type: string
+              min_length: 1
+            release_interval_ns:
+              type: vector
+              length: 2
+              items:
+                type: integer
+                minimum: 0
+          required:
+          - vehicle
+          - package_id
+          - clock_epoch
+          - status
+          - released
+          - source
+          - source_clock
+          - source_time_ns
+          - observed_sim_ns
+          - command_id
+          extra: false
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - status
+      extra: false
   - id: adapters.px4_gazebo.takeoff
     kind: command
     schema:
@@ -546,6 +1738,615 @@ registry:
           minimum: 0
       required: []
       extra: false
+  - id: adapters.px4_gazebo.takeoff_cancel_v1
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        altitude_m:
+          type: number
+      required:
+      - entity
+      - altitude_m
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.capture_chunk_v1
+    kind: event
+    schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - succeeded
+          - pending
+          - unavailable
+        reason:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        frame_id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - rgb
+          - depth
+        offset:
+          type: integer
+          minimum: 0
+        total_bytes:
+          type: integer
+          minimum: 1
+          maximum: 67108864
+        data_base64:
+          type: string
+          max_length: 349528
+        eof:
+          type: boolean
+        available_ns:
+          type: integer
+          minimum: 0
+        kernel_command_id:
+          type: string
+          min_length: 1
+      required:
+      - status
+      - available_ns
+      - kernel_command_id
+      extra: false
+  - id: adapters.px4_gazebo.capture_frame_v1
+    kind: event
+    schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - succeeded
+          - pending
+          - unavailable
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            run_id:
+              type: string
+              min_length: 1
+            uav_id:
+              type: string
+              min_length: 1
+            sensor_id:
+              type: string
+              min_length: 1
+            frame_id:
+              type: string
+              min_length: 1
+            source:
+              type: string
+              enum:
+              - gazebo_transport
+            source_clock:
+              type: string
+              enum:
+              - gazebo_sim
+            source_topic:
+              type: string
+              min_length: 1
+            native_frame_id:
+              type: string
+              min_length: 1
+            source_time:
+              type: integer
+              minimum: 0
+            clock_epoch:
+              type: string
+              min_length: 1
+            observed_at:
+              type: integer
+              minimum: 0
+            depth_observed_at:
+              type: integer
+              minimum: 0
+            available_sim_ns:
+              type: integer
+              minimum: 0
+            received_wall_time:
+              type: integer
+              minimum: 0
+            coordinate_frame:
+              type: string
+              enum:
+              - camera_optical
+            calibration:
+              type: record
+              members:
+                K:
+                  type: vector
+                  length: 9
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                width:
+                  type: integer
+                  minimum: 1
+                  maximum: 4096
+                height:
+                  type: integer
+                  minimum: 1
+                  maximum: 4096
+                distortion:
+                  type: array
+                  items:
+                    type: number
+                  max_length: 16
+                distortion_model:
+                  type: string
+                  enum:
+                  - plumb_bob
+                  - rational_polynomial
+                  - equidistant
+                camera_info_source_ns:
+                  type: integer
+                  minimum: 0
+                native_frame_id:
+                  type: string
+                  min_length: 1
+                source_topic:
+                  type: string
+                  min_length: 1
+                horizontal_fov_deg:
+                  type: number
+                  minimum: 0
+                  maximum: 180
+                vertical_fov_deg:
+                  type: number
+                  minimum: 0
+                  maximum: 180
+                fov_source:
+                  type: string
+                  min_length: 1
+                registered_rgb_depth:
+                  type: boolean
+                  enum:
+                  - true
+                version:
+                  type: string
+                  min_length: 1
+                depth_convention:
+                  type: string
+                  enum:
+                  - optical_z
+                depth_min_m:
+                  type: number
+                  minimum: 0
+                depth_max_m:
+                  type: number
+                  minimum: 0
+                invalid_depth_rule:
+                  type: string
+                  min_length: 1
+                T_body_frd_from_camera_optical:
+                  type: matrix
+                  rows: 4
+                  columns: 4
+                  items:
+                    type: number
+                extrinsic_source:
+                  type: string
+                  min_length: 1
+              required:
+              - K
+              - width
+              - height
+              - distortion
+              - distortion_model
+              - camera_info_source_ns
+              - native_frame_id
+              - source_topic
+              - horizontal_fov_deg
+              - vertical_fov_deg
+              - fov_source
+              - registered_rgb_depth
+              - version
+              - depth_convention
+              - depth_min_m
+              - depth_max_m
+              - invalid_depth_rule
+              - T_body_frd_from_camera_optical
+              - extrinsic_source
+              extra: false
+            vehicle_estimate:
+              type: record
+              members:
+                status:
+                  type: string
+                  enum:
+                  - available
+                  - unavailable
+                source:
+                  type: string
+                  enum:
+                  - PX4_MavlinkDirect
+                run_id:
+                  type: string
+                  min_length: 1
+                uav_id:
+                  type: string
+                  min_length: 1
+                clock_epoch:
+                  type: string
+                  min_length: 1
+                source_sim_ns:
+                  type: integer
+                  minimum: 0
+                  nullable: true
+                available_sim_ns:
+                  type: integer
+                  minimum: 0
+                reason:
+                  type: string
+                  min_length: 1
+                position_enu_m:
+                  type: vector
+                  length: 3
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                velocity_enu_m_s:
+                  type: vector
+                  length: 3
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                attitude_body_frd_to_world_enu_xyzw:
+                  type: vector
+                  length: 4
+                  items:
+                    type: number
+                    minimum: -1.0
+                    maximum: 1.0
+                attitude_source_sim_ns:
+                  type: integer
+                  minimum: 0
+                source_clock:
+                  type: string
+                  min_length: 1
+                clock_map:
+                  type: record
+                  members:
+                    source_anchor_ns:
+                      type: integer
+                      minimum: 0
+                    native_anchor_ns:
+                      type: integer
+                      minimum: 0
+                    method:
+                      type: string
+                      min_length: 1
+                    uncertainty_ns:
+                      type: integer
+                      minimum: 0
+                      nullable: true
+                    source_resolution_ns:
+                      type: integer
+                      minimum: 1
+                    mapping_assumption:
+                      type: string
+                      min_length: 1
+                    clock_epoch:
+                      type: string
+                      min_length: 1
+                    source_clock:
+                      type: string
+                      min_length: 1
+                    residual_ns:
+                      type: integer
+                      minimum: -1000000
+                      maximum: 1000000
+                      nullable: true
+                  required:
+                  - source_anchor_ns
+                  - native_anchor_ns
+                  - method
+                  - uncertainty_ns
+                  - source_resolution_ns
+                  - mapping_assumption
+                  - clock_epoch
+                  - source_clock
+                  - residual_ns
+                  extra: false
+                origin_version:
+                  type: string
+                  min_length: 1
+                local_ned_origin_world_enu_m:
+                  type: vector
+                  length: 3
+                  items:
+                    type: number
+                    minimum: -1.0e+300
+                    maximum: 1.0e+300
+                height_datum:
+                  type: string
+                  enum:
+                  - amsl
+                origin_source:
+                  type: string
+                  enum:
+                  - GPS_GLOBAL_ORIGIN
+                source_messages:
+                  type: array
+                  items:
+                    type: record
+                    members:
+                      message_name:
+                        type: string
+                        enum:
+                        - LOCAL_POSITION_NED
+                        - ATTITUDE_QUATERNION
+                      fields:
+                        type: record
+                        members:
+                          time_boot_ms:
+                            type: integer
+                            minimum: 0
+                          x:
+                            type: number
+                          y:
+                            type: number
+                          z:
+                            type: number
+                          vx:
+                            type: number
+                          vy:
+                            type: number
+                          vz:
+                            type: number
+                          q1:
+                            type: number
+                          q2:
+                            type: number
+                          q3:
+                            type: number
+                          q4:
+                            type: number
+                        required:
+                        - time_boot_ms
+                        extra: false
+                      px4_instance:
+                        type: integer
+                        minimum: 0
+                      system_id:
+                        type: integer
+                        minimum: 1
+                        maximum: 255
+                      component_id:
+                        type: integer
+                        enum:
+                        - 1
+                      received_wall_time:
+                        type: integer
+                        minimum: 0
+                      available_native_ns:
+                        type: integer
+                        minimum: 0
+                      clock_epoch:
+                        type: string
+                        min_length: 1
+                      run_id:
+                        type: string
+                        min_length: 1
+                      source_ns:
+                        type: integer
+                        minimum: 0
+                    required:
+                    - message_name
+                    - fields
+                    - px4_instance
+                    - system_id
+                    - component_id
+                    - received_wall_time
+                    - available_native_ns
+                    - clock_epoch
+                    - run_id
+                    - source_ns
+                    extra: false
+                  min_length: 2
+                  max_length: 2
+                horizontal_sigma_m:
+                  type: number
+                  minimum: 0
+                  nullable: true
+              required:
+              - status
+              - source
+              - run_id
+              - uav_id
+              - clock_epoch
+              - source_sim_ns
+              - available_sim_ns
+              extra: false
+            localization_status:
+              type: string
+              enum:
+              - available
+              - unavailable
+            localization_reason:
+              type: string
+              min_length: 1
+              nullable: true
+            rgb_sha256:
+              type: string
+              min_length: 64
+              max_length: 64
+            sensing_model:
+              type: string
+              enum:
+              - gazebo_geometric_rgbd
+            physical_ranging:
+              type: boolean
+              enum:
+              - false
+          required:
+          - run_id
+          - uav_id
+          - sensor_id
+          - frame_id
+          - source
+          - source_clock
+          - source_topic
+          - native_frame_id
+          - source_time
+          - clock_epoch
+          - observed_at
+          - depth_observed_at
+          - available_sim_ns
+          - received_wall_time
+          - coordinate_frame
+          - calibration
+          - vehicle_estimate
+          - localization_status
+          - localization_reason
+          - rgb_sha256
+          - sensing_model
+          - physical_ranging
+          extra: false
+        blobs:
+          type: record
+          members:
+            rgb:
+              type: record
+              members:
+                bytes:
+                  type: integer
+                  minimum: 1
+                  maximum: 67108864
+                sha256:
+                  type: string
+                  min_length: 64
+                  max_length: 64
+                encoding:
+                  type: string
+                  enum:
+                  - png
+                  - zlib-float32-le-metres
+              required:
+              - bytes
+              - sha256
+              - encoding
+              extra: false
+            depth:
+              type: record
+              members:
+                bytes:
+                  type: integer
+                  minimum: 1
+                  maximum: 67108864
+                sha256:
+                  type: string
+                  min_length: 64
+                  max_length: 64
+                encoding:
+                  type: string
+                  enum:
+                  - png
+                  - zlib-float32-le-metres
+              required:
+              - bytes
+              - sha256
+              - encoding
+              extra: false
+          required:
+          - rgb
+          - depth
+          extra: false
+        available_ns:
+          type: integer
+          minimum: 0
+        kernel_command_id:
+          type: string
+          min_length: 1
+      required:
+      - status
+      - available_ns
+      - kernel_command_id
+      extra: false
   - id: adapters.px4_gazebo.contact
     kind: event
     schema:
@@ -574,6 +2375,189 @@ registry:
       - topic
       - collision1
       - collision2
+      - available_ns
+      extra: false
+  - id: adapters.px4_gazebo.payload_release_ack_v1
+    kind: event
+    schema:
+      type: record
+      members:
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - unavailable
+          - failed
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        package_id:
+          type: string
+          min_length: 1
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        available_ns:
+          type: integer
+          minimum: 0
+        kernel_command_id:
+          type: string
+          min_length: 1
+      required:
+      - status
+      - command_id
+      - vehicle
+      - package_id
+      - sim_ns
+      - available_ns
+      - kernel_command_id
+      extra: false
+  - id: adapters.px4_gazebo.payload_state_v1
+    kind: event
+    schema:
+      type: record
+      members:
+        vehicle:
+          type: string
+          min_length: 1
+        package_id:
+          type: string
+          min_length: 1
+        clock_epoch:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - attached
+          - detached
+          - unavailable
+        released:
+          type: boolean
+        source:
+          type: string
+          enum:
+          - gazebo_detachable_joint
+        source_clock:
+          type: string
+          enum:
+          - episode_sim
+          - null
+          nullable: true
+        source_time_ns:
+          type: integer
+          minimum: 0
+          nullable: true
+        observed_sim_ns:
+          type: integer
+          minimum: 0
+        command_id:
+          type: string
+          min_length: 1
+          nullable: true
+        reason:
+          type: string
+          min_length: 1
+        release_interval_ns:
+          type: vector
+          length: 2
+          items:
+            type: integer
+            minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - vehicle
+      - package_id
+      - clock_epoch
+      - status
+      - released
+      - source
+      - source_clock
+      - source_time_ns
+      - observed_sim_ns
+      - command_id
+      - available_ns
+      extra: false
+  - id: adapters.px4_gazebo.receiver_receipt_v1
+    kind: event
+    schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        package_id:
+          type: string
+          min_length: 1
+        receiver_id:
+          type: string
+          min_length: 1
+        receipt_id:
+          type: string
+          min_length: 1
+        source:
+          type: string
+          enum:
+          - gazebo_contact_sensor
+        source_topic:
+          type: string
+          min_length: 1
+        clock_epoch:
+          type: string
+          min_length: 1
+        source_clock:
+          type: string
+          enum:
+          - gazebo_sim
+        episode_origin_ns:
+          type: integer
+          minimum: 0
+        contact_start_ns:
+          type: integer
+          minimum: 0
+        contact_end_ns:
+          type: integer
+          minimum: 0
+        contact_start_sim_ns:
+          type: integer
+          minimum: 0
+        contact_end_sim_ns:
+          type: integer
+          minimum: 0
+        contact_duration_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - command_id
+      - vehicle
+      - package_id
+      - receiver_id
+      - receipt_id
+      - source
+      - source_topic
+      - clock_epoch
+      - source_clock
+      - episode_origin_ns
+      - contact_start_ns
+      - contact_end_ns
+      - contact_start_sim_ns
+      - contact_end_sim_ns
+      - contact_duration_ns
       - available_ns
       extra: false
 entities:

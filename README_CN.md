@@ -131,19 +131,32 @@ flowchart LR
     J --> V["三维城市 · 关系图 · 指标 · 回放"]
 ```
 
-- **统一时钟。** 各领域插件与智能体通过同一个离散事件运行时协作。
+- **统一时钟。** 各领域插件与智能体通过同一个离散事件运行时（`aerokernel`）协作。
 - **每个事实只有一个写入者。** 算法提出动作，由负责该状态的引擎执行命令并提交结果。
+- **内置高加速比调度核心替代 Gazebo，且支持外部 PX4 / Gazebo 可选切换。** 默认使用内置 `AeroKernel + kinematic` 核心调度引擎，在离散事件步长上解析计算飞行轨迹，直接替代 Gazebo 实现 10×–20× 以上的仿真加速比（`pacing: fast`）；在工作台（`配置 → 执行组件` 或 `场景控制项`）中，可按需将飞行物理后端切换为 `px4_gazebo`，接入外部 PX4 SITL + Gazebo 锁步飞控容器服务。
 - **从记录回放。** 查看已记录的状态和智能体决策，无需重新运行物理仿真、相机或模型调用。
-- **AeroGraph 类型系统。** 按类型定义实体、关系与规则；项目自带的快照无需另行安装 AeroGraph。
+- **强制复用 AeroGraph 本体与受控扩充。** 所有场景注册表必须由 AeroGraph 编译器生成（校验 `aerograph-compiler/1` 版本与源文件 `descriptors` 溯源，拒绝手写或无溯源占位快照）；支持通过 `registry.types` / `fields` / `messages` 在 AeroGraph 之上后续扩充领域定义，但所有本地扩展类型必须无环地继承自已编译的 AeroGraph 类型体系。
 
-[架构](docs/concepts/architecture.md) · [场景插件](docs/guides/scenario-plugins.md) · [引擎插件与原生仿真器](docs/guides/plugins.md) · [设计说明](docs/design-notes.md)
+[架构](docs/concepts/architecture.md) · [AeroGraph 本体注册表](docs/concepts/aerograph.md) · [场景插件](docs/guides/scenario-plugins.md) · [引擎插件与原生仿真器](docs/guides/plugins.md) · [设计说明](docs/design-notes.md)
 
-## 添加自己的场景插件
+## 多场景插件化体系（全流程）
 
-用 `ScenarioPlugin` 打包模板和具名参数钩子，通过 `aeroagentsim.scenarios` 发现。
+平台通过 `aeroagentsim.extensions.discover` 统一准入 **8 大 Python Entry-Point 插件族**：
+
+| 插件入口组 (Entry-Point Group) | 契约 / API 版本 | 插件贡献内容 |
+| :--- | :--- | :--- |
+| `aeroagentsim.scenarios` | `ScenarioPlugin` (`API_VERSION = 1`) | 场景模板（`TemplateSource`）与确定性参数钩子（`ApplyHook`） |
+| `aeroagentsim.engines` | `build(EngineBuild) -> Engine` | 运行时领域、智能体或原生仿真器引擎（`kinematic`、`lowalt_tasks`、`px4_gazebo`、`sumo`、`ns3` 等） |
+| `aeroagentsim.algorithms` | 4 类算法槽协议 | 任务分配（`allocation`）、航线规划（`path_planning`）、冲突消解（`conflict_resolution`）、充电策略（`charging`） |
+| `aeroagentsim.models` | `ConsumptionModel` | 确定性能耗计算模型（`linear`、`wind`） |
+| `aeroagentsim.metrics` | `MetricPlugin` (`API_VERSION = 1`) | 基于记录消息的 KPI 归约器与中英双语指标描述符 |
+| `aeroagentsim.presentations` | `PresentationPlugin` (`API_VERSION = 1`) | 中英双语词汇、事件叙事模板、空间姿态映射与生效控制项读取器（`CONTROL_READERS`） |
+| `aeroagentsim.preparers` | `PreparerPlugin` (`API_VERSION = 1`) | 面向 `aeroagentsim.scenario/v2` 的确定性种子后场景准备器 |
+| `aeroagentsim.assistant_operations` | `AssistantOperationPlugin` (`API_VERSION = 1`) | 自然语言助手命名空间操作、参数 Schema、前置条件与纯编译器 |
+
+用 `ScenarioPlugin` 打包模板和具名参数钩子，通过 `aeroagentsim.scenarios` 自动发现（参见示例包 [`examples/plugins/aeroagentsim-example-scenario`](examples/plugins/aeroagentsim-example-scenario/README.md) 及 `aeroagentsim plugins` 命令）。
 内置场景使用同一契约，外部包贡献模板和参数钩子无需修改平台代码。
-v1 契约不注册展示/渲染提供方、助手操作族或注册表覆盖层；这些仍是计划中的扩展点，当前支持的是声明式 `presentation`/`event_narratives` 绑定和模板控件。
-从[场景插件指南](docs/guides/scenario-plugins.md)和[插件契约](docs/reference/plugin-contracts.md)开始。
+从[场景插件指南](docs/guides/scenario-plugins.md)、[扩展准入规则](docs/reference/extension-admission.md)和[插件契约](docs/reference/plugin-contracts.md)开始。
 
 ## 代码在哪里
 

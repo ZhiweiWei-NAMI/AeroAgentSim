@@ -271,7 +271,8 @@ def load_registry(
     ):
         raise ScenarioError(
             f"registry: must be compiled from AeroGraph ({revision}); hand-written "
-            "or stub snapshots without AeroGraph provenance are rejected"
+            "or stub snapshots without AeroGraph provenance are rejected / "
+            f"注册表必须由 AeroGraph 编译生成（{revision}）；拒绝无 AeroGraph 溯源的手写或占位快照"
         )
     types = list(compiled.registry.types)
     fields = list(compiled.registry.fields)
@@ -289,7 +290,8 @@ def load_registry(
         if not descriptor.parents:
             raise ScenarioError(
                 f"registry.types.{descriptor.id}: local extension types must "
-                "inherit from the compiled AeroGraph hierarchy"
+                "inherit from the compiled AeroGraph hierarchy / "
+                f"本地扩展类型 {descriptor.id} 必须继承自已编译的 AeroGraph 本体类型体系"
             )
         local_types.append(descriptor)
         types.append(descriptor)
@@ -300,7 +302,8 @@ def load_registry(
             if parent not in known:
                 raise ScenarioError(
                     f"registry.types.{descriptor.id}: parent {parent!r} is not "
-                    "in the compiled AeroGraph hierarchy"
+                    "in the compiled AeroGraph hierarchy / "
+                    f"本地扩展类型 {descriptor.id} 的父类型 {parent!r} 不在已编译的 AeroGraph 类型体系中"
                 )
     rooted: set[str] = set(compiled_type_ids)
     progress = True
@@ -318,7 +321,8 @@ def load_registry(
         ):
             raise ScenarioError(
                 f"registry.types.{descriptor.id}: local extension types must "
-                "inherit acyclically from the compiled AeroGraph hierarchy"
+                "inherit acyclically from the compiled AeroGraph hierarchy / "
+                f"本地扩展类型 {descriptor.id} 必须无环地继承自已编译的 AeroGraph 类型体系"
             )
     for item in seq(registry_spec.get("fields", []), "registry.fields"):
         item = contract(item, "registry.fields[]", {"id", "type", "schema", "metadata"})

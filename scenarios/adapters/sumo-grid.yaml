@@ -4,13 +4,16 @@ registry:
   snapshot: authored-registry.json
   types:
   - id: e1:RoadVehicle
-    parents: []
+    parents:
+    - oo:ModelObject
     abstract: false
   - id: e1:Person
-    parents: []
+    parents:
+    - oo:ModelObject
     abstract: false
   - id: e1:TrafficLight
-    parents: []
+    parents:
+    - oo:ModelObject
     abstract: false
   fields:
   - id: e1.sumo.vehicle.position

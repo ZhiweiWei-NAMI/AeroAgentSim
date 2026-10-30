@@ -58,6 +58,12 @@ class PX4GazeboEngine(LockstepEngine):
 
     def __init__(self, context: EngineBuild) -> None:
         config = context.config
+        if "fields" not in config:
+            raise ValueError(
+                "px4_gazebo.config requires PX4/Gazebo telemetry 'fields', "
+                "'reset', 'vehicles', 'host', and 'port' / "
+                "需要配置外部 PX4/Gazebo 容器参数（fields、reset、vehicles、host、port）"
+            )
         self.fields = obj(config["fields"])
         if not self.fields or set(self.fields) - FIELDS.keys():
             raise ValueError(
