@@ -109,7 +109,7 @@ aerokernel = {path = "./aerokernel", editable = true}
 "aeroagentsim" = ["template_data/**/*", "demo_data/**/*"]
 "aeroagentsim.observations" = ["viewer_bridge.mjs"]
 "aeroagentsim.packs.traffic_accident" = ["camera.html"]
-"aeroagentsim.packs.lowalt" = ["registry.snapshot.json", "cooperation.snapshot.json"]
+"aeroagentsim.packs.lowalt" = ["registry.overlay.yaml", "registry.snapshot.json", "cooperation.snapshot.json"]
 "aeroagentsim.authoring" = ["assets/*.xml", "assets/*.json", "assets/*.txt"]
 
 [tool.ruff]

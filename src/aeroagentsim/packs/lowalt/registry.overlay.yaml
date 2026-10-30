@@ -1,0 +1,1497 @@
+types:
+- id: lowalt:UAV
+  parents:
+  - oo:UAV
+  abstract: false
+- id: lowalt:Site
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: lowalt:Customer
+  parents:
+  - lowalt:Site
+  abstract: false
+- id: lowalt:Restaurant
+  parents:
+  - lowalt:Site
+  abstract: false
+- id: lowalt:Field
+  parents:
+  - lowalt:Site
+  abstract: false
+- id: lowalt:Vertiport
+  parents:
+  - lowalt:Site
+  - oo:Facility
+  abstract: false
+- id: lowalt:Depot
+  parents:
+  - lowalt:Vertiport
+  abstract: false
+- id: lowalt:ChargingPad
+  parents:
+  - lowalt:Site
+  abstract: false
+- id: lowalt:AirspaceZone
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: lowalt:Task
+  parents:
+  - oo:Task
+  abstract: false
+- id: lowalt:FoodOrder
+  parents:
+  - lowalt:Task
+  abstract: false
+- id: lowalt:Environment
+  parents:
+  - oo:ModelObject
+  abstract: false
+fields:
+- id: lowalt.position
+  type: lowalt:UAV
+  schema: &id001
+    type: vector
+    length: 3
+    items: &id002
+      type: number
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.velocity
+  type: lowalt:UAV
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m/s
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.soc
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.capacity_j
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.motion_energy_j
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.payload_kg
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.payload_capacity_kg
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.energy_used_j
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.distance_m
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.vehicle_class
+  type: lowalt:UAV
+  schema: &id003
+    type: string
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.wind_mps
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m/s
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.wind_limit_mps
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m/s
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.conflict_partner
+  type: lowalt:UAV
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.conflict_gap_m
+  type: lowalt:UAV
+  schema:
+    type: vector
+    length: 2
+    items: *id002
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.membership
+  type: lowalt:UAV
+  schema: &id004
+    type: array
+    items: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.conflicts
+  type: lowalt:UAV
+  schema: *id004
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.breached_zones
+  type: lowalt:UAV
+  schema: *id004
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.weather_held
+  type: lowalt:UAV
+  schema: &id005
+    type: boolean
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.charging
+  type: lowalt:UAV
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.returning_to_charge
+  type: lowalt:UAV
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.charging_waiting
+  type: lowalt:UAV
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.charging_pad
+  type: lowalt:UAV
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.site_position
+  type: lowalt:Site
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.site_open
+  type: lowalt:Site
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.site_capacity
+  type: lowalt:Site
+  schema: &id006
+    type: integer
+    minimum: 0
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_preparation_s
+  type: lowalt:Restaurant
+  schema: *id002
+  metadata:
+    role: observation
+    unit: s
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_preparation_started_ns
+  type: lowalt:FoodOrder
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_expected_ready_ns
+  type: lowalt:FoodOrder
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_ready_ns
+  type: lowalt:FoodOrder
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_picked_up_ns
+  type: lowalt:FoodOrder
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_delivered_ns
+  type: lowalt:FoodOrder
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.food_deadline_ns
+  type: lowalt:FoodOrder
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.pad_power_w
+  type: lowalt:ChargingPad
+  schema: *id002
+  metadata:
+    role: observation
+    unit: W
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.wind
+  type: lowalt:Environment
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m/s
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+# Weather lives on the lowalt:Environment entity that already carries wind:
+# AeroGraph's oo:PrecipitationField is a separate field-type entity and has no
+# environmental visibility declaration, so a second weather entity system is avoided.
+- id: lowalt.precipitation
+  type: lowalt:Environment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg m-2 s-1
+    time_semantics: canonical computation; half-open validity
+    aerograph: oo:digital_twin.precipitation.waterMassFlux
+    display_unit: mm/h (×3600)
+- id: lowalt.visibility
+  type: lowalt:Environment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    aerograph: he.weather.visibility_m
+- id: lowalt.light
+  type: lowalt:Environment
+  schema:
+    type: string
+    enum:
+    - day
+    - dusk
+  metadata:
+    role: presentation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_id
+  type: lowalt:AirspaceZone
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_kind
+  type: lowalt:AirspaceZone
+  schema:
+    type: string
+    enum:
+    - no_fly
+    - restricted
+    - altitude_band
+    - corridor
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_lower
+  type: lowalt:AirspaceZone
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.zone_upper
+  type: lowalt:AirspaceZone
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.zone_start_ns
+  type: lowalt:AirspaceZone
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_end_ns
+  type: lowalt:AirspaceZone
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_active
+  type: lowalt:AirspaceZone
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_dynamic
+  type: lowalt:AirspaceZone
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_kind
+  type: lowalt:Task
+  schema:
+    type: string
+    enum:
+    - parcel
+    - food
+    - medical
+    - inspection
+    - survey
+    - spraying
+    - passenger
+    - patrol
+    - incident_response
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_state
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_origin
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_destination
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_vehicle
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_payload_kg
+  type: lowalt:Task
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_priority
+  type: lowalt:Task
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_created_ns
+  type: lowalt:Task
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+messages:
+- id: lowalt.food.preparation_started
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      restaurant: *id003
+      ready_ns: *id006
+      provenance: &id007
+        type: record
+        members:
+          message_ids: *id004
+          event_key: *id003
+          parent_event_keys: *id004
+        required:
+        - message_ids
+        extra: false
+    required:
+    - task
+    - restaurant
+    - ready_ns
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - restaurant
+    type_id: lowalt:Restaurant
+- id: lowalt.food.ready
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      restaurant: *id003
+      preparation_s: *id002
+      provenance: *id007
+    required:
+    - task
+    - restaurant
+    - preparation_s
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - restaurant
+    type_id: lowalt:Restaurant
+- id: lowalt.food.preparation_delayed
+  kind: event
+  schema:
+    type: record
+    members:
+      restaurant: *id003
+      delay_s: *id002
+      tasks: *id004
+      provenance: *id007
+    required:
+    - restaurant
+    - delay_s
+    - tasks
+    extra: false
+  subjects:
+  - path:
+    - restaurant
+    type_id: lowalt:Restaurant
+  - path:
+    - tasks
+    - '*'
+    type_id: lowalt:Task
+- id: lowalt.food.delivered
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      destination: *id003
+      deadline_ns: *id006
+      ready_to_delivery_s: *id002
+      on_time: *id005
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - destination
+    - deadline_ns
+    - ready_to_delivery_s
+    - on_time
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+  - path:
+    - destination
+    type_id: lowalt:Site
+- id: lowalt.operator.restaurant_delay
+  kind: event
+  schema:
+    type: record
+    members:
+      restaurant: *id003
+      delay_s:
+        type: number
+        minimum: 0.001
+    required:
+    - restaurant
+    - delay_s
+    extra: false
+  subjects:
+  - path:
+    - restaurant
+    type_id: lowalt:Restaurant
+- id: lowalt.task.created
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      kind: *id003
+      priority: *id006
+      origin: *id003
+      destination: *id003
+      provenance: *id007
+    required:
+    - task
+    - kind
+    - priority
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - origin
+    type_id: lowalt:Site
+  - path:
+    - destination
+    type_id: lowalt:Site
+- id: lowalt.task.assigned
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      algorithm: *id003
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - algorithm
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.task.started
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.task.picked_up
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.task.completed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      latency_s: *id002
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - latency_s
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.task.preempted
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      urgent_task: *id003
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - urgent_task
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.task.resumed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.task.replanned
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      reason: *id003
+      zone: *id003
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - reason
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.inspection.observed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      position: *id001
+      distance_m: *id002
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - position
+    - distance_m
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.spraying.applied
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      position: *id001
+      distance_m: *id002
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - position
+    - distance_m
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.patrol.visited
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      position: *id001
+      provenance: *id007
+    required:
+    - task
+    - vehicle
+    - position
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.site.closed
+  kind: event
+  schema:
+    type: record
+    members:
+      site: *id003
+      provenance: *id007
+    required:
+    - site
+    extra: false
+  subjects:
+  - path:
+    - site
+    type_id: lowalt:Site
+- id: lowalt.operator.close_vertiport
+  kind: event
+  schema:
+    type: record
+    members:
+      site: *id003
+    required:
+    - site
+    extra: false
+  subjects:
+  - path:
+    - site
+    type_id: lowalt:Site
+- id: lowalt.operator.add_urgent_order
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      origin: *id003
+      destination: *id003
+    required:
+    - task
+    - origin
+    - destination
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - origin
+    type_id: lowalt:Site
+  - path:
+    - destination
+    type_id: lowalt:Site
+- id: lowalt.operator.investigate
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      origin: *id003
+      destination: *id003
+    required:
+    - task
+    - origin
+    - destination
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - origin
+    type_id: lowalt:Site
+  - path:
+    - destination
+    type_id: lowalt:Site
+- id: lowalt.operator.change_dropoff
+  kind: event
+  schema:
+    type: record
+    members:
+      task:
+        type: ref
+        target_type: lowalt:Task
+      destination:
+        type: ref
+        target_type: lowalt:Customer
+    required:
+    - task
+    - destination
+    extra: false
+- id: lowalt.operator.prioritize_medical
+  kind: event
+  schema:
+    type: record
+    members:
+      task:
+        type: ref
+        target_type: lowalt:Task
+      priority:
+        type: integer
+        minimum: 101
+        maximum: 1000
+    required:
+    - task
+    - priority
+    extra: false
+- id: lowalt.operator.report_defect
+  kind: event
+  schema:
+    type: record
+    members:
+      task:
+        type: ref
+        target_type: lowalt:Task
+      site:
+        type: ref
+        target_type: lowalt:Site
+    required:
+    - task
+    - site
+    extra: false
+- id: lowalt.operator.pause_spraying
+  kind: event
+  schema:
+    type: record
+    members:
+      task:
+        type: ref
+        target_type: lowalt:Task
+      duration_s:
+        type: number
+        minimum: 1
+        maximum: 120
+    required:
+    - task
+    - duration_s
+    extra: false
+- id: lowalt.operator.close_air_taxi_port
+  kind: event
+  schema:
+    type: record
+    members:
+      site:
+        type: ref
+        target_type: lowalt:Vertiport
+    required:
+    - site
+    extra: false
+- id: lowalt.operator.rejected
+  kind: event
+  schema:
+    type: record
+    members:
+      operation: *id003
+      reason: *id003
+      provenance: *id007
+    required:
+    - operation
+    - reason
+    - provenance
+    extra: false
+- id: lowalt.parcel.dropoff_changed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      previous: *id003
+      destination: *id003
+      provenance: *id007
+    required:
+    - task
+    - previous
+    - destination
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - destination
+    type_id: lowalt:Site
+  - path:
+    - previous
+    type_id: lowalt:Site
+- id: lowalt.medical.prioritized
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      priority: *id006
+      provenance: *id007
+    required:
+    - task
+    - priority
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+- id: lowalt.inspection.defect_reported
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      site: *id003
+      provenance: *id007
+    required:
+    - task
+    - site
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - site
+    type_id: lowalt:Site
+- id: lowalt.spraying.paused
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      until_ns: *id006
+      provenance: *id007
+    required:
+    - task
+    - until_ns
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+- id: lowalt.spraying.resumed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      provenance: *id007
+    required:
+    - task
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+- id: lowalt.energy.swap_started
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+    required:
+    - vehicle
+    - pad
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.energy.swap_finished
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - pad
+    - soc
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.mobility.pad_wait
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      site: *id003
+    required:
+    - task
+    - vehicle
+    - site
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+  - path:
+    - site
+    type_id: lowalt:Site
+- id: lowalt.task.failed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      reason: *id003
+      provenance: *id007
+    required:
+    - task
+    - reason
+    extra: false
+  subjects:
+  - path:
+    - task
+    type_id: lowalt:Task
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.airspace.conflict
+  kind: event
+  schema:
+    type: record
+    members:
+      a: *id003
+      b: *id003
+      horizontal_m: *id002
+      vertical_m: *id002
+    required:
+    - a
+    - b
+    - horizontal_m
+    - vertical_m
+    extra: false
+- id: lowalt.airspace.conflict_resolved
+  kind: event
+  schema:
+    type: record
+    members:
+      a: *id003
+      b: *id003
+      action: *id003
+    required:
+    - a
+    - b
+    - action
+    extra: false
+- id: lowalt.airspace.geofence_entered
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      zone: *id003
+    required:
+    - vehicle
+    - zone
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.airspace.zone_activated
+  kind: event
+  schema:
+    type: record
+    members:
+      zone: *id003
+      reason: *id003
+    required:
+    - zone
+    - reason
+    extra: false
+- id: lowalt.airspace.zone_deactivated
+  kind: event
+  schema:
+    type: record
+    members:
+      zone: *id003
+      reason: *id003
+    required:
+    - zone
+    - reason
+    extra: false
+- id: lowalt.energy.low
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - soc
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.energy.charging_started
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - pad
+    - soc
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.energy.charging_finished
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - pad
+    - soc
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.energy.charging_waiting
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      capacity: *id006
+      occupancy: *id006
+    required:
+    - vehicle
+    - pad
+    - capacity
+    - occupancy
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.weather.hold
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      zone: *id003
+      reason: *id003
+      wind_mps: *id002
+    required:
+    - reason
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.weather.release
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      zone: *id003
+      reason: *id003
+      wind_mps: *id002
+    required:
+    - reason
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.control
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      action: *id003
+      target: *id001
+      until_ns: *id006
+      reason: *id003
+    required:
+    - vehicle
+    - action
+    - reason
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.allocation.request
+  kind: event
+  schema:
+    type: record
+    members:
+      tasks_json: *id003
+      vehicles_json: *id003
+    required:
+    - tasks_json
+    - vehicles_json
+    extra: false
+- id: lowalt.allocation.result
+  kind: event
+  schema:
+    type: record
+    members:
+      assignments_json: *id003
+    required:
+    - assignments_json
+    extra: false
+- id: lowalt.motion.arrived
+  kind: event
+  schema:
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+    required:
+    - entity
+    - position
+    extra: false
+- id: lowalt.motion.move_to
+  kind: command
+  schema:
+    type: record
+    members:
+      entity: *id003
+      target: *id001
+    required:
+    - entity
+    - target
+    extra: false
+  result_schema: &id008
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+      reason: *id003
+    required: []
+    extra: false
+  feedback_schema: *id008
+  cancel_support: false
+- id: lowalt.motion.hold
+  kind: command
+  schema:
+    type: record
+    members:
+      entity: *id003
+    required:
+    - entity
+    extra: false
+  result_schema: *id008
+  feedback_schema: *id008
+  cancel_support: false
+- id: lowalt.motion.stop
+  kind: command
+  schema:
+    type: record
+    members:
+      entity: *id003
+    required:
+    - entity
+    extra: false
+  result_schema: *id008
+  feedback_schema: *id008
+  cancel_support: false
+- id: lowalt.airspace.activate
+  kind: command
+  schema:
+    type: record
+    members:
+      zone: *id003
+      active: *id005
+      reason: *id003
+    required:
+    - zone
+    - active
+    - reason
+    extra: false
+  result_schema:
+    type: record
+    members:
+      zone: *id003
+      active: *id005
+    required:
+    - zone
+    - active
+    extra: false
+  cancel_support: false
+- id: lowalt.energy.return_to_pad
+  kind: command
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      reason: *id003
+    required:
+    - vehicle
+    - reason
+    extra: false
+  result_schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+      reason: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: lowalt.airspace.resolve_conflict
+  kind: command
+  schema:
+    type: record
+    members:
+      a: *id003
+      b: *id003
+    required:
+    - a
+    - b
+    extra: false
+  result_schema:
+    type: record
+    members:
+      a: *id003
+      b: *id003
+      action: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: lowalt.airspace.flight_control
+  kind: command
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      action: *id003
+      reason: *id003
+    required:
+    - vehicle
+    - action
+    - reason
+    extra: false
+  result_schema:
+    type: record
+    members:
+      vehicle: *id003
+      action: *id003
+    required: []
+    extra: false
+  cancel_support: false
