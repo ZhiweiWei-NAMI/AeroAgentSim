@@ -36,7 +36,7 @@ for(const source of sources){
 const reachable=new Set();
 function walk(file){if(reachable.has(file))return;reachable.add(file);for(const next of edges.get(file)??[])walk(next);}
 walk(path.join(root,'src/index.js'));
-const test=file=>/\.(test|spec)\.|\/test-setup\.|(?:fixture|TestSetup)\./.test(file);
+const test=file=>/\.(test|spec)\.|\/test-setup\.|(?:fixture|Fixtures|TestSetup)\./.test(file);
 const relative=file=>path.relative(root,file);
 const exports=[];
 for(const source of sources){

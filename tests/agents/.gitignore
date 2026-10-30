@@ -1,9 +1,0 @@
-.deps/
-.mypy-cache/
-.pytest-tmp*/
-node_modules
-frontend-build/
-llm-journal.jsonl
-runs/
-*.timestamp-*.mjs
-*.timestamp-*.js

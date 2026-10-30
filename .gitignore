@@ -93,8 +93,6 @@ frontend/yarn-error.log*
 # --- Local tooling ---
 .clinerules
 runs/
-tests/agents/runs/
-tests/agents/frontend-build/
 .pytest_tmp/
 containers/*/standalone/**/*metrics*.json
 containers/*/standalone/*.jsonl.gz
