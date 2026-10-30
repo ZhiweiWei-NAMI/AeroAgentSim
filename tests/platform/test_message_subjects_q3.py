@@ -242,7 +242,7 @@ def test_real_nonspatial_completion_in_rest_pages_and_sse_reconnect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     document["registry"]["types"].append(
-        {"id": "q3:Job", "parents": [], "abstract": False}
+        {"id": "q3:Job", "parents": ["oo:ModelObject"], "abstract": False}
     )
     document["registry"]["messages"].append(
         {

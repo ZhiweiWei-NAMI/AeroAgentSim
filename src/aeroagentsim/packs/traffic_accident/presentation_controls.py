@@ -70,6 +70,25 @@ def read_physics_hz(document: Mapping[str, Any]) -> Known | Unavailable:
     })
 
 
+def read_motion_backend(document: Mapping[str, Any]) -> Known | Unavailable:
+    engines = _mapping(document.get("engines"))
+    air = _mapping(engines.get("air_motion"))
+    native = _mapping(engines.get("native_air"))
+    if air and native:
+        return Unavailable("Multiple air-motion owners are ambiguous")
+    if air.get("plugin") == "kinematic" and not native:
+        return known("kinematic", {
+            "reader": "traffic.motion_backend", "engine": "air_motion",
+            "plugin": "kinematic", "replaces": "gazebo",
+        })
+    if native.get("plugin") == "px4_gazebo" and not air:
+        return known("px4_gazebo", {
+            "reader": "traffic.motion_backend", "engine": "native_air",
+            "plugin": "px4_gazebo",
+        })
+    return Unavailable("No supported air-motion owner is pinned")
+
+
 def _wind(document: Mapping[str, Any], axis: int) -> Known | Unavailable:
     engines = _mapping(document.get("engines"))
     motion = _mapping(engines.get("air_motion"))
@@ -124,6 +143,7 @@ CONTROL_READERS = {
     "traffic.accident_time": read_accident_time,
     "traffic.decision_mode": read_decision_mode,
     "traffic.physics_hz": read_physics_hz,
+    "traffic.motion_backend": read_motion_backend,
     "traffic.wind_east": read_wind_east,
     "traffic.wind_north": read_wind_north,
 }

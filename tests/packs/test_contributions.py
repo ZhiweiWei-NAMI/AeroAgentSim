@@ -24,7 +24,7 @@ WIND = "test.environment.velocity"
 
 def add_weather(d: dict[str, Any]) -> None:
     d["registry"]["types"].append(
-        {"id": "test:Environment", "parents": [], "abstract": False}
+        {"id": "test:Environment", "parents": ["oo:ModelObject"], "abstract": False}
     )
     d["registry"]["fields"].append(
         {

@@ -3,7 +3,7 @@ id: nonspatial-task-queue
 registry:
   snapshot: registry.snapshot.json
   types:
-  - {id: example:Task, parents: [], abstract: false}
+  - {id: example:Task, parents: [oo:Task], abstract: false}
   fields:
   - id: example.task.phase
     type: example:Task

@@ -4,7 +4,7 @@ registry:
   snapshot: realtime-registry.snapshot.json
   types:
   - id: aas:TelemetryStream
-    parents: []
+    parents: [oo:ObservationRecord]
     abstract: false
   fields:
   - id: aas.telemetry.value

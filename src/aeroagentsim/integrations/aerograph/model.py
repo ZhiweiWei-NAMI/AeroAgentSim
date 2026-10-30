@@ -187,11 +187,12 @@ _SNAPSHOT_LOCK = threading.RLock()
 
 
 def read_snapshot(path: Path | str) -> CompiledRegistry:
-    """Load snapshot JSON; never consult the live ontology.
+    """Load a compiled snapshot artifact; never consult the live ontology.
 
-    Legacy snapshots carrying an artifact ``digest`` or a plain
-    ``snapshot_id`` are accepted for compatibility; neither is verified and
-    neither is retained.
+    Scenario loading enforces AeroGraph compiler revision and descriptor
+    provenance in ``aeroagentsim.scenario.loader.load_registry``. This reader
+    stays a pure cache of immutable compiled bytes so run artifacts and cache
+    mechanics do not depend on a source checkout.
     """
     # Workspace operations copy the same snapshot into temporary directories.
     # Key immutable descriptors by current bytes, not path/mtime, so relocated
@@ -217,7 +218,7 @@ def _read_snapshot(payload: bytes) -> CompiledRegistry:
         not isinstance(data, dict)
         or not {"format", "compiler_version", "registry", "details"} <= set(data)
         or set(data)
-        - {"format", "compiler_version", "registry", "details", "digest", "snapshot_id"}
+        - {"format", "compiler_version", "registry", "details"}
         or data["format"] != FORMAT
         or data["compiler_version"] != COMPILER_VERSION
     ):

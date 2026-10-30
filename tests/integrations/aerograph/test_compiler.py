@@ -722,12 +722,13 @@ def test_snapshot_roundtrip_pinned_provenance_and_legacy_digest(tmp_path: Path) 
     assert [r["id"] for r in restored.effective_relations("t:Child")] == ["r:x"]
     with pytest.raises(TypeError):
         restored.producer_hints["f:x"]["authority"] = True
-    # Legacy snapshots with an unverified artifact digest still load.
+    # Legacy artifact keys are rejected: the snapshot shape is exact.
     data = json.loads(saved)
     data["digest"] = "0" * 64
     legacy = tmp_path / "legacy.snapshot.json"
     legacy.write_text(json.dumps(data))
-    assert read_snapshot(legacy).to_data() == c.to_data()
+    with pytest.raises(ValueError, match="Unsupported registry snapshot"):
+        read_snapshot(legacy)
     # Shape validation still rejects unsupported formats.
     data.pop("digest")
     data["format"] = "other"

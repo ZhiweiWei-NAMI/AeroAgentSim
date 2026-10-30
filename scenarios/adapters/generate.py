@@ -4,11 +4,11 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from aerokernel import MemoryRegistry
 from aerokernel.values import thaw
 
 from aeroagentsim.adapters.schemas import command_descriptors, event_descriptors
-from aeroagentsim.integrations.aerograph.model import CompiledRegistry
+from aeroagentsim.authoring.inputs import configured_ontology
+from aeroagentsim.integrations.aerograph import Policy, Selection, compile_registry
 
 ROOT = Path(__file__).parent
 SECOND = 1_000_000_000
@@ -24,17 +24,12 @@ def record(members: dict[str, Any]) -> dict[str, Any]:
 
 
 def main() -> None:
-    snapshot = CompiledRegistry(
-        MemoryRegistry(()),
-        {
-            "relations": [],
-            "provenance": {"author": "explicitly authored backend demonstrations"},
-            "normalizations": [],
-            "exclusions": [],
-            "producer_hints": {},
-            "statistics": {},
-            "effective_fields": {},
-        },
+    # Ship an explicitly empty AeroGraph slice: the e1:* types below are local
+    # extensions, never a disconnected hand-written registry root.
+    snapshot = compile_registry(
+        configured_ontology(),
+        Selection(("oo:ModelObject",), (), ()),
+        Policy(excluded_ids=("oo:ModelObject",)),
     )
     snapshot.write_snapshot(ROOT / "authored-registry.json")
     scalar = {"type": "number"}

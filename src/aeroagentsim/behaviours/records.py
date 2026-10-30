@@ -106,7 +106,9 @@ def overlay() -> dict[str, Any]:
         }
     )
     return {
-        "types": [{"id": TYPE, "parents": [], "abstract": False}],
+        # Platform-owned instances are model objects, so the overlay extends
+        # the compiled AeroGraph hierarchy instead of adding a second root.
+        "types": [{"id": TYPE, "parents": ["oo:ModelObject"], "abstract": False}],
         "fields": [
             {
                 "id": PREFIX + name,

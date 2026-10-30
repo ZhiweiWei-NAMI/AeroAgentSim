@@ -19,7 +19,7 @@ def environment_document(
     document: dict[str, Any], mode: str = "calm"
 ) -> dict[str, Any]:
     document["registry"]["types"].append(
-        {"id": "test:Environment", "parents": [], "abstract": False}
+        {"id": "test:Environment", "parents": ["oo:ModelObject"], "abstract": False}
     )
     document["registry"]["fields"].append(
         {

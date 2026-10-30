@@ -65,3 +65,29 @@ it('does not prompt a low-altitude project to install the pack', () => {
   render(<I18nProvider><ComponentsSection {...props(project)} /></I18nProvider>);
   expect(screen.queryByTestId('wb-lowalt-missing')).toBeNull();
 });
+
+it('annotates the built-in kinematic engine as the Gazebo replacement and switches the flight backend', () => {
+  const scenario = { engines: { motion: { plugin: 'kinematic', config: {} }, roads: { plugin: 'sumo', config: {} } } };
+  const project = { ...base, scenario };
+  const view = props(project);
+  render(<I18nProvider><ComponentsSection {...view} /></I18nProvider>);
+  const card = screen.getByTestId('wb-flight-physics');
+  expect(card).toHaveTextContent('Flight Physics / Motion Engine');
+  expect(card).toHaveTextContent('directly replaces Gazebo for high-speed simulation');
+  expect(card).toHaveTextContent('PX4 / Gazebo (px4_gazebo) is an optional external lockstep backend');
+  const backend = screen.getByLabelText('Flight physics backend (motion)');
+  expect(backend).toHaveValue('kinematic');
+  fireEvent.change(backend, { target: { value: 'px4_gazebo' } });
+  expect(view.edit).toHaveBeenCalledWith('/engines/motion/plugin', 'px4_gazebo');
+  expect(screen.queryByTestId('wb-flight-external')).toBeNull();
+  fireEvent.click(screen.getByText('Advanced', { selector: '.wb-form-section > details > summary' }));
+  expect(screen.getByText('replaces Gazebo', { selector: '.wb-tag' })).toBeVisible();
+  expect(screen.getByText('external simulator', { selector: '.wb-tag.warn' })).toBeVisible();
+});
+
+it('explains the external endpoint when the flight engine uses PX4 / Gazebo', () => {
+  const scenario = { engines: { flight: { plugin: 'px4_gazebo', config: {} } } };
+  render(<I18nProvider><ComponentsSection {...props({ ...base, scenario })} /></I18nProvider>);
+  expect(screen.getByLabelText('Flight physics backend (flight)')).toHaveValue('px4_gazebo');
+  expect(screen.getByTestId('wb-flight-external')).toHaveTextContent('PX4 / Gazebo container endpoint');
+});

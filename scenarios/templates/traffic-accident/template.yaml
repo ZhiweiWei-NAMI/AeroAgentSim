@@ -62,5 +62,15 @@ knobs:
     min: 0.5
     max: 20
     apply: traffic.physics_hz
+  - id: motion_backend
+    label: Flight physics backend
+    label_zh: 飞行物理引擎后端
+    type: choice
+    default: kinematic
+    options: [kinematic, "px4_gazebo"]
+    options_zh: [内置运动调度引擎（替代 Gazebo）, PX4 / Gazebo（外部飞控仿真服务）]
+    description: The built-in kinematic scheduler engine computes flight motion directly and replaces Gazebo for high-speed simulation; px4_gazebo connects to an external PX4 SITL + Gazebo service.
+    description_zh: 内置 kinematic 调度核心引擎直接计算飞行运动，作为 Gazebo 的高加速比替代方案；px4_gazebo 连接外部 PX4 SITL + Gazebo 飞控仿真服务。
+    apply: traffic.motion_backend
 kpis: [tasks_completed, mean_task_latency_s, energy_used_kj, distance_flown_km, accident_reported, captures_stored, uploads_accepted]
 thumbnail: thumbnail.png

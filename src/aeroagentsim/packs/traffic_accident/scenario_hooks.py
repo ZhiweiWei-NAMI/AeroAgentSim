@@ -50,9 +50,42 @@ def _decision_mode(document: dict[str, Any], base: Path, value: Any) -> None:
 
 def _physics_hz(document: dict[str, Any], base: Path, value: Any) -> None:
     step_ns = round(1e9 / value)
-    document["engines"]["road_motion"]["config"]["step_ns"] = step_ns
-    document["engines"]["air_motion"]["config"]["step_ns"] = step_ns
+    engines = document.get("engines", {})
+    # The air-motion owner is selectable; never index a renamed/removed engine.
+    for name in ("road_motion", "air_motion", "native_air"):
+        engine = engines.get(name)
+        if isinstance(engine, dict):
+            config = engine.get("config")
+            if isinstance(config, dict):
+                config["step_ns"] = step_ns
     document["run"]["advance_ns"] = step_ns
+
+
+def _motion_backend(document: dict[str, Any], base: Path, value: Any) -> None:
+    """Select the air-motion owner; the scheduler kernel stays authoritative."""
+    if value not in {"kinematic", "px4_gazebo"}:
+        raise ValueError(f"knob motion_backend: unsupported backend {value!r}")
+    engines = document["engines"]
+    if value == "kinematic":
+        # The built-in kinematic scheduler engine computes flight motion
+        # directly and therefore replaces Gazebo for high-speed simulation.
+        air = engines.get("air_motion")
+        if not isinstance(air, dict):
+            raise ValueError(
+                "knob motion_backend: kinematic requires an air_motion engine"
+            )
+        air["plugin"] = "kinematic"
+        engines.pop("native_air", None)
+        return
+    from aeroagentsim.packs.traffic_accident.profiles import validate_profile
+
+    profile = yaml.load((base / "profiles/px4.yaml").read_bytes(), Loader=UniqueLoader)
+    requirements = validate_profile(profile)
+    # Fail closed: a configuration-contract-only profile must never look runnable.
+    raise ValueError(
+        "knob motion_backend: px4_gazebo requires external PX4/Gazebo service "
+        "configuration: " + "; ".join(requirements)
+    )
 
 
 def _wind_east(document: dict[str, Any], base: Path, value: Any) -> None:
@@ -75,6 +108,7 @@ def plugin() -> ScenarioPlugin:
             "traffic.accident_time": _accident_time,
             "traffic.decision_mode": _decision_mode,
             "traffic.physics_hz": _physics_hz,
+            "traffic.motion_backend": _motion_backend,
             "traffic.wind_east": _wind_east,
             "traffic.wind_north": _wind_north,
         },

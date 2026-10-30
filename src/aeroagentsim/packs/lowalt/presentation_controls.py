@@ -30,6 +30,25 @@ def read_operator_mode(document: Mapping[str, Any]) -> Known | Unavailable:
     )
 
 
+def read_motion_backend(document: Mapping[str, Any]) -> Known | Unavailable:
+    engines = _mapping(document.get("engines"))
+    motion = _mapping(engines.get("motion"))
+    native = _mapping(engines.get("native_air"))
+    if motion and native:
+        return Unavailable("Multiple lowalt motion owners are ambiguous")
+    if motion.get("plugin") == "kinematic" and not native:
+        return known("kinematic", {
+            "reader": "lowalt.motion_backend", "engine": "motion",
+            "plugin": "kinematic", "replaces": "gazebo",
+        })
+    if native.get("plugin") == "px4_gazebo" and not motion:
+        return known("px4_gazebo", {
+            "reader": "lowalt.motion_backend", "engine": "native_air",
+            "plugin": "px4_gazebo",
+        })
+    return Unavailable("No supported lowalt motion owner is pinned")
+
+
 def _rescue_source(
     document: Mapping[str, Any],
 ) -> tuple[str, Mapping[str, Any]] | Unavailable:
@@ -198,6 +217,7 @@ def read_rescue_fleet_variation(document: Mapping[str, Any]) -> Known | Unavaila
 
 CONTROL_READERS = {
     "lowalt.operator_mode": read_operator_mode,
+    "lowalt.motion_backend": read_motion_backend,
     "rescue.participation": read_rescue_participation,
     "rescue.observation": read_rescue_observation,
     "rescue.radio_port": read_rescue_radio_port,

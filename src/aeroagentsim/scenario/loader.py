@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import math
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from pathlib import Path
@@ -16,8 +17,7 @@ try:
     from yaml import CSafeDumper as SafeDumper
     from yaml import CSafeLoader as SafeLoader
 except ImportError:  # PyYAML also supports installations without LibYAML.
-    from yaml import SafeDumper
-    from yaml import SafeLoader
+    from yaml import SafeDumper, SafeLoader
 
 from aerokernel import (
     BindingManifest,
@@ -52,6 +52,7 @@ from aeroagentsim.integrations.aerograph import (
     compile_registry,
     read_snapshot,
 )
+from aeroagentsim.integrations.aerograph.model import COMPILER_VERSION
 from aeroagentsim.preparation_api import PreparedScenario
 
 from .paths import source_path
@@ -210,7 +211,6 @@ def load_registry(
         set(),
         {
             "snapshot",
-            "digest",
             "compile",
             "types",
             "fields",
@@ -247,16 +247,79 @@ def load_registry(
             ),
             Policy(**obj(spec.get("policy", {}), "registry.compile.policy")),
         )
+    # AeroGraph is the mandatory registry source. Snapshots remain a portable
+    # compiled artifact, but a hand-written stub has neither the compiler
+    # revision nor descriptor provenance and is rejected before any binding.
+    revision = "aerograph-compiler/" + COMPILER_VERSION
+    provenance = compiled.details.get("provenance", {})
+    descriptors = provenance.get("descriptors") if isinstance(provenance, Mapping) else None
+    compiled_type_ids = {descriptor.id for descriptor in compiled.registry.types}
+    type_descriptors = descriptors.get("types") if isinstance(descriptors, Mapping) else None
+    if (
+        compiled.registry.revision != revision
+        or not compiled_type_ids
+        or not isinstance(type_descriptors, Mapping)
+        or not compiled_type_ids <= set(type_descriptors)
+        or any(
+            not isinstance(type_descriptors[tid], Mapping)
+            or not isinstance(type_descriptors[tid].get("file"), str)
+            or not type_descriptors[tid]["file"].strip()
+            or not isinstance(type_descriptors[tid].get("pointer"), str)
+            or not type_descriptors[tid]["pointer"].startswith("/")
+            for tid in compiled_type_ids
+        )
+    ):
+        raise ScenarioError(
+            f"registry: must be compiled from AeroGraph ({revision}); hand-written "
+            "or stub snapshots without AeroGraph provenance are rejected"
+        )
     types = list(compiled.registry.types)
     fields = list(compiled.registry.fields)
     messages = list(compiled.registry.messages)
+    local_types: list[TypeDescriptor] = []
     for item in seq(registry_spec.get("types", []), "registry.types"):
         item = contract(item, "registry.types[]", {"id", "parents", "abstract"})
         if type(item["abstract"]) is not bool:
             raise ScenarioError("registry.types[].abstract: explicit bool required")
-        types.append(
-            TypeDescriptor(item["id"], tuple(item["parents"]), item["abstract"])
+        descriptor = TypeDescriptor(
+            item["id"], tuple(item["parents"]), item["abstract"]
         )
+        # Local declarations extend the compiled hierarchy; they may not mix a
+        # disconnected self-written root into an AeroGraph scenario.
+        if not descriptor.parents:
+            raise ScenarioError(
+                f"registry.types.{descriptor.id}: local extension types must "
+                "inherit from the compiled AeroGraph hierarchy"
+            )
+        local_types.append(descriptor)
+        types.append(descriptor)
+    known = compiled_type_ids | {descriptor.id for descriptor in local_types}
+    local_by_id = {descriptor.id: descriptor for descriptor in local_types}
+    for descriptor in local_types:
+        for parent in descriptor.parents:
+            if parent not in known:
+                raise ScenarioError(
+                    f"registry.types.{descriptor.id}: parent {parent!r} is not "
+                    "in the compiled AeroGraph hierarchy"
+                )
+    rooted: set[str] = set(compiled_type_ids)
+    progress = True
+    while progress:
+        progress = False
+        for descriptor in local_types:
+            if descriptor.id not in rooted and all(
+                parent in rooted for parent in descriptor.parents
+            ):
+                rooted.add(descriptor.id)
+                progress = True
+    for descriptor in local_types:
+        if descriptor.id not in rooted or descriptor.id in local_by_id and any(
+            parent not in rooted for parent in descriptor.parents
+        ):
+            raise ScenarioError(
+                f"registry.types.{descriptor.id}: local extension types must "
+                "inherit acyclically from the compiled AeroGraph hierarchy"
+            )
     for item in seq(registry_spec.get("fields", []), "registry.fields"):
         item = contract(item, "registry.fields[]", {"id", "type", "schema", "metadata"})
         fields.append(

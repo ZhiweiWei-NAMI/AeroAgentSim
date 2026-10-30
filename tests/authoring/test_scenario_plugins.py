@@ -27,17 +27,20 @@ BUILTIN_IDS = {
     "security-patrol", "traffic-accident",
 }
 BUILTIN_HOOKS = {
-    "lowalt.operator_mode", "traffic.accident_time", "traffic.decision_mode",
-    "traffic.physics_hz", "traffic.wind_east", "traffic.wind_north",
+    "lowalt.operator_mode", "lowalt.motion_backend", "traffic.accident_time",
+    "traffic.decision_mode", "traffic.physics_hz", "traffic.motion_backend",
+    "traffic.wind_east", "traffic.wind_north",
     "rescue.participation", "rescue.observation", "rescue.radio_port",
     "rescue.radio", "rescue.deadline_s", "rescue.fleet_variation",
 }
 HOOK_PLUGIN_IDS = {"lowalt", "rescue", "traffic"}
 HOOK_OWNERS = {
     "lowalt.operator_mode": "lowalt",
+    "lowalt.motion_backend": "lowalt",
     "traffic.accident_time": "traffic",
     "traffic.decision_mode": "traffic",
     "traffic.physics_hz": "traffic",
+    "traffic.motion_backend": "traffic",
     "traffic.wind_east": "traffic",
     "traffic.wind_north": "traffic",
     "rescue.participation": "rescue",
@@ -194,7 +197,7 @@ def test_external_template_reuses_builtin_hook_only_when_explicitly_supplied(
     assert registry.directory_of("external") == source.resolve()
     with pytest.raises(KeyError):
         registry.plugin_of("missing")
-    assert set(registry.hooks) == {"lowalt.operator_mode"}
+    assert set(registry.hooks) == {"lowalt.operator_mode", "lowalt.motion_backend"}
     scheduled = registry.apply("external")
     interactive = registry.apply("external", {"run_mode": "interactive"})
     assert scheduled.document["ingress_streams"][0]["initial_watermark_ns"] == 1_000_000_000

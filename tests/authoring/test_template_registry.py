@@ -26,6 +26,7 @@ def test_traffic_knobs_change_real_schedule_physics_and_preserve_source() -> Non
         "accident_time_s": 5,
         "decision_mode": "scripted",
         "physics_hz": 2,
+        "motion_backend": "kinematic",
         "wind_east_mps": 0.0,
         "wind_north_mps": 0.0,
     }
@@ -185,8 +186,8 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
             assert any("\u4e00" <= char <= "\u9fff" for char in knob["label_zh"])
             assert knob["label_zh"] != knob["label"]
             translated_labels += 1
-    # Operator stories add six guide bullets/eight controls; traffic adds two wind controls.
-    assert (translated_bullets, translated_labels) == (57, 71)
+    # Operator stories add six guide bullets/eight controls; traffic adds a backend and two wind controls.
+    assert (translated_bullets, translated_labels) == (57, 72)
     scheduled = registry.apply("food-delivery")
     interactive = registry.apply("food-delivery", {"run_mode": "interactive"})
     assert scheduled.knobs["run_mode"] == "scheduled"

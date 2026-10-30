@@ -13,11 +13,11 @@ registry:
 
 Paths resolve relative to the scenario file. A snapshot contains the selected type descriptors and ancestry, applicable fields, relation descriptors and message schemas. Scenario overlays can add local types and fields for an experiment. The traffic demo includes its [snapshot](../../scenarios/demos/traffic-accident/registry.snapshot.json) and [overlay](../../scenarios/demos/traffic-accident/registry.overlay.yaml).
 
-No AeroGraph checkout is needed for these scenarios. Studio and the console use their snapshot for type search, ancestry, fields and relations, and show that the type catalog is limited to that snapshot. Types absent from it cannot be selected just because they exist elsewhere in the ontology.
+Snapshots are portable compiled artifacts, never a second registry source. Running a shipped scenario needs no AeroGraph checkout, but every scenario snapshot must carry the `aerograph-compiler/1` revision and `descriptors` provenance written by the compiler. Hand-written or stub snapshots are rejected at load time, and local `registry.types` extensions must inherit a type from the compiled hierarchy instead of introducing a disconnected root. Studio and the console use the snapshot for type search, ancestry, fields and relations, and show that the type catalog is limited to that snapshot.
 
 ## Use a full source checkout
 
-If you have access to AeroGraph, set `AEROAGENTSIM_AEROGRAPH_ROOT` to its directory to retain the broader authoring catalog. Compilation remains read-only. Select the types and fields needed by your scenario; distribute the resulting snapshot with your experiment so readers can run it independently.
+Set `AEROAGENTSIM_AEROGRAPH_ROOT` to the AeroGraph source directory for authoring and compilation. Compilation remains read-only. Select the types and fields needed by your scenario; distribute the resulting compiled snapshot with your experiment so readers can run it independently.
 
 The compiler lives in [the AeroGraph integration](../../src/aeroagentsim/integrations/aerograph/). Inspect its available commands with:
 
