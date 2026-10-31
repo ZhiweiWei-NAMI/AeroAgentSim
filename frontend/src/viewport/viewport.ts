@@ -74,6 +74,8 @@ export class Viewport {
   private qualityFrames = 0;
   private environment?: T.WebGLRenderTarget;
   private staticRoot = new T.Group();
+  /** Splat overlays share the floating origin but stay out of staticRoot's occlusion/material passes. */
+  private splatRoot = new T.Group();
   private occlusion = new StaticOcclusion();
   private incidentSurface = new IncidentSurface();
   private origin = new T.Vector3();
@@ -149,7 +151,7 @@ export class Viewport {
     try{this.layer.setCatalog(parseModelCatalog(header.modelCatalog));}catch(error){this.status(`Model catalog unavailable: ${String(error)} · stand-ins active`);}
     if(options.semantic!==undefined)this.layer.semantic=options.semantic;
     if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
-    this.scene.add(this.layer.root, this.staticRoot);
+    this.scene.add(this.layer.root, this.staticRoot, this.splatRoot);
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.composers.set(this.quality, this.composer); this.applyPreset();
     // One atmosphere module serves the run view, captures and the draft preview.
@@ -168,12 +170,20 @@ export class Viewport {
     const presentation: ScenePresentation | undefined = options.city || options.hdri ? { city: options.city, hdri: options.hdri } : scenePresentation(header);
     if(options.semantic&&!presentation?.city){this.district=new ProceduralDistrict();this.scene.add(this.district.root);this.container.dataset.context='illustrative';this.setAttribution('Illustrative city · recorded actors and airspace');}
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
+    // A terrain GLB may sit below the default display plane; move the plane, never the terrain.
+    if(presentation?.groundY!==undefined&&Number.isFinite(presentation.groundY))this.lighting.ground.position.y=presentation.groundY;
     if(presentation){
       if(presentation.city)this.options.onCityProgress?.({phase:'roads',loaded:0,total:0});
       if(presentation.attribution)this.setAttribution(presentation.attribution);
       if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
       void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.renderer.shadowMap.needsUpdate=true;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
         .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));if(presentation?.city)this.options.onCityIssue?.(String(error));options.onError?.(error);}});
+      if(presentation.splats?.length)void import('./splat-layer').then(({loadSplats})=>{
+        if(this.disposed)return;
+        return loadSplats(presentation.splats!,{renderer:this.renderer,scene:this.scene,signal:this.abort.signal,parent:this.splatRoot,encodeLinear:true,
+          onState:(state,detail)=>{if(this.disposed)return;container.dataset.splats=state;if(state==='loading')this.status(`Loading splat overlays (${presentation.splats!.length})…`);if(detail)this.status(detail);},
+          invalidate:()=>{this.revision++;}});
+      }).catch(error=>{if(!this.disposed){container.dataset.splats='error';this.status(`Splat overlay unavailable: ${String(error)}`);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
       }).catch(error=>{if(!this.disposed){container.dataset.ibl='analytic-sky';this.status(`HDRI unavailable: ${String(error)} · analytic sky IBL active`);}});
@@ -448,7 +458,8 @@ export class Viewport {
       const shift=this.controls.target.clone();shift.y=0;this.origin.add(shift);this.camera.position.sub(shift);this.controls.target.sub(shift);
       if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
-      this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.revision++;
+      this.splatRoot.position.copy(this.origin).negate();
+      this.staticRoot.updateMatrixWorld(true);this.splatRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.revision++;
       this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents,this.roofHeight,layoutKey);
     }
     this.lighting.update(this.controls.target);

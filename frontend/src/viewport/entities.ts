@@ -182,6 +182,8 @@ export class EntityLayer {
         if (!meshes.length) throw Error('Model has no renderable geometry');
         const glyph=modelGlyph(model);batch.meshes[0].geometry.dispose();batch.meshes[0].geometry=glyph;
         batch.far={mesh:batch.meshes[0],keys:[]};
+        // Scenario-bound GLBs keep their real mesh at aerial distance; only crowds (>=80 instances) fall back to the silhouette glyph.
+        batch.farDistance=Number.POSITIVE_INFINITY;
         batch.meshes=meshes;batch.transforms=transforms;batch.loaded=true;
         batch.outline=meshes.map(instance=>{const mesh=new T.Mesh(instance.geometry,instance.material);mesh.layers.set(10);mesh.matrixAutoUpdate=false;mesh.visible=false;this.root.add(mesh);return mesh;});
         for(const mesh of meshes)this.root.add(mesh);

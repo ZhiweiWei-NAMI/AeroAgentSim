@@ -8,7 +8,12 @@ export interface ScenePresentation {
   roads?: { url: string; offset?: [number, number, number] };
   trees?: Array<[number, number, number]>;
   hdri?: string;
-  camera?: { target: [number, number, number]; position: [number, number, number] };
+  /** `fixed`: keep this authored load pose instead of auto-framing the main actors. It does not lock the controls. */
+  camera?: { target: [number, number, number]; position: [number, number, number]; fixed?: boolean };
+  /** Display-plane height in renderer metres (default -0.1). Set it below a terrain GLB's lowest point so the plane cannot cut through it. */
+  groundY?: number;
+  /** Optional Gaussian-splat (.spz) display overlays drawn with Spark; the transform maps the file's own frame into renderer metres. */
+  splats?: Array<{ url: string; position?: [number, number, number]; quaternion?: [number, number, number, number]; scale?: number }>;
   attribution?: string;
 }
 declare module '../contracts/viewer-feed' { interface RunHeader { scene?: ScenePresentation } }

@@ -13,6 +13,8 @@ import { applyWeatherMaterials } from '../viewport/scene';
 import { conditionsFromDraft, previewMoment } from '../viewport/conditions';
 import { ConditionsHud } from '../viewport/ConditionsHud';
 import { previewPositions } from './preview-positions';
+import type { ScenePresentation } from '../scene/presentation';
+import { loadSplats } from '../viewport/splat-layer';
 
 type LayerName = 'ground' | 'buildings' | 'roads' | 'entities' | 'airspace';
 const LAYER_NAMES: LayerName[] = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
@@ -37,6 +39,25 @@ function clearGroup(group: THREE.Group) { for (const child of [...group.children
  * flip `group.visible`; cheap groups (roads, entities, airspace) rebuild when their content changes.
  */
 export { draftBinding } from './preview-positions';
+
+/** Resolve a service-provided asset against the API origin; absolute/data URLs are unchanged. */
+export function resolveSceneAssetUrl(url: string, api: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+  const base = new URL(api || location.href, location.href);
+  return new URL(url, base).href;
+}
+
+/** A rescue draft's console scene, or `{id:''}` when the declared descriptor is malformed (never Huangpu). */
+export function rescueConsoleScene(ws: Workspace): ScenePresentation | undefined {
+  const declared = (ws.scenario as any)?.engines?.rescue?.config?.console_scene;
+  if (declared === undefined || declared === null) return undefined;
+  const candidate = declared as Partial<ScenePresentation>;
+  if (typeof candidate.id === 'string' && candidate.id.trim()
+    && candidate.city && typeof candidate.city.url === 'string' && candidate.city.url) {
+    return candidate as ScenePresentation;
+  }
+  return { id: '' } as ScenePresentation;
+}
 
 /** Positions authored in the draft, already converted to runtime ENU by `previewPositions`. */
 export function authoredPositions(scenario: Workspace['scenario']): number[][] {
@@ -97,10 +118,16 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const previewS = useMemo(() => previewMoment(workspace.scenario), [workspace.scenario]);
   const previewConditions = useMemo(() => conditionsFromDraft(workspace.scenario ?? {}, previewS), [workspace.scenario, previewS]);
   const previewCut = useRef({ conditions: previewConditions, atS: previewS }); previewCut.current = { conditions: previewConditions, atS: previewS };
-  // The shared city follows the draft's declared city (choosing none hides it).
-  const cityScene = (ws: Workspace) => ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene : undefined;
+  // A rescue draft ships its pinned console scene; the indexed demo city remains the explicit Huangpu fallback.
+  const cityScene = (ws: Workspace): ScenePresentation | undefined => {
+    const rescue = rescueConsoleScene(ws);
+    if (rescue) return rescue;
+    return ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene as ScenePresentation | undefined : undefined;
+  };
   const city = cityScene(workspace);
-  const sceneKey = useMemo(() => JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
+  // The complete display descriptor is scene identity: transforms reload it; controls/pacing do not.
+  const sceneKey = useMemo(() => JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.city?.offset ?? null,
+    city?.camera ?? null, city?.groundY ?? null, city?.splats ?? null,
     workspace.scene?.ground ?? null, workspace.scene?.origin ?? null, workspace.proposal ?? false, workspace.proposal ? workspace.scene?.geojson : null]), [workspace.id, api, city, workspace.scene, workspace.proposal]);
   const roadsKey = useMemo(() => JSON.stringify(workspace.scene?.roads ?? null), [workspace.scene?.roads]);
   const entitiesKey = useMemo(() => JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null, workspace.scenario.generators ?? null, workspace.scenario.registry?.types ?? null, workspace.scenario.origin ?? null]), [workspace.scenario]);
@@ -111,6 +138,11 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     if (!root.current) return;
     const host = root.current, abort = new AbortController(), { workspace: ws } = latest.current;
     const scene = new THREE.Scene(); scene.background = new THREE.Color(bare ? '#cdd9e4' : '#edf2f6'); setError(undefined); setLoading(false); setProgress(undefined); setRendered(false);
+    // The scene identity for this renderer lifetime: declared rescue console scene, else Huangpu demo.
+    const shownCity = cityScene(ws);
+    const authoredCamera = shownCity?.camera;
+    const fixedCamera = authoredCamera?.fixed === true;
+    const groundY = shownCity && Number.isFinite(shownCity.groundY) ? shownCity.groundY! : undefined;
     let pendingBuildings = 0;
     const beginLoad = () => { pendingBuildings++; setLoading(true); };
     const finishLoad = () => { pendingBuildings--; if (!abort.signal.aborted) setLoading(pendingBuildings > 0); };
@@ -139,8 +171,13 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       const size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
       const extent = Math.max(size.x, size.z, 200) * 1.25;
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, extent * 40);
-      camera.position.set(center.x + extent * 0.55, extent * 0.6, center.z + extent * 0.7);
-      controls = new OrbitControls(camera, renderer.domElement); controls.target.set(center.x, 0, center.z); controls.update();
+      if (authoredCamera) { camera.position.fromArray(authoredCamera.position); }
+      else camera.position.set(center.x + extent * 0.55, extent * 0.6, center.z + extent * 0.7);
+      controls = new OrbitControls(camera, renderer.domElement);
+      if (authoredCamera) controls.target.fromArray(authoredCamera.target);
+      else controls.target.set(center.x, 0, center.z);
+      controls.update();
+      if (authoredCamera) camera.lookAt(controls.target);
       let firstFrame = true, displayedWeather = '';
       const draw = () => {
         frame = 0; if (abort.signal.aborted || document.hidden) return;
@@ -169,7 +206,6 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       atmosphere = new AtmosphereLayer(scene, renderer!, 'med', { annotations: true, preview: { overlay: atmosphereLabels, locale: () => latest.current.locale }, onReady: invalidate });
       void atmosphere.ready.then(invalidate).catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); });
       atmosphere.update(previewConditions, previewS, camera, undefined, undefined, undefined, controls.target);
-      const shownCity = cityScene(ws);
       let userMoved = false, framedCity = false;
       controls.addEventListener('start', () => { userMoved = true; overlayView?.interact(true); });
       const visibleFrame = (): PreviewFrame | undefined => {
@@ -190,22 +226,24 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         const width = Math.max(span.x, 200) * 1.15, depth = Math.max(span.z, 200) * 1.15;
         const side = Math.max(width, depth), divisions = Math.min(80, Math.max(10, Math.round(side / 50)));
         const ground = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), new THREE.MeshStandardMaterial({ color: '#dbe2d3', side: THREE.DoubleSide }));
-        ground.rotation.x = -Math.PI / 2; ground.position.set(mid.x, -0.05, mid.z);
-        const grid = new THREE.GridHelper(side, divisions, '#9da9ab', '#c6d0d1'); grid.position.set(mid.x, 0, mid.z);
+        const groundLevel = groundY ?? -0.05;
+        ground.rotation.x = -Math.PI / 2; ground.position.set(mid.x, groundLevel, mid.z);
+        const grid = new THREE.GridHelper(side, divisions, '#9da9ab', '#c6d0d1');
+        grid.position.set(mid.x, groundY === undefined ? 0 : groundY + 0.05, mid.z);
         grid.scale.set(width / side, 1, depth / side);
         groups.ground.add(ground, grid);
         hologram?.setBounds(box); hologram?.sync(groups.ground, 'ground');
       };
       fitGround(bounds);
-      const acceptCity = (group: THREE.Group) => {
+      const acceptCity = (group: THREE.Object3D) => {
         if (abort.signal.aborted) return;
         if (group.parent !== groups.buildings) groups.buildings.add(group);
         applyWeatherMaterials(group, scene.userData.weatherWet, previewCut.current.conditions.light === 'dusk');
         const cityBox = new THREE.Box3().setFromObject(group);
         if (!cityBox.isEmpty()) {
           bounds.union(cityBox); fitGround(bounds);
-          // Roads establish the extent first. Later building chunks never steal an orbit.
-          if (!framedCity && !userMoved && !latest.current.overlay) { fitView(); framedCity = true; }
+          // Roads establish the extent first. Later building chunks never steal an orbit; an authored fixed pose is never replaced.
+          if (!fixedCamera && !framedCity && !userMoved && !latest.current.overlay) { fitView(); framedCity = true; }
           camera.far = Math.max(camera.far, bounds.getSize(new THREE.Vector3()).length() * 6); camera.updateProjectionMatrix();
         }
         hologram?.sync(groups.buildings, 'building');
@@ -236,19 +274,39 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         bounds.union(new THREE.Box3().setFromObject(groups.roads));
         if (bounds.isEmpty()) bounds.set(new THREE.Vector3(-100, 0, -100), new THREE.Vector3(100, 0, 100));
         fitGround(bounds);
-        if (!userMoved && !latest.current.overlay) fitView();
+        if (!fixedCamera && !userMoved && !latest.current.overlay) fitView();
       }, buildingsRequested: false, loadBuildings: () => {
         if (context.buildingsRequested) return; context.buildingsRequested = true;
+        assets = new Assets(renderer!);
+        // A malformed rescue descriptor must surface, never silently fall back to Huangpu.
+        if (shownCity && !shownCity.city) setError({ kind: 'descriptor' });
         if (shownCity?.city) {
-          if (shownCity.city.kind !== 'traffic-city') { setError({ kind: 'descriptor' }); }
-          else {
-            assets = new Assets(renderer!); beginLoad();
-            void loadTrafficCity(shownCity.city.url, assets, abort.signal, { onUpdate: (group, value) => { acceptCity(group); setProgress({ ...value }); } }).then(group => {
+          const descriptor = shownCity.city;
+          if (descriptor.kind === 'traffic-city') {
+            beginLoad();
+            void loadTrafficCity(descriptor.url, assets, abort.signal, { onUpdate: (group, value) => { acceptCity(group); setProgress({ ...value }); } }).then(group => {
               if (abort.signal.aborted) { disposeObject(group); return; }
               acceptCity(group);
             })
               .catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); }).finally(finishLoad);
-          }
+          } else if (descriptor.kind === 'glb') {
+            // Source metres, authored offset: no fitModel/normalise/scale-to-grid/rotation.
+            beginLoad();
+            void assets.model(resolveSceneAssetUrl(descriptor.url, api)).then(model => {
+              if (abort.signal.aborted) { disposeObject(model); return; }
+              if (descriptor.offset) model.position.add(new THREE.Vector3(...descriptor.offset));
+              acceptCity(model);
+            }).catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); }).finally(finishLoad);
+          } else setError({ kind: 'descriptor' });
+        }
+        // Overlays load once with the environment; layer checkboxes only flip visibility afterwards.
+        if (shownCity?.splats?.length) {
+          beginLoad();
+          const splats = shownCity.splats.map(splat => ({ ...splat, url: resolveSceneAssetUrl(splat.url, api) }));
+          void loadSplats(splats, { renderer: renderer!, scene, signal: abort.signal, parent: groups.buildings, encodeLinear: false,
+            onState: (state, detail) => { if (abort.signal.aborted) return; if (state === 'error' && detail) setError({ kind: 'runtime', detail }); invalidate(); },
+            invalidate })
+            .finally(finishLoad);
         }
         if (ws.scene) {
           beginLoad();
@@ -260,7 +318,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       ctx.current = context;
       const resize = () => {
         const w = Math.max(1, host.clientWidth), h = Math.max(1, host.clientHeight); renderer!.setSize(w, h, false); camera.aspect = w / h;
-        if (!userMoved && !latest.current.overlay) fitView();
+        if (!fixedCamera && !userMoved && !latest.current.overlay) fitView();
         else {
           if (latest.current.overlay && camera.view?.enabled) {
             const available = visibleFrame();
@@ -282,7 +340,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
           const nextFrame = JSON.stringify(visibleFrame());
           if (nextFrame === previousFrame) return;
           previousFrame = nextFrame;
-          if (!userMoved && !latest.current.overlay) fitView();
+          if (!fixedCamera && !userMoved && !latest.current.overlay) fitView();
         });
         layoutObserver.observe(shell, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
       }

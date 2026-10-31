@@ -13,7 +13,7 @@ import { initialActionFraming } from './action-framing';
 import { areaOfInterest } from './semantic';
 import { entityId } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
-import '../scene/presentation';
+import { scenePresentation } from '../scene/presentation';
 import '../workbench/run-status.css';
 import './viewer.css';
 import {BusinessDirector,directorTarget,type DirectorTarget} from './business-director';
@@ -108,7 +108,7 @@ export function ViewportView(props: Props) {
           const cut=p.clock.playing?undefined:eventCut.current?.index??p.commitCut;
           const seekKey=`${p.clock.ns}/${cut}/${p.store.commits.length}`;
           if(seekKey!==lastSeek){p.store.seek(p.clock.ns,cut);lastSeek=seekKey;}
-          if(p.simple&&activeMode.current==='orbit'&&!actionFramed&&!interacted&&!p.focus){
+          if(p.simple&&activeMode.current==='orbit'&&!actionFramed&&!interacted&&!p.focus&&!scenePresentation(p.store.header)?.camera?.fixed){
             const framing=initialActionFraming(p.store.header,p.store.entities.values());
             if(framing){
               const view=viewport.current!;
