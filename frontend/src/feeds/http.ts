@@ -4,7 +4,7 @@ import { validateBusinessEvents, validateKpiValues } from '../newcomers/validati
 import type { FeedCommit, Instant, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
 export interface WaitingContext { stream_ids: string[]; at_ns: string }
-export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; studio_workspace?: string; studio_revision?: number; workspace_name?: string; configuration_digest?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; template_title_zh?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues; /** False while KPIs/Story are still aggregating after a terminal status; absent on older servers. */ results_final?: boolean }
+export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; /** Server-provided cover when the run's template declares a thumbnail. */ thumbnail_url?: string; studio_workspace?: string; studio_revision?: number; workspace_name?: string; configuration_digest?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; template_title_zh?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues; /** False while KPIs/Story are still aggregating after a terminal status; absent on older servers. */ results_final?: boolean }
 /** One journaled ingress admission: survives a page refresh, unlike the in-memory POST receipt. */
 export interface AdmissionReceipt {
   id: string; status: string; submitted_at?: Instant | string; requested_at?: Instant;

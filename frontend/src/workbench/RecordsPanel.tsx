@@ -5,6 +5,7 @@ import { runStatusLabel } from '../newcomers/presentation';
 import { ExperimentPanel } from '../experiments/ExperimentPanel';
 import { experimentIdFromLocation, setExperimentQuery } from '../experiments/url';
 import { sameRunRecords, TERMINAL, type RunRecord, type WorkbenchApi } from './api';
+import { runCoverUrl } from './covers';
 
 const tone = (status: string) => status === 'completed' ? 'ok' : status === 'stopped' ? 'warn' : TERMINAL.has(status) ? 'bad' : status === 'initialized' ? 'info' : 'live';
 
@@ -16,6 +17,13 @@ export function derivedProjectName(run: RunRecord, locale: string) {
   const name = sourceName && sourceName !== run.template_title && sourceName !== run.template_title_zh
     ? sourceName : templateName ?? sourceName ?? run.title ?? run.scenario;
   return `${name} · ${L('variant', '变体')}`;
+}
+
+/** Small cover for a rescue run; non-rescue runs render nothing. */
+function RunCover({ run, base }: { run: RunRecord; base: string }) {
+  const url = runCoverUrl(run);
+  if (!url) return null;
+  return <img className="wb-record-cover" alt="" src={new URL(url, base + '/').href} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />;
 }
 
 /** Run records: open one in replay, compare several, or derive a new draft from one. */
@@ -94,6 +102,7 @@ export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDer
       {runs && !shown.length && <div className="wb-empty"><strong>{L('No runs yet', '还没有运行')}</strong>{L('Save a version, initialize it and press Start.', '保存版本、初始化，然后按“启动”。')}</div>}
       {shown.map(run => <div key={run.id} className="wb-record" aria-current={run.id === current}>
         <input type="checkbox" aria-label={L(`Select ${run.id} for comparison`, `选择 ${run.id} 用于对比`)} checked={chosen.includes(run.id)} disabled={chosen.length === 4 && !chosen.includes(run.id)} onChange={() => toggle(run.id)} />
+        <RunCover run={run} base={api.base} />
         <div className="wb-row-main">
           <div>{localized(run, 'template_title', locale) ?? run.workspace_name ?? run.title ?? run.scenario}</div>
           <small className="wb-mono">{run.id}</small>

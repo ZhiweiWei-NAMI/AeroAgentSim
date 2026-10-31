@@ -6,6 +6,7 @@ import { difficultyLabel, durationLabel } from '../newcomers/presentation';
 import { localized } from '../i18n/translate';
 import { useI18n } from '../i18n/I18nProvider';
 import { ApiError, type Project, type WorkbenchApi } from './api';
+import { templateCoverUrl } from './covers';
 import { Markdown } from './Markdown';
 import { linkedGuide, loadGuideSource } from '../console/guides';
 import { DescribeCard } from '../assistant/motion/DescribeCard';
@@ -133,9 +134,9 @@ export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, 
         {onDescribe && <DescribeCard onStart={onDescribe} imageSrc={`${import.meta.env.BASE_URL}assistant/describe-card.webp`} />}
         <div className="wb-cards">
           {(templates ?? []).map(template => {
-            const category = categoryMetadata(template.category, locale), provenance = provenanceOf(template);
+            const category = categoryMetadata(template.category, locale), provenance = provenanceOf(template), cover = templateCoverUrl(template);
             return <button key={template.id} className="wb-card" data-testid={`wb-template-${template.id}`} onClick={() => setGuide(template)} aria-label={L(`Open the guide for ${titleOf(template)}`, `打开“${titleOf(template)}”指南`)}>
-              {template.thumbnail_url ? <img alt="" src={new URL(template.thumbnail_url, api.base + '/').href} loading="lazy" /> : <img alt="" />}
+              {cover ? <img alt="" src={new URL(cover, api.base + '/').href} loading="lazy" onError={event => { event.currentTarget.removeAttribute('src'); }} /> : <img alt="" />}
               <div className="wb-card-body">
                 <h4>{titleOf(template)}</h4>
                 <p>{localized(template, 'summary', locale) ?? template.summary}</p>
@@ -177,7 +178,7 @@ function ScenarioGuide({ api, template, onBack, onCreate }: { api: WorkbenchApi;
         .catch(error => setTrail(current => current.map(entry => entry.path === path ? { ...entry, problem: String(error) } : entry)));
     };
   };
-  const observe = (zh ? template.observe_zh : undefined) ?? template.observe, attempt = (zh ? template.try_zh : undefined) ?? template.try;
+  const observe = (zh ? template.observe_zh : undefined) ?? template.observe, attempt = (zh ? template.try_zh : undefined) ?? template.try, cover = templateCoverUrl(template);
   return <div data-testid="wb-guide">
     <div className="wb-hero">
       <button className="wb-btn" onClick={onBack}>← {L('All scenarios', '全部场景')}</button>
@@ -195,7 +196,7 @@ function ScenarioGuide({ api, template, onBack, onCreate }: { api: WorkbenchApi;
       </div>
       : <div>{problem && <p className="hint" role="alert">{problem}</p>}{markdown ? <Markdown source={localizedGuide(markdown, locale)} openLink={opener(`scenarios/templates/${template.id}/README.md`)} /> : !problem && <p className="hint" role="status">{L('Loading the guide…', '正在加载指南…')}</p>}</div>}
       <aside>
-        {template.thumbnail_url && <img className="hero" alt="" src={new URL(template.thumbnail_url, api.base + '/').href} />}
+        {cover && <img className="hero" alt="" src={new URL(cover, api.base + '/').href} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />}
         <div className="wb-section-title">{L('What to watch', '观察要点')}</div><ul>{observe.map(item => <li key={item}>{item}</li>)}</ul>
         <div className="wb-section-title">{L('Things to try', '可以尝试')}</div><ul>{attempt.map(item => <li key={item}>{item}</li>)}</ul>
         <div className="wb-section-title">{L('Controls you can change', '可调整的控制项')}</div>
