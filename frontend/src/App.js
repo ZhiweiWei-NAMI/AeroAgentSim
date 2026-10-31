@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
-import { lazyWithRetry } from './lazyRetry';
+import { lazyWithRetry, retryFailedLazyImports } from './lazyRetry';
+import { Contained } from './assistant/Contained';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
 import zhCN from 'antd/locale/zh_CN';
@@ -37,13 +38,20 @@ function legacyTarget(pathname, search) {
 }
 
 function RoutedContent() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const L = (en, zh) => locale === 'zh-CN' ? zh : en;
   const { pathname, search } = useLocation();
   const loading = <PageState kind="loading" title={t('Loading console')} />;
   const query = new URLSearchParams(search);
   // The in-simulation camera renders through this page (server-side Chromium).
   if (query.has('capture')) return <Suspense fallback={loading}><CaptureConsole apiBase={query.get('api') ?? window.location.origin} assetManifestUrl={query.get('capture_assets')} /></Suspense>;
-  if (pathname === '/' || pathname.startsWith('/w/')) return <Suspense fallback={loading}><Workbench /></Suspense>;
+  if (pathname === '/' || pathname.startsWith('/w/')) return <Contained label="Workbench" resetKey={pathname} fallback={retry => <PageState kind="error"
+    title={L('Could not display the workbench', '无法显示工作台')}
+    description={L('Try again, or reload the page to load the latest console.', '请重试，或刷新页面以加载最新版控制台。')}
+    action={<><button type="button" className="console-btn" onClick={() => { retryFailedLazyImports(); retry(); }}>{L('Retry', '重试')}</button>
+      <button type="button" className="console-btn" onClick={() => window.location.reload()}>{L('Reload page', '刷新页面')}</button></>} />}>
+    <Suspense fallback={loading}><Workbench /></Suspense>
+  </Contained>;
   const target = legacyTarget(pathname, search);
   if (target) return <Navigate to={target} replace />;
   if (pathname.startsWith('/agents/') || pathname.startsWith('/docs/platform/')) {

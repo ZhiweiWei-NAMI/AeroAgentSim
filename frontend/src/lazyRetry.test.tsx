@@ -48,6 +48,23 @@ it('T4-R5-002: an explicit retry requests a fresh module URL and keeps the named
   expect(load).toHaveBeenCalledTimes(1);
 });
 
+it.each([
+  ['Panel', 'a'], ['default', 'a'], ['Panel', 'Panel'], ['default', 'default'],
+])('retries a production chunk namespace for source export %s under alias %s', async (name, alias) => {
+  const url = `${window.location.origin}/assets/Panel.js`;
+  const module: Record<string, ComponentType<{ title: string }>> = { [name]: ({ title }) => <p>{title}</p> };
+  const compiledNamespace = Object.freeze(Object.defineProperty(Object.assign(Object.create(null), module), Symbol.toStringTag, { value: 'Module' }));
+  const load = vi.fn(async (): Promise<typeof module> => { throw new TypeError(`Failed to fetch dynamically imported module: ${url}`); });
+  const reimport = vi.fn(async () => ({ [alias]: compiledNamespace }) as typeof module);
+  const Panel = lazyWithRetry(load, value => value[name], reimport);
+  mount(Panel);
+  await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Actual panel')).toBeVisible();
+  expect(reimport).toHaveBeenCalledWith(`${url}?aas-lazy-retry=1`);
+  expect(load).toHaveBeenCalledTimes(1);
+});
+
 it('retains the resolved panel and form state when another failed import is retried', async () => {
   const loaded = vi.fn(async () => ({ default: () => <input aria-label="Resolved form" defaultValue="42" /> }));
   const Stable = lazyWithRetry(loaded);

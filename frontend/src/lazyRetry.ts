@@ -38,7 +38,19 @@ export function lazyWithRetry<P extends object, M>(load: () => Promise<M>, selec
       const module: M = failedUrl
         ? await reimport(retryModuleUrl(failedUrl, attempt))
         : await load();
-      const component = select ? select(module) : (module as unknown as { default: ComponentType<P> }).default;
+      const pick = (value: M) => select ? select(value) : (value as unknown as { default: ComponentType<P> }).default;
+      const namespace = (value: unknown) => value !== null && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Module]';
+      const componentType = (value: unknown): value is ComponentType<P> => typeof value === 'function' || value !== null && typeof value === 'object' && !namespace(value);
+      let component = pick(module);
+      if (failedUrl && !componentType(component)) {
+        // Rollup can merge a lazy entry into a shared chunk and export its source
+        // namespace under a shortened alias. Normal imports get a generated adapter;
+        // a raw URL retry must recover that namespace before applying the selector.
+        const candidates = new Set(Object.values(module as Record<string, unknown>)
+          .filter(namespace).map(value => pick(value as M)).filter(componentType));
+        if (candidates.size === 1) component = [...candidates][0];
+      }
+      if (!componentType(component)) throw Error('The downloaded module does not export the requested component.');
       return { default: component };
     } catch (error) {
       failedUrl = failedModuleUrl(error) ?? failedUrl;

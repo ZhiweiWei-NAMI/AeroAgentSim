@@ -255,6 +255,8 @@
 .wb-record:hover { background: rgba(31,122,224,.06); }
 .wb-record[aria-current='true'] { border-color: rgba(31,122,224,.45); background: rgba(31,122,224,.08); }
 .wb-record input { margin-top: 3px; }
+/* Rescue run cover: a small 16:9 crop beside the card text, like gallery cards. */
+.wb-record-cover { width: 64px; flex: none; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; margin-top: 2px; background: #dfe7ef; display: block; }
 
 /* Toasts */
 .wb-toasts { position: absolute; z-index: 60; right: var(--wb-gap); top: calc(var(--wb-top) + var(--wb-gap) * 2); display: flex; flex-direction: column; gap: 8px; width: 360px; pointer-events: none; }

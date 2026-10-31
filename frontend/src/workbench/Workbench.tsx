@@ -658,6 +658,12 @@ export default function Workbench() {
     {/* Stage: the one 3D world */}
     <div className="wb-stage" data-testid="wb-stage">
       <div className="wb-scene-frame" data-testid="wb-scene-frame" aria-hidden="true" />
+      <Contained label="Scene" resetKey={`${project?.id}:${runId ?? ''}:${assistant.previewWorkspace?.id ?? ''}`} fallback={retry => <div className="wb-stage-empty" data-testid="wb-scene-failed"><div role="alert" style={{ pointerEvents: 'auto' }}>
+        <h2>{L('Could not display the scene', '无法显示场景')}</h2>
+        <p>{L('Try again, or reload the page to load the latest console.', '请重试，或刷新页面以加载最新版控制台。')}</p>
+        <button type="button" className="wb-btn" onClick={() => { retryFailedLazyImports(); retry(); }}>{L('Retry', '重试')}</button>
+        <button type="button" className="wb-btn" onClick={() => window.location.reload()}>{L('Reload page', '刷新页面')}</button>
+      </div></div>}>
       <Suspense fallback={<div className="wb-stage-empty"><div>{L('Preparing the 3D scene…', '正在准备三维场景…')}</div></div>}>
         {session && store && clock && spatial && <PlaybackRegion updates={playback}>{() => <ViewportView key={runId} store={store} clock={clock} selected={selected} mode={camera} quality="med" trails commitCut={session.cut} highlights={traceModel?.involved}
           simple bare focus={focus} onViewport={handle => { viewport.current = handle; }}
@@ -674,6 +680,7 @@ export default function Workbench() {
           {assistant.previewWorkspace && <><div className="as-stage-veil" aria-hidden /><div className="as-stage-tag" role="status" data-testid="as-stage-tag"><i />{assistant.viewing ? L(`Earlier plan v${assistant.viewing} · preview`, `早期方案 v${assistant.viewing} · 预览`) : L(`Proposed plan v${assistant.assistant.plan?.version ?? ''} · preview`, `提议方案 v${assistant.assistant.plan?.version ?? ''} · 预览`)}<em>{L('not applied', '未应用')}</em></div></>}
           {!assistant.previewWorkspace && project && <div className="wb-stage-note">{runId ? L('Connecting to the run…', '正在连接运行…') : assistant.stage === 'configured' && assistantOpen ? L(`Configured · version ${project.latest_version?.version ?? ''} · not running — Initialize to see the world at t = 0`, `已配置 · 版本 ${project.latest_version?.version ?? ''} · 未运行 — 初始化后查看 t = 0 时的世界`) : previewDraft?.id === project.id && previewDraft.dirty ? L('Unsaved draft preview · save a version to run these edits', '未保存草稿预览 · 保存版本后才能运行这些修改') : project.latest_version ? L('Draft preview · Initialize to see the authoritative world at t = 0', '草稿预览 · 初始化后可查看 t = 0 时的权威世界') : L('Draft preview · validate and save a version, then initialize', '草稿预览 · 校验并保存版本后再初始化')}</div>}</>}
       </Suspense>
+      </Contained>
       {!project && !session && !showGallery && assistantOpen && !assistant.previewWorkspace && <StageEmpty title={L('Your scene will appear here', '你的场景会显示在这里')} body={L('Describe a situation in the conversation. The proposed scene is previewed here before anything is created.', '在对话中描述一个情景。创建任何内容之前，提议的场景会先在这里预览。')} />}
       {!project && !session && !showGallery && !assistantOpen && <div className="wb-stage-empty"><div><h2>{projectError ? L('Project unavailable', '项目不可用') : projectId || runId ? L('Loading project…', '正在加载项目…') : L('Run records', '运行记录')}</h2>{projectError ? <p>{projectError}</p> : !projectId && !runId && <p>{L('Open a run from the list, or choose a scenario to create a project.', '从列表打开运行，或选择场景新建项目。')}</p>}</div></div>}
 
@@ -799,6 +806,13 @@ export default function Workbench() {
         selected={selected ? { id: selected.id, label: entityNames.get(selected.id) ?? selected.id } : undefined} runId={runId} onClearSelected={() => select(undefined)}
         onClose={() => update({ panel: undefined })} onSwitch={project ? (mode, origin) => assistant.switchMode(mode, origin) : undefined} switching={!!assistant.morph} morph={morphOf('chat')}
         onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}</Suspense>
+    <Contained label="Configuration" resetKey={`${project?.id}:${panel ?? ''}:${runId ?? ''}`} fallback={retry => <aside className="wb-panel wb-right is-wide wb-glass" role="alert" data-testid="wb-config-failed">
+      <div className="wb-panel-head"><h3>{L('Configuration unavailable', '无法显示配置')}</h3><button type="button" className="wb-x" aria-label={L('Close configuration', '关闭配置')} onClick={() => update({ panel: undefined })}>✕</button></div>
+      <div className="wb-config-body"><p>{L('Try again, or reload the page to load the latest console.', '请重试，或刷新页面以加载最新版控制台。')}</p>
+        <button type="button" className="wb-btn" onClick={() => { retryFailedLazyImports(); retry(); }}>{L('Retry', '重试')}</button>
+        <button type="button" className="wb-btn" onClick={() => window.location.reload()}>{L('Reload page', '刷新页面')}</button>
+      </div>
+    </aside>}>
     <Suspense fallback={null}>{project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={receiveProject} onDraft={previewChanged} onInitialize={version => void initialize(version)} initializing={initializing}
         section={assistantOpen ? assistant.lastSection.current : panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
@@ -809,6 +823,7 @@ export default function Workbench() {
           onFocus={focusSelection} onFollow={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}
           onShowGraph={() => update({ graph: '1' })} onClose={closeInspector} />}</PlaybackRegion>
         : <button className="wb-collapsed-tab right wb-glass" onClick={openInspector}>{L('Inspector', '检查器')} ☰</button>)}</Suspense>
+    </Contained>
 
     {/* Camera pad: display only */}
     {session && spatial && <div className="wb-camera wb-night" aria-label={L('Camera', '相机')} data-testid="wb-camera">
