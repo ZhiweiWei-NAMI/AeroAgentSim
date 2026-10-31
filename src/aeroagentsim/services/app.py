@@ -1189,6 +1189,13 @@ def create_app(
         @app.get("/studio")
         @app.get("/")
         def page(path: str = "") -> FileResponse:
-            return FileResponse(frontend / "index.html")
+            return FileResponse(
+                frontend / "index.html",
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            )
 
     return app

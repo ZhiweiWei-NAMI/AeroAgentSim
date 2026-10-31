@@ -17,4 +17,9 @@ def test_console_serves_public_folders(tmp_path: Path) -> None:
     assert client.get("/assistant/describe-card.webp").text == "art"
     assert client.get("/decoders/draco/draco_decoder.js").text == "d"
     assert client.get("/assistant/missing.webp").status_code == 404
-    assert client.get("/").text == "<html></html>"
+    for route in ("/", "/w/studio-test", "/studio", "/runs", "/inspect/run-test"):
+        response = client.get(route)
+        assert response.text == "<html></html>"
+        assert response.headers["cache-control"] == "no-cache, no-store, must-revalidate"
+        assert response.headers["pragma"] == "no-cache"
+        assert response.headers["expires"] == "0"
